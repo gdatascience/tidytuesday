@@ -1,0 +1,46 @@
+# Federal Research and Development Spending by Agency
+```{r}
+library(tidyverse)
+library(plotly)
+
+theme_set(theme_light())
+
+fed_rd <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-02-12/fed_r_d_spending.csv")
+```
+## Total Federal R&D Spending by agency/deparment
+First, let's look at the data from 'fed_r_d_spending.csv'
+```{r}
+fed_rd %>% 
+    summary()
+```
+This data contains 588 total observations from 1976 to 2017.
+
+Let's do some pre-processing of the data:
+
+* Add a new variable to compute the percent rd_budget vs. GDP
+* Add a new variable to compute the percent rd_budget vs. total_outlays
+* Add a new variable to compute the percent rd_budget vs. discretionary_outlays
+```{r}
+fed_rd_processed <- fed_rd %>%
+    mutate(rd_pct_gdp = rd_budget / gdp, 
+            rd_pct_tot = rd_budget / total_outlays, 
+        rd_pct_dis = rd_budget / discretionary_outlays)
+```
+First, let's plot the percentage of GDP made up of research and development colored by department
+```{r}
+p <- fed_rd_processed %>% 
+    ggplot(aes(year, rd_pct_gdp, color = department)) +
+    geom_line() + 
+    scale_y_continuous(labels = scales::percent_format())
+    
+ggplotly(p) 
+```
+Next, let's plot the percentage of total outlays made up of research and development colored by department
+```{r}
+p <- fed_rd_processed %>% 
+    ggplot(aes(year, rd_pct_dis, color = department)) +
+    geom_line() + 
+    scale_y_continuous(labels = scales::percent_format())
+    
+ggplotly(p) 
+```

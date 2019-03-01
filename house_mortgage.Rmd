@@ -1,0 +1,120 @@
+---
+title: "House and Mortgage data"
+author: "Tony Galvan"
+date: "February 6, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r packages message=FALSE, warning=FALSE, error=FALSE}
+library(tidyverse)
+library(maps)
+library(gganimate)
+library(USAboundaries)
+
+theme_set(theme_light())
+```
+
+
+```{r}
+state_hpi <- read.csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-02-05/state_hpi.csv", stringsAsFactors = FALSE)
+```
+
+# State HPI
+
+```{r}
+state_hpi_processed <- state_hpi %>% 
+  left_join(data.frame(I(state.abb), I(state.name), state.region,  
+                             state.division, I(state.area),
+                             state.center[[1]], state.center[[2]]), 
+            by = c("state" = "state.abb")) %>%
+  rename(region = state.region, division = state.division, name = state.name, 
+         area = state.area, x = state.center..1.., y = state.center..2..) %>%
+  mutate(price_index_diff = price_index - us_avg,
+         name = as.character(ifelse(state == "DC", "Washington D.C.", name)),
+         region = factor(ifelse(state == "DC", 2, region)),
+         division = factor(ifelse(state == "DC", 3, division)),
+         area =  ifelse(state == "DC", 68.34, area),
+         x = ifelse(state == "DC", -77.0369, x),
+         y = ifelse(state == "DC", 38.9072, y),
+         date = as.Date(paste(year, month, "01", sep = "-")))
+
+levels(state_hpi_processed$region) <- levels(state.region)
+levels(state_hpi_processed$division) <- levels(state.division)
+state_hpi_processed$state_lower <- tolower(state_hpi_processed$name)
+```
+
+How has the home price index changed over time by region?
+
+```{r}
+state_hpi_processed %>%
+  group_by(year, region) %>%
+  summarise(avg_diff = mean(price_index_diff)) %>%
+  ggplot(aes(x = year, y = avg_diff, color = region)) + 
+  geom_line(size = 1)
+```
+
+How has the home price index changed over time by division?
+
+```{r}
+state_hpi_processed %>%
+  group_by(year, division) %>%
+  summarise(avg_diff = mean(price_index_diff)) %>%
+  ggplot(aes(x = year, y = avg_diff, color = division)) + 
+  geom_line(size = 1)
+```
+
+
+
+```{r}
+map <- map_data("state")
+
+state_hpi_processed %>%
+  filter(year == 2018) %>%
+  group_by(state_lower) %>%
+  summarise(avg_diff = mean(price_index_diff),
+            area = mean(area),
+            x = mean(x),
+            y = mean(y)) %>%
+  ggplot(aes(fill = avg_diff)) +
+  geom_map(aes(map_id = state_lower), map = map) +
+  expand_limits(x = map$long, y = map$lat) + 
+  theme_void() +
+  coord_map() +
+  labs(title = "2018 House Price Index (HPI) difference from the US average")
+```
+
+
+```{r}
+state_hpi_yearly <- state_hpi %>% 
+  mutate(price_index_diff = price_index - us_avg,
+         date = as.Date(paste(year, month, "01", sep = "-"))) %>%
+  group_by(year, state) %>%
+  summarise(avg_price_index_diff = mean(price_index_diff)) %>%
+  inner_join(us_states(), by = c("state" = "state_abbr")) %>% 
+  filter(name != "Alaska", 
+         name != "Hawaii", 
+         jurisdiction_type != "territory")
+
+state_hpi_yearly %>% 
+  ggplot() +
+  geom_sf(aes(fill = avg_price_index_diff)) +
+  scale_fill_gradient2(low = "red", high = "blue", mid = "white", midpoint = 0) + 
+  #facet_wrap(~year)
+  labs(title = "Home Price Index difference from US Average in {frame_time}",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FreddieMac") + 
+  transition_time(year) +
+  coord_sf() + 
+  theme_void() + 
+  theme(panel.grid = element_line(color = 'white'))
+```
+
+
+```{r, eval=FALSE, echo=FALSE}
+anim_save(filename = "hpi.gif", animation = last_animation())
+```
+

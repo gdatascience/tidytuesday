@@ -1,0 +1,85 @@
+# PhDs Awarded by Field
+## TidyTuesday 2019 Week 08
+```{r}
+library(tidyverse)
+
+theme_set(theme_light())
+
+phd_field <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-02-19/phd_by_field.csv")
+```
+
+```{r}
+glimpse(phd_field)
+```
+There are 3370 observations with 5 variables.  Let's look at the first few records.
+```{r}
+head(phd_field)
+```
+This data lists the  number of PhDs awarded by Broad Field, Major Field, Field, and Year.
+```{r}
+summary(phd_field)
+```
+The observations come from the years 2008 to 2017.  Interestingly, there are 278 missing values for the number of PhDs.  Let's see how many observations there are per year.
+```{r}
+phd_field %>% 
+    count(year)
+```
+There are 337 observations (Fields) per year.  Let's look at the number of missing values by year.
+```{r}
+phd_field %>%
+    filter(is.na(n_phds)) %>%
+    group_by(year) %>%
+    summarise(n = n())
+```
+The more missing values, the fewer different fields of PhDs were awarded that year.  2008 and 2009 had the fewest different fields of PhDs awarded.  2016 and 2017 had the most different fields of PhDs awarded.
+
+Let's remove the observations where there are missing values for the number of PhDs awarded.
+```{r}
+phd_processed <- phd_field %>%
+    filter(!is.na(n_phds))
+```
+Let's create a bar plot that shows the number of major fields that awarded PhDs by year.
+```{r}
+phd_processed %>%
+    group_by(year) %>%
+    summarise(total_n_phds = sum(n_phds)) %>%
+    mutate(year = forcats::fct_reorder(as.factor(year), total_n_phds)) %>%
+    ggplot(aes(year, total_n_phds)) + 
+    geom_col() +
+    scale_y_continuous(labels = scales::comma_format()) +
+    coord_flip() + 
+    labs(x = "Year",
+        y = "# of PhDs awarded",
+        title = "2016 had the highest number of PhDs awarded.",
+        subtitle = "2010 had the lowest number of PhDs awarded.")
+```
+Let's plot the total number of PhDs awarded for each Broad Field by Year.
+```{r}
+phd_processed %>%
+    group_by(year, broad_field) %>%
+    summarise(total_n_phds = sum(n_phds)) %>%
+    ggplot(aes(year, total_n_phds, color = broad_field)) + 
+    geom_line() + 
+    scale_x_continuous(breaks = c(2008, 2011, 2014, 2017)) +
+    scale_color_discrete(name = "Broad field") +
+    labs(x = "Year", 
+        y = "Total # of PhDs awarded", 
+        title = "Toal number of PhDs awarded for each broad field by year",
+        subtitle = "From 2008 - 2017")
+```
+It is a little surprising that the Engineering broad field had the lowest number of PhDs awarded.
+
+Let's look at major field.
+```{r}
+phd_processed %>%
+    group_by(year, major_field) %>%
+    summarise(total_n_phds = sum(n_phds)) %>%
+    top_n(3) %>%
+    ggplot(aes(year, total_n_phds, color = major_field)) + 
+    geom_line() + 
+    scale_x_continuous(breaks = c(2008, 2011, 2014, 2017)) +
+    labs(x = "Year", 
+        y = "Total # of PhDs awarded", 
+        title = "Toal number of PhDs awarded by major field and year",
+        subtitle = "Filtered to just look at the top 3 major fields.") 
+```
