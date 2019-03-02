@@ -80,18 +80,22 @@ p <- trains_processed %>%
   group_by(month_name) %>%
   summarise(pct_late = sum(num_arriving_late, na.rm = TRUE) / 
               sum(total_num_trips, na.rm = TRUE)) %>%
-  mutate(month_name = fct_reorder(month_name, pct_late)) %>%
-  ggplot(aes(month_name, pct_late, fill = month_name)) +
+  mutate(month_name = fct_reorder(month_name, pct_late),
+         above_or_below_avg = if_else(pct_late > avg_pct_late, "above", "below")) %>%
+  ggplot(aes(month_name, pct_late, fill = above_or_below_avg)) +
   geom_col(show.legend = FALSE) +
   scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("#0568ae", "#d2d2d2")) +
   geom_hline(yintercept = avg_pct_late, linetype = 2) +
+  annotate("text", x = "January", y = avg_pct_late + 0.005, angle = 90, 
+           size = 3, label = "13.5% average") +
   coord_flip() +
   labs(x = "",
        y = "% of trains arriving late",
-       title = "French trains arriving late",
-       subtitle = "13.5% all trains arrive late",
+       title = "% of French trains arriving late",
+       subtitle = "Summer and Fall trains are late more often",
        caption = "Designer: Tony Galvan @gdatascience1  |  Source: SNCF")
-
+p
 ggsave("sncf.png", p)
 ```
 
