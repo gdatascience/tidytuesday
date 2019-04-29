@@ -1,0 +1,91 @@
+---
+title: "bird_collisions"
+author: "Tony Galvan"
+date: "April 29, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chicago Bird Collisions
+### Tidy Tuesday 2019 Week 18
+
+```{r}
+library(tidyverse)
+
+theme_set(theme_minimal())
+
+bird_collisions <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-04-30/bird_collisions.csv")
+mp_light <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-04-30/mp_light.csv")
+```
+
+#### EDA
+
+```{r}
+glimpse(bird_collisions)
+```
+
+```{r}
+summary(bird_collisions$date)
+```
+
+The "bird_collisions" data contains observations of birds colliding with various lighted structures in Chicago from 9/15/1978 to 11/30/2016.
+
+```{r}
+mp_light %>%
+  summary()
+```
+
+The "mp_light" data contains light scores (proportion of the 17 window bays that were illuminated) at McCormic Place (locality = "MP" from the "bird_collisions" data) in Chicago between 3/6/2000 and 5/26/2018.
+
+Let's plot this data to see if there is a pattern based on the day of the week.
+
+```{r}
+mp_light %>%
+  mutate(weekday = lubridate::wday(date, label = TRUE)) %>%
+  group_by(weekday) %>%
+  summarize(pct_light_score = mean(light_score)/100) %>%
+  ggplot(aes(weekday, pct_light_score, fill = weekday)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(x = "Weekday", 
+       y = "Average % of Window Bays Illuminated",
+       title = "Thursday was the most illuminated day of the week",
+       subtitle = "McCormick Place Between 3/6/2000 and 5/26/2018")
+```
+
+Let's plot this data to see if there is a pattern based on the month.
+
+```{r}
+mp_light %>%
+  mutate(month = lubridate::month(date, label = TRUE)) %>%
+  group_by(month) %>%
+  summarize(pct_light_score = mean(light_score)/100) %>%
+  ggplot(aes(month, pct_light_score, fill = month)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(x = "Month", 
+       y = "Average % of Window Bays Illuminated",
+       title = "September was the most illuminated month",
+       subtitle = "McCormick Place Between 3/6/2000 and 5/26/2018")
+```
+
+Let's join the data together.
+
+```{r}
+mp_bird_collisions <- bird_collisions %>%
+  filter(locality == "MP") %>%
+  left_join(mp_light) %>%
+  filter(date > "2000-03-05")
+
+summary(mp_bird_collisions$date)
+```
+
+```{r}
+mp_bird_collisions %>%
+  count(date, light_score, sort = TRUE)
+```
+
+
