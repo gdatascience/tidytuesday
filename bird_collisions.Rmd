@@ -40,10 +40,21 @@ mp_light %>%
 
 The "mp_light" data contains light scores (proportion of the 17 window bays that were illuminated) at McCormic Place (locality = "MP" from the "bird_collisions" data) in Chicago between 3/6/2000 and 5/26/2018.
 
+Are there dates with multiple light_scores?
+
+```{r}
+mp_light_processed <- mp_light %>%
+  group_by(date) %>%
+  summarise(n = n()) %>%
+  filter(n == 1) %>%
+  select(date) %>%
+  left_join(mp_light)
+```
+
 Let's plot this data to see if there is a pattern based on the day of the week.
 
 ```{r}
-mp_light %>%
+mp_light_processed %>%
   mutate(weekday = lubridate::wday(date, label = TRUE)) %>%
   group_by(weekday) %>%
   summarize(pct_light_score = mean(light_score)/100) %>%
@@ -51,7 +62,7 @@ mp_light %>%
   geom_col(show.legend = FALSE) +
   scale_y_continuous(labels = scales::percent_format()) +
   labs(x = "Weekday", 
-       y = "Average % of Window Bays Illuminated",
+       y = "Average % of window bays illuminated",
        title = "Thursday was the most illuminated day of the week",
        subtitle = "McCormick Place Between 3/6/2000 and 5/26/2018")
 ```
@@ -59,7 +70,7 @@ mp_light %>%
 Let's plot this data to see if there is a pattern based on the month.
 
 ```{r}
-mp_light %>%
+mp_light_processed %>%
   mutate(month = lubridate::month(date, label = TRUE)) %>%
   group_by(month) %>%
   summarize(pct_light_score = mean(light_score)/100) %>%
@@ -67,7 +78,7 @@ mp_light %>%
   geom_col(show.legend = FALSE) +
   scale_y_continuous(labels = scales::percent_format()) +
   labs(x = "Month", 
-       y = "Average % of Window Bays Illuminated",
+       y = "Average % of window bays illuminated",
        title = "September was the most illuminated month",
        subtitle = "McCormick Place Between 3/6/2000 and 5/26/2018")
 ```
@@ -77,15 +88,58 @@ Let's join the data together.
 ```{r}
 mp_bird_collisions <- bird_collisions %>%
   filter(locality == "MP") %>%
-  left_join(mp_light) %>%
-  filter(date > "2000-03-05")
+  left_join(mp_light_processed) %>%
+  filter(date > "2000-03-05" & !is.na(light_score)) %>%
+  mutate(light_score = light_score/100) %>%
+  group_by(date, light_score) %>%
+  summarise(n = n())
 
 summary(mp_bird_collisions$date)
 ```
 
 ```{r}
 mp_bird_collisions %>%
-  count(date, light_score, sort = TRUE)
+  ggplot(aes(date, light_score, color = n)) +
+  geom_point(aes(size = n), alpha = 0.25) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(x = "Date", 
+       y = "Average % of window bays illuminated",
+       title = "More bird collisions occur when more windows are illuminated",
+       subtitle = "McCormick Place Between 3/6/2000 and 5/26/2018")
 ```
 
+```{r}
+mp_bird_collisions %>%
+  ggplot(aes(light_score, n)) +
+  geom_point() +
+  scale_x_continuous(labels = scales::percent_format()) +
+  geom_smooth(method = "loess") +
+  labs(x = "Average % of window bays illuminated", 
+       y = "# of bird collisions",
+       title = "More bird collisions occur when more windows are illuminated",
+       subtitle = "McCormick Place Between 3/6/2000 and 5/26/2018")
+```
 
+Fit a Poisson model for comparison.
+
+```{r}
+mod_pois <- glm(n ~ light_score, data = mp_bird_collisions, family = poisson)
+summary(mod_pois)
+pcount_pois <- colSums(pscl::predprob(mod_pois))[0:10]
+```
+
+Fit a negative binomial regression model to the data.
+
+```{r}
+mod_negb <- MASS::glm.nb(n ~ light_score, data = mp_bird_collisions)
+summary(mod_negb)
+```
+
+```{r}
+ocount <- table(mp_bird_collisions$n)[0:10]
+pcount_negb <- colSums(pscl::predprob(mod_negb))[0:10]
+data.frame(ocount, pcount_pois, pcount_negb)
+```
+
+#### Conclusion
+The Negative Binomial Regression model fits better than the Poisson model.
