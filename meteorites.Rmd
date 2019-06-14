@@ -1,0 +1,83 @@
+---
+title: "meteorites"
+author: "Tony Galvan"
+date: "6/14/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(tidyverse)
+theme_set(theme_light())
+
+meteorites <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-06-11/meteorites.csv") %>%
+  filter(!is.na(year) & !is.na(mass)) %>%
+  mutate(decade = 10 * (year %/% 10))
+```
+
+```{r}
+meteorites %>%
+  ggplot(aes(decade)) +
+  geom_histogram(binwidth = 30)
+```
+
+There are some meteorites found a long time ago, but most were found after 1800.
+
+What classes of meteorites are found the most?
+
+```{r}
+meteorites %>%
+  mutate(class = fct_lump(class, 24)) %>%
+  count(class, sort = TRUE) %>%
+  mutate(class = fct_reorder(class, n)) %>%
+  ggplot(aes(class, n, fill = class)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip() + 
+  labs(x = "Class",
+       y = "# of meteorites",
+       title = "Top meteorite classes",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: Meteoritical Society")
+```
+
+What does the distribution of the mass look like?
+
+```{r}
+meteorites %>%
+  mutate(log_mass = log10(mass)) %>%
+  ggplot(aes(log_mass)) +
+  geom_histogram()
+```
+
+
+```{r}
+meteorites %>%
+  mutate(class = fct_lump(class, 24)) %>%
+  ggplot(aes(long, lat, size = mass, color = class)) + 
+  geom_point(alpha = 0.5) + 
+  coord_map() + 
+  theme_void() + 
+  theme(legend.position = "none") +
+  facet_wrap(~class)
+```
+
+
+
+```{r}
+meteorites %>%
+  filter(!is.na(mass) & mass > 0) %>%
+  group_by(decade) %>%
+  summarise(n = n(),
+            average = mean(mass),
+            heaviest = max(mass),
+            lightest = min(mass))
+```
+
+#### Future work
+
+* Put a maps behind the points in the viz above
+* Box plot of the masses of the top 8 classes
