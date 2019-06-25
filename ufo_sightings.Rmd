@@ -23,6 +23,31 @@ ufo_sightings <- readr::read_csv("https://raw.githubusercontent.com/rfordatascie
          year = year(date))
 ```
 
+What date range is covered in this data?
+
+```{r}
+summary(ufo_sightings$date)
+```
+
+Let's look at UFO shapes.
+
+```{r}
+ufo_sightings %>%
+  mutate(ufo_shape = if_else(is.na(ufo_shape), "unknown", ufo_shape),
+         ufo_shape = fct_lump(ufo_shape, 10, other_level = "other")) %>%
+  group_by(ufo_shape) %>%
+  summarise(n = n()) %>%
+  mutate(ufo_shape = fct_reorder(ufo_shape, n)) %>%
+  ggplot(aes(ufo_shape, n, fill = ufo_shape)) +
+  geom_col(show.legend = FALSE) + 
+  coord_flip() + 
+  labs(x = "UFO shape",
+       y = "# of sightings",
+       title = "Top 10 UFO Shapes",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: NUFORC")
+```
+
+
 Let's create a word cloud from the UFO sighting descriptions.
 
 ```{r}
@@ -75,15 +100,6 @@ Let's plot US UFO sightings over time
 
 ```{r}
 ufo_sightings %>%
-  filter(country == "us") %>%
-  ggplot(aes(longitude, latitude)) +
-  geom_point() +
-  coord_map() +
-  theme_void()
-```
-
-```{r}
-ufo_sightings %>%
   filter(country == "us" & state != "hi" & state != "ak" & state != "pr") %>%
   ggplot() + 
   geom_map(data = map_data("state"), 
@@ -102,15 +118,5 @@ ufo_sightings %>%
 
 ```{r, eval=FALSE, echo=FALSE}
 gganimate::anim_save(filename = "us_ufo_sightings.gif", animation = gganimate::last_animation())
-```
-
-
-```{r}
-ufo_sightings %>%
-  mutate(ufo_shape = if_else(is.na(ufo_shape), "unknown", ufo_shape),
-         ufo_shape = fct_lump(ufo_shape, 10, other_level = "other")) %>%
-  group_by(ufo_shape) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n))
 ```
 
