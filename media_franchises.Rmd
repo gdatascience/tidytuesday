@@ -13,7 +13,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 theme_set(theme_light())
 
-media_franchises <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-02/media_franchises.csv")
+media_franchises <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-02/media_franchises.csv") %>%
+  distinct()
 ```
 
 Let's look at the data.
@@ -79,7 +80,12 @@ top10_media_franchises %>%
        caption = "Designer: Tony Galvan @gdatascience1  |  Source: Wikipedia")
 ```
 
+#### Appendix
 
+Future work:
+
+* Explore the top creators, owners, original media
+* Look at revenue in relation to the year the franchise was created
 
 
 
