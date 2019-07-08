@@ -1,0 +1,137 @@
+---
+title: "Women's World Cup"
+author: "Tony Galvan"
+date: "7/8/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+theme_set(theme_light())
+
+codes <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-09/codes.csv")
+wwc_outcomes <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-09/wwc_outcomes.csv") %>%
+  left_join(codes, by = "team")
+squads <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-09/squads.csv")
+```
+
+```{r}
+glimpse(wwc_outcomes)
+```
+
+#### How many games are played each round by year?
+
+```{r}
+wwc_outcomes %>%
+  group_by(year, round) %>%
+  summarise(games = n() / 2) %>%
+  ungroup() %>%
+  mutate(round = fct_relevel(round, "Final", "Third Place Playoff", 
+                             "Semi Final", "Quarter Final", "Round of 16")) %>%
+  ggplot(aes(year, games, fill = round)) +
+  geom_col()
+```
+
+
+#### Which countries have the most wins?
+
+```{r}
+wwc_outcomes %>%
+  filter(win_status == "Won") %>%
+  mutate(country = fct_lump(country, 9)) %>%
+  group_by(country) %>%
+  summarise(n = n()) %>%
+  mutate(country = fct_reorder(country, n, desc = TRUE)) %>%
+  ggplot(aes(country, n, fill = country)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip() + 
+  labs(x = "",
+       y = "# of wins",
+       title = "Countries with the most Women's World Cup wins",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: Wikipedia")
+```
+
+#### Which countries have the most losses?
+
+```{r}
+wwc_outcomes %>%
+  filter(win_status == "Lost") %>%
+  mutate(country = fct_lump(country, 9)) %>%
+  group_by(country) %>%
+  summarise(n = n()) %>%
+  mutate(country = fct_reorder(country, n, desc = TRUE)) %>%
+  ggplot(aes(country, n, fill = country)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip() + 
+  labs(x = "",
+       y = "# of losses",
+       title = "Countries with the most Women's World Cup losses",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: Wikipedia")
+```
+
+#### How has scoring changed over time?
+
+```{r}
+wwc_outcomes %>%
+group_by(year) %>%
+summarise(goals = sum(score)) %>%
+ggplot(aes(year, goals)) + 
+geom_col() +
+geom_smooth(method = "loess", se = FALSE)
+```
+
+```{r}
+avg_age <- squads %>%
+  group_by(country) %>%
+  summarise(avg_age = mean(age)) %>%
+  mutate(country = fct_recode(country, "United States" = "US"))
+
+wwc_outcomes %>%
+  left_join(avg_age, by = "country") %>%
+  group_by(win_status) %>%
+  summarise(avg_age = mean(avg_age, na.rm = TRUE)) %>%
+  ggplot(aes(win_status, avg_age, fill = win_status)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip()
+```
+
+#### Histogram of the score variable
+
+```{r}
+wwc_outcomes %>%
+  ggplot(aes(score)) +
+  geom_histogram()
+```
+
+#### Combine the winning and losing team into a single observation
+
+```{r}
+wwc_winners <- wwc_outcomes %>%
+  filter(win_status == "Won") %>%
+  select(year, yearly_game_id, round, w_country = country, w_score = score) 
+
+wwc_losers <- wwc_outcomes %>%
+  filter(win_status == "Lost") %>%
+  select(year, yearly_game_id, l_country = country, l_score = score) 
+```
+
+
+```{r}
+wwc_winners %>%
+  left_join(wwc_losers, by = c("year" = "year", 
+                               "yearly_game_id" = "yearly_game_id")) %>%
+  group_by(w_country, l_country) %>%
+  summarise(games = n(),
+            avg_score_diff = mean(w_score - l_score)) %>%
+  filter(games > 2) %>%
+  select(w_country, l_country, avg_score_diff) %>%
+  circlize::chordDiagram(order = c("United States", "China PR", "Brazil", "South Korea", "Norway", "France", "Japan", "Germany", "Nigeria", "Canada", "Sweden", "North Korea"))
+
+title("Women's World Cup: scoring differentials chord diagram 
+      Designer: Tony Galvan @gdatascience1  |  Source: Wikipedia")
+```
+
