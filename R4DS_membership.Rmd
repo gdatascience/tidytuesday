@@ -1,0 +1,100 @@
+---
+title: "R4DS_membership"
+author: "Tony Galvan"
+date: "7/16/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggridges)
+theme_set(theme_light())
+
+r4ds_members <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-16/r4ds_members.csv") %>%
+  filter(date > '2017-08-31') %>%
+  select(-guests, -name, -messages_in_shared_channels) %>%
+  mutate(month = factor(month(date, label = TRUE)),
+         day = factor(wday(date, label = TRUE)), 
+         year = factor(year(date)),
+         season = case_when(
+           date < '2017-09-22' ~ "Summer",
+           date >= '2017-09-22' & date < '2017-12-21' ~ "Fall",
+           date >= '2017-12-21' & date < '2018-03-20' ~ "Winter",
+           date >= '2018-03-20' & date < '2018-06-21' ~ "Spring",
+           date >= '2018-06-21' & date < '2018-09-22' ~ "Summer",
+           date >= '2018-09-22' & date < '2018-12-21' ~ "Fall",
+           date >= '2018-12-21' & date < '2019-03-20' ~ "Winter",
+           date >= '2019-03-20' & date < '2019-06-21' ~ "Spring",
+           date >= '2019-06-21' ~ "Summer"))
+```
+
+#### EDA
+
+```{r}
+r4ds_members %>%
+  summary()
+```
+
+This data is stats for the R4DS community from it's founding through the start of July (8/27/2017 to 7/5/2019).
+
+Let's explore the daily active members variable.
+
+```{r}
+r4ds_members %>%
+  group_by(month, year) %>%
+  summarise(total_active_members = sum(daily_active_members)) %>%
+  ggplot(aes(month, total_active_members, fill = month)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "",
+       y = "# of daily active members",
+       title = "Daily active R4DS members by month",
+       subtitle = "Fewer active members the second half of the year",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: R4DS Slack")
+```
+
+Let's try to create a ridgeline plot for the number of messages posted by month.
+
+```{r}
+r4ds_members %>%
+  ggplot(aes(daily_active_members, fct_rev(month))) + 
+  geom_density_ridges(aes(fill = year), alpha = 0.5) + 
+  theme_ridges(grid = FALSE) + 
+  labs(x = "",
+       y = "",
+       title = "R4DS daily active members by month",
+       fill = "Year",
+       subtitle = "Fewer active members the second half of the year",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: R4DS Slack") +
+  theme(legend.position = "top")
+```
+
+Let's look at daily active members by season
+
+```{r}
+r4ds_members %>%
+  group_by(season) %>%
+  summarise(avg_active_members = sum(daily_active_members) / n()) %>%
+  mutate(season = fct_reorder(season, avg_active_members)) %>%
+  ggplot(aes(season, avg_active_members, fill = season)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() + 
+  labs(x = "",
+       y = "Avg. daily active members",
+       title = "R4DS daily active members by season",
+       subtitle = "Fewer active members in Fall",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: R4DS Slack")
+```
+
+Let's try to create a lollipop plot
+
+```{r}
+r4ds_members %>%
+  ggplot(aes(date, total_membership)) +
+  geom_line()
+```
+
