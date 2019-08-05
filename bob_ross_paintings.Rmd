@@ -1,0 +1,95 @@
+---
+title: "bob_ross_paintings"
+author: "Tony Galvan"
+date: "8/5/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+theme_set(theme_light())
+
+paintings <- fivethirtyeight::bob_ross %>% 
+  mutate(title = str_to_title(title))
+
+summary(paintings)
+```
+
+Do some preprocessing
+
+```{r}
+bob_ross <- paintings %>% 
+  mutate(lake = as.integer(if_else(lakes == 1,1,as.double(lake))),
+         mountain = as.integer(if_else(mountains == 1,1,as.double(mountain))),
+         tree = as.integer(if_else(trees == 1,1,as.double(tree)))) %>%
+  select(-episode, -lakes, -mountains, -trees) %>%
+  gather(element, exists, -season, -episode_num, -title) %>%
+  mutate(element = str_replace_all(element,"_"," "))
+
+summary(bob_ross)
+```
+
+Which elements exist for the most paintings?
+
+```{r}
+num_of_paintings <- nrow(paintings)
+
+top_elements <- bob_ross %>%
+  group_by(element) %>%
+  summarise(pct_of_paintings = sum(exists)/num_of_paintings) %>%
+  top_n(16, pct_of_paintings) %>%
+  ungroup() 
+
+top_elements %>%
+  mutate(element = fct_reorder(element, pct_of_paintings)) %>%
+  ggplot(aes(element, pct_of_paintings, fill = element)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  coord_flip() +
+  labs(x = "Element",
+       y = "% of paintings",
+       title = "Bob Ross loved painting trees",
+       subtitle = "Top 10 elements in the paintings from his show",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
+```
+
+
+How do the top elements change over time?
+
+```{r}
+bob_ross %>%
+  inner_join(top_elements) %>%
+  group_by(season, element) %>%
+  summarise(num_of_paintings = sum(exists)) %>%
+  ungroup() %>%
+  ggplot(aes(season, num_of_paintings, color = element)) +
+  geom_line() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~element, scales = "free_y") +
+  theme(legend.position = "None") + 
+  labs(x = "Season",
+       y = "# of paintings",
+       title = "How did Bob Ross' paintings change during 30+ seasons on TV?",
+       subtitle = "Fewer bushes and clouds, more snowy winter scenes",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
+```
+
+```{r}
+ggsave("bob_ross.png", width = 7.5, height = 8)
+```
+
+Create a word cloud from painting titles
+
+```{r}
+paintings %>%
+  tidytext::unnest_tokens(tbl = ., output = word, input = title) %>%
+  anti_join(tidytext::get_stopwords()) %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 3) %>%
+  wordcloud2::wordcloud2(shape = "cardiod")
+```
+
