@@ -1,0 +1,100 @@
+---
+title: "star_wars"
+author: "Tony Galvan"
+date: "8/6/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+theme_set(theme_light())
+
+star_wars_data <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2018/2018-05-14/week7_starwars.csv")
+
+
+star_wars <- star_wars_data %>%
+  slice(2:1187) %>%
+  rename_at(2, ~"Any_seen") %>% 
+  rename_at(3, ~"Star_Wars_fan") %>% 
+  rename_at(4, ~"Ep1_seen") %>% 
+  rename_at(5, ~"Ep2_seen") %>% 
+  rename_at(6, ~"Ep3_seen") %>% 
+  rename_at(7, ~"Ep4_seen") %>% 
+  rename_at(8, ~"Ep5_seen") %>% 
+  rename_at(9, ~"Ep6_seen") %>% 
+  rename_at(10, ~"Ep1_rating") %>% 
+  rename_at(11, ~"Ep2_rating") %>% 
+  rename_at(12, ~"Ep3_rating") %>% 
+  rename_at(13, ~"Ep4_rating") %>% 
+  rename_at(14, ~"Ep5_rating") %>% 
+  rename_at(15, ~"Ep6_rating") %>% 
+  rename_at(16, ~"Han_Solo") %>% 
+  rename_at(17, ~"Luke_Skywalker") %>% 
+  rename_at(18, ~"Princess_Leia") %>% 
+  rename_at(19, ~"Anakin_Skywalker") %>% 
+  rename_at(20, ~"Obi_Wan") %>% 
+  rename_at(21, ~"Emperor_Palpatine") %>% 
+  rename_at(22, ~"Darth_Vader") %>% 
+  rename_at(23, ~"Lando_Calrissian") %>% 
+  rename_at(24, ~"Boba_Fett") %>% 
+  rename_at(25, ~"C_3PO") %>% 
+  rename_at(26, ~"R2D2") %>% 
+  rename_at(27, ~"Jar_Jar_Binks") %>% 
+  rename_at(28, ~"Padme_Amidala") %>% 
+  rename_at(29, ~"Yoda") %>% 
+  rename_at(30, ~"Shot_first") %>% 
+  rename_at(31, ~"Exp_Uni_Aware") %>% 
+  rename_at(32, ~"Exp_Uni_Fan") %>% 
+  rename_at(33, ~"Star_Trek_Fan") %>% 
+  rename_at(36, ~"Income") %>% 
+  rename_at(38, ~"Location")
+
+glimpse(star_wars)
+```
+
+Which locations have the most Star Wars fans?
+
+```{r}
+star_wars %>%
+  filter(!is.na(Location)) %>%
+  group_by(Location) %>%
+  summarise(n = n(),
+            fans = sum(Star_Wars_fan == "Yes", na.rm = TRUE),
+            pct_fans = fans / n) %>%
+  mutate(Location = fct_reorder(Location, pct_fans)) %>%
+  ggplot(aes(Location, pct_fans, fill = Location)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format()) + 
+  labs(x = "",
+       y = "% of respondants",
+       title = "Where are Star Wars fans located?",
+       subtitle = "Over 60% of respondants in the Mountain region are fans",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
+```
+
+Does more education make you more likely to be a Star Wars fan?
+
+```{r}
+star_wars %>%
+  filter(!is.na(Education)) %>%
+  group_by(Education) %>%
+  summarise(n = n(),
+            fans = sum(Star_Wars_fan == "Yes", na.rm = TRUE),
+            pct_fans = fans / n) %>%
+  mutate(Education = fct_reorder(Education, pct_fans)) %>%
+  ggplot(aes(Education, pct_fans, fill = Education)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format()) + 
+  labs(x = "",
+       y = "% of respondants",
+       title = "Does more education make you more likely to be a Star Wars fan?",
+       subtitle = "Over 50% of respondants with at least some college are fans",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
+```
+
