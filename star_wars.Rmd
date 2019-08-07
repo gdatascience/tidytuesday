@@ -98,3 +98,109 @@ star_wars %>%
        caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
 ```
 
+Which Star Wars episode was seen the most?
+
+```{r}
+star_wars %>%
+  select(RespondentID, Ep1_seen, Ep2_seen, Ep3_seen, Ep4_seen, Ep5_seen, Ep6_seen) %>%
+  gather(episode, seen, -RespondentID) %>%
+  mutate(episode = regmatches(episode, regexpr("[[:digit:]]+", episode)),
+         seen = if_else(!is.na(seen),1,0)) %>%
+  group_by(episode) %>%
+  summarise(n = n(),
+            pct_seen = sum(seen) / n) %>%
+  ggplot(aes(episode, pct_seen, fill = episode)) + 
+  geom_col(show.legend = FALSE) +
+  coord_flip()+
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(x = "Star Wars episode #",
+       y = "% of respondants",
+       title = "Which Star Wars episode was seen the most?",
+       subtitle = "Over 60% of respondants saw Empire Strikes Back or Return of the Jedi",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
+```
+
+Which Star Wars episode has the most favorable rating?
+
+```{r}
+star_wars %>%
+  select(RespondentID, Ep1_rating, Ep2_rating, Ep3_rating, Ep4_rating, Ep5_rating, Ep6_rating) %>%
+  gather(episode, rating, -RespondentID) %>%
+  mutate(episode = regmatches(episode, regexpr("[[:digit:]]+", episode)),
+         rating = 7 - as.numeric(rating)) %>%
+  group_by(episode) %>%
+  summarise(avg_rating = mean(rating, na.rm = TRUE)) %>%
+  ggplot(aes(episode, avg_rating, fill = episode)) + 
+  geom_col(show.legend = FALSE) +
+  coord_flip()+
+  labs(x = "Star Wars episode #",
+       y = "Average rating",
+       title = "Which Star Wars episode has the most favorable rating?",
+       subtitle = "Episodes 4 - 6 are more highly rated than 1 - 3",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
+```
+
+Which Star Wars characters have the most favorable rating?
+
+```{r}
+star_wars %>%
+  select(RespondentID, Han_Solo, Luke_Skywalker, Princess_Leia, 
+         Anakin_Skywalker, Obi_Wan, Emperor_Palpatine, Darth_Vader, 
+         Lando_Calrissian, Boba_Fett, C_3PO, R2D2, Jar_Jar_Binks, Padme_Amidala, 
+         Yoda) %>%
+  gather(character, rating, -RespondentID) %>%
+  filter(!is.na(rating) & rating != "Unfamiliar (N/A)") %>%
+  mutate(character = str_replace_all(character, "_", " "),
+         rating = as.numeric(if_else(rating == "Very favorably", 5, 
+                          if_else(rating == "Somewhat favorably", 4, 
+                                  if_else(rating == "Neither favorably nor unfavorably (neutral)", 3, 
+                                          if_else(rating == "Somewhat unfavorably", 2, 1)))))) %>%
+  group_by(character) %>%
+  summarise(avg_rating = mean(rating, na.rm = TRUE)) %>%
+  mutate(character = fct_reorder(character, avg_rating)) %>%
+  ggplot(aes(character, avg_rating, fill = character)) + 
+  geom_col(show.legend = FALSE) +
+  coord_flip()+
+  labs(x = "",
+       y = "Average rating",
+       title = "Han Solo is the highest rated Star Wars character",
+       subtitle = "Jar Jar Binks is the lowest rated character",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
+```
+
+Do Star Wars character ratings differ by gender?
+
+```{r}
+star_wars %>%
+  select(RespondentID, Han_Solo, Luke_Skywalker, Princess_Leia, 
+         Anakin_Skywalker, Obi_Wan, Emperor_Palpatine, Darth_Vader, 
+         Lando_Calrissian, Boba_Fett, C_3PO, R2D2, Jar_Jar_Binks, Padme_Amidala, 
+         Yoda, Gender) %>%
+  gather(character, rating, -RespondentID, -Gender) %>%
+  filter(!is.na(rating) & rating != "Unfamiliar (N/A)" & !is.na(Gender)) %>%
+  mutate(character = str_replace_all(character, "_", " "),
+         rating = as.numeric(if_else(rating == "Very favorably", 5, 
+                          if_else(rating == "Somewhat favorably", 4, 
+                                  if_else(rating == "Neither favorably nor unfavorably (neutral)", 3, 
+                                          if_else(rating == "Somewhat unfavorably", 2, 1)))))) %>%
+  group_by(character, Gender) %>%
+  summarise(avg_rating = mean(rating, na.rm = TRUE)) %>%
+  ungroup() %>%
+  spread(Gender, avg_rating) %>%
+  mutate(rating_dif = Male - Female,
+         character = fct_reorder(character, rating_dif)) %>%
+  ggplot(aes(character, rating_dif, fill = character)) + 
+  geom_col(show.legend = FALSE) +
+  coord_flip()+
+  labs(x = "",
+       y = "Difference between male & female ratings",
+       title = "Do Star Wars character ratings differ by gender?",
+       subtitle = "Males like bad guys more. Females like Jar Jar Binks and droids more.",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
+```
+
+
+```{r}
+ggsave("star_wars.png", width = 6.25)
+```
+
