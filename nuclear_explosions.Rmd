@@ -1,0 +1,149 @@
+---
+title: "nuclear_explosions"
+author: "Tony Galvan"
+date: "8/19/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+theme_set(theme_light())
+
+nuclear_explosions <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-08-20/nuclear_explosions.csv") %>%
+  mutate(country = fct_recode(country, 
+                              "United States" = "USA",
+                              "Russia" = "USSR",
+                              "France" = "FRANCE",
+                              "United Kingdom" = "UK",
+                              "China" = "CHINA",
+                              "India" = "INDIA",
+                              "Pakistan" = "PAKIST"),
+         date  = ymd(date_long),
+         decade = 10 * (year %/% 10),
+         day_of_decade = yday(date) * (year - decade + 1),
+         president = case_when(date < "1953-01-20" ~ "Truman",
+                               date < "1961-01-20" ~ "Eisenhower",
+                               date < "1963-11-22" ~ "Kennedy",
+                               date < "1969-01-20" ~ "Johnson",
+                               date < "1974-08-09" ~ "Nixon",
+                               date < "1977-01-20" ~ "Ford",
+                               date < "1981-01-20" ~ "Carter",
+                               date < "1989-01-20" ~ "Reagan",
+                               date < "1993-01-20" ~ "Bush (H. W.)",
+                               TRUE ~ "Clinton")) %>%
+  select(-date_long)
+
+summary(nuclear_explosions)
+```
+
+President data from https://en.wikipedia.org/wiki/List_of_presidents_of_the_United_States
+
+#### Which countries conducted nuclear weapons tests?
+
+```{r}
+nuclear_explosions %>%
+  count(country, sort = TRUE) %>%
+  mutate(country = fct_reorder(country, n)) %>%
+  ggplot(aes(country, n)) +
+  geom_col(aes(fill = country), show.legend = FALSE) + 
+  coord_flip() + 
+  geom_text(aes(label = n, color = country), show.legend = FALSE,
+            nudge_y = 40, size = 4, fontface = "bold") + 
+  labs(x = "",
+       y = "# of nuclear weapons tests",
+       title = "Nuclear weapons tests conducted 1945 - 1998",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: SIPRI")
+```
+
+#### Map the nuclear weapons tests
+
+```{r}
+nuclear_explosions %>%
+  ggplot(aes(longitude, latitude, size = yield_upper)) +
+  borders("world", colour = "gray75", fill = "gray75") +
+  geom_point(aes(fill = country), pch = 21, color = "black", alpha = 0.5) +
+  coord_quickmap() + 
+  theme_void() + 
+  labs(size = "Blast yield (in tons)",
+       fill = "Country",
+       title = "Nuclear weapons tests conducted 1945 - 1998",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: SIPRI")
+```
+
+#### Create an overlayed step plot
+
+```{r}
+nuclear_explosions %>%
+  filter(date > "1949-12-31" & date < "1990-01-01") %>%
+  group_by(day_of_decade, decade) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  mutate(counter = 1) %>%
+  group_by(decade) %>%
+  mutate(counter = cumsum(n)) %>%
+  ungroup() %>%
+  ggplot(aes(day_of_decade, counter, group = decade, color = factor(decade))) + 
+  geom_step() + 
+  scale_color_discrete(labels = c("1950's", "1960's", "1970's", "1980's")) +
+  scale_x_continuous(breaks = c(750, 3000),
+                     labels = c("Beginning of the decade", "End of the decade")) +
+  labs(x = "",
+       y = "# of nuclear weapons tests",
+       color = "Decade",
+       title = "Nuclear weapons tests conducted by decade: 1950's - 1980's",
+       subtitle = "The number of tests flattens out toward the end of every decade",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: SIPRI")
+```
+
+
+```{r}
+ggsave("nuclear_explosions.png", width = 5.75)
+```
+
+#### Create a bar plot by U.S. President
+
+```{r}
+nuclear_explosions %>%
+  filter(country == "United States" & 
+           president != "Truman" & president != "Clinton") %>%
+  group_by(president) %>%
+  summarise(n = n()) %>%
+  mutate(president = fct_reorder(president, n)) %>%
+  ggplot(aes(president, n, fill = president)) + 
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  labs(x = "",
+       y = "# of nuclear weapons tests",
+       title = "Nuclear weapons tests conducted by U.S. Presidents",
+       subtitle = "Between 1/20/1953 and 1/20/1993",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: SIPRI")
+```
+
+#### Create a step plot by U.S. President
+
+```{r}
+nuclear_explosions %>%
+  filter(country == "United States") %>%
+  group_by(president) %>%
+  summarise(n = n()) %>%
+  ungroup() %>%
+  bind_rows(data.frame(president = "Clinton", n = 0)) %>%
+  mutate(president = fct_reorder(president, n)) %>%
+  ggplot(aes(president, n, fill = president)) + 
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  labs(x = "",
+       y = "# of nuclear weapons tests",
+       title = "Nuclear weapons tests conducted by U.S. Presidents 1945 - 1998",
+       subtitle = "Bill Clinton did not conduct any nuclear weapons tests during this time",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: SIPRI")
+```
+
+```{r}
+ggsave("nuclear_presidents.png", width = 6.5)
+```

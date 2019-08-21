@@ -1,0 +1,121 @@
+---
+title: "TV Ratings"
+author: "Tony Galvan"
+date: "8/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+theme_set(theme_light())
+
+tv_ratings <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-01-08/IMDb_Economist_tv_ratings.csv")
+
+summary(tv_ratings)
+```
+
+This data includes 2266 television show ratings from Jan 1990 - Oct 2018.
+
+How many unique shows are there?
+
+```{r}
+# unique titleId
+summary(unique(tv_ratings$titleId))
+
+# unique title
+summary(unique(tv_ratings$title))
+```
+
+There are 876 unique shows, but only 868 unique titles.  Some shows must share the same title.
+
+Which shows share the same title?
+
+```{r}
+same_title <- tv_ratings %>%
+  group_by(title, titleId) %>%
+  summarise(avg_share = mean(share)) %>%
+  group_by(title) %>%
+  summarise(n = n()) %>%
+  filter(n > 1) %>%
+  pull(title)
+
+tv_ratings %>%
+  filter(title %in% same_title) %>%
+  group_by(titleId, title) %>%
+  summarise(start_date = min(date)) %>%
+  arrange(title, start_date) %>%
+  ungroup() %>%
+  select(-titleId)
+```
+
+What genres have the best ratings?
+
+```{r}
+tv_ratings_tidy <- tv_ratings %>%
+  mutate(genre = strsplit(genres, ",")) %>%
+  unnest(genre)
+
+tv_ratings_tidy %>%
+  group_by(genre) %>%
+  summarise(avg_rating = mean(av_rating)) %>%
+  ungroup() %>%
+  mutate(genre = fct_reorder(genre, avg_rating)) %>%
+  ggplot(aes(genre, avg_rating, fill = genre)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  labs(x = "",
+       y = "Average rating",
+       title = "What genres have the best ratings?",
+       subtitle = "Reality-TV gets the worst ratings by far",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: IMDb")
+```
+
+What genres have the biggest share?
+
+```{r}
+tv_ratings_tidy %>%
+  group_by(genre) %>%
+  summarise(avg_share = mean(share)) %>%
+  ungroup() %>%
+  mutate(genre = fct_reorder(genre, avg_share)) %>%
+  ggplot(aes(genre, avg_share, fill = genre)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  labs(x = "",
+       y = "Average share",
+       title = "What genres have the biggest share",
+       subtitle = "Adventure and Sci-Fi shows get a 3 share on average",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: IMDb")
+```
+
+Let's create a data set about individual shows.
+
+```{r}
+tv_shows <- tv_ratings %>%
+  group_by(titleId, title) %>%
+  summarise(tot_seasons = n(),
+            max_season = max(seasonNumber),
+            min_date = min(date),
+            max_date = max(date),
+            avg_rating = mean(av_rating),
+            max_rating = max(av_rating),
+            min_rating = min(av_rating),
+            tot_share = sum(share),
+            avg_share = mean(share),
+            max_share = max(share),
+            min_share = min(share))
+```
+
+
+Which shows have the highest ratings?
+
+```{r}
+tv_ratings %>%
+  arrange(desc(av_rating)) %>%
+  head(5)
+```
+
