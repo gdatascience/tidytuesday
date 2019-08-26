@@ -1,0 +1,179 @@
+---
+title: "Plastice Waste"
+author: "Tony Galvan"
+date: "8/23/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load tidyverse library and data; set the default theme
+library(tidyverse)
+library(scales)
+theme_set(theme_light())
+
+coast_vs_waste <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/coastal-population-vs-mismanaged-plastic.csv")
+
+mismanaged_vs_gdp <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/per-capita-mismanaged-plastic-waste-vs-gdp-per-capita.csv")
+
+waste_vs_gdp <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/per-capita-plastic-waste-vs-gdp-per-capita.csv")
+```
+
+```{r}
+library(janitor)
+
+# Create a function to clean the data sets
+clean_data_set <- function(data_set) {
+  data_set %>%
+    clean_names() %>%
+    rename(country = entity) %>%
+    filter(year == 2010) %>%
+    select(-year)
+}
+
+plastic_waste <- coast_vs_waste %>%
+  clean_data_set() %>%
+  inner_join(clean_data_set(mismanaged_vs_gdp), by = c("country", "code")) %>%
+  inner_join(clean_data_set(waste_vs_gdp), by = c("country", "code")) %>%
+  select(country, 
+         code, 
+         population = total_population_gapminder, 
+         coastal_population, 
+         gdp_per_capita = gdp_per_capita_ppp_constant_2011_international_constant_2011_international,
+         waste = mismanaged_plastic_waste_tonnes,
+         waste_per_capita = per_capita_mismanaged_plastic_waste_kilograms_per_person_per_day)
+```
+
+#### Bring in continent data
+
+```{r}
+library(countrycode)
+
+df <- data.frame(plastic_waste)
+
+plastic_waste$continent <- countrycode(sourcevar = df[,"country"], 
+                                       origin = "country.name",
+                                       destination = "continent")
+plastic_waste %>%
+  filter(is.na(continent))
+```
+
+
+#### Is there a relationship between log of GDP per capita and kilograms of plastic waste per person per day?
+
+```{r}
+g1 <- plastic_waste %>%
+  arrange(-population) %>%
+  ggplot(aes(gdp_per_capita, waste_per_capita)) +
+  geom_point(aes(color = continent, size = population)) + 
+  geom_text(aes(label = country), vjust = 1, hjust = 1, check_overlap = TRUE) +
+  scale_x_log10(labels = dollar_format()) +
+  scale_y_log10() +
+  scale_size_continuous(guide = FALSE) +
+  labs(x = "GDP per capita (log scale)",
+       y = "Mismanaged plastic waste (kg per person per day)",
+       color = "Continent",
+       title = "Do wealthier countries manage plastic waste better than poor ones?",
+       subtitle = "Chart shows data from 2010; size = total population",
+       caption = "Influenced by: David Robinson  |  Source: Our World In Data")
+
+## Future work:  color by continent
+g1
+```
+
+#### Plot David Robinson's quote
+
+```{r}
+library(magick)
+dr_quote <- data.frame(line1 = '"Go to war with the data you have ...', 
+                       line2 = '... not the data you want"',
+                       author = "David Robinson")
+
+dr_image <- image_read("https://pbs.twimg.com/profile_images/876529727284039680/dfvG_Dy4_400x400.jpg")
+
+ggplot(dr_quote, aes()) + 
+  geom_text(aes(0, 0.5, label = line1), size = 7.5, fontface = "bold") +
+  geom_text(aes(0, 0.25, label = line2), size = 7.5, fontface = "bold") +
+  geom_text(aes(0, 0, label = author), size = 6) +
+  theme_void() + 
+  scale_y_continuous(limits = c(-1, 1)) + 
+  labs(caption = "Designer: Tony Galvan @gdatascience1  |  Source: https://youtu.be/BRdLOYtJk9o")
+
+ggsave("quote.png")
+quote_image <- image_read("quote.png")
+final_image <- image_composite(quote_image, dr_image, offset = "+625+575")
+image_write(final_image, "drob_quote.png")
+```
+
+#### Where is plastic waste mismanaged?
+
+```{r}
+library(fuzzyjoin)
+
+iso3166 <- as_tibble(maps::iso3166)
+
+plastic_data <- plastic_waste %>%
+  inner_join(iso3166, by = c("code" = "a3")) 
+
+map_data("world") %>%
+  as_tibble() %>%
+  filter(region != "Antarctica") %>%
+  regex_left_join(plastic_data, by = c("region" = "mapname")) %>%
+  ggplot(aes(long, lat, group = group, fill = waste_per_capita)) + 
+  geom_polygon() + 
+  scale_fill_gradient2(trans = "log10",
+                       low = "dark blue",
+                       high = "orange",
+                       mid = "grey",
+                       midpoint = log10(0.02)) +
+  coord_fixed(2) + 
+  ggthemes::theme_map() + 
+  labs(fill = "Mismanaged plastic waste per capita",
+       title = "Where is plastic waste mismanaged?", 
+       caption = "Influenced by: David Robinson  |  Source: Our World In Data")
+```
+
+#### Pull in other indicators
+
+```{r}
+library(WDI)
+
+wdi_data <- WDI(indicator = c("co2_emissions_per_capita" = "EN.ATM.CO2E.PC"), 
+                  start = 2010, end = 2010) %>%
+  as.tibble() %>%
+  select(-country)
+
+plastic_with_indicators <- wdi_data %>%
+  inner_join(plastic_data, by = c(iso2c = "a2")) %>%
+  arrange(desc(population))
+
+g2 <- plastic_with_indicators %>%
+  ggplot(aes(gdp_per_capita, co2_emissions_per_capita)) +
+  geom_point(aes(color = continent, size = population)) +
+  geom_text(aes(label = country), vjust = 1, hjust = 1, check_overlap = TRUE) +
+  scale_size_continuous(guide = FALSE) +
+  scale_x_log10(labels = dollar_format()) +
+  scale_y_log10() +
+  labs(x = "GDP per capita (log scale)",
+       y = "CO2 emissions (tons per capita)",
+       color = "Continent", 
+       title = "Do wealthier countries manage CO2 emissions better than poor ones?",
+       subtitle = "Chart shows data from 2010; size = total population",
+       caption = "Influenced by: David Robinson  |  Source: Our World In Data")
+
+library(patchwork)
+
+g2 +
+  labs(title = "CO2 emissions are correlated with country income, but not plastic waste",
+       caption = "") + 
+  scale_color_discrete(guide = FALSE) +
+  g1 +
+  labs(title = "",
+       subtitle = "")
+
+ggsave("plastic_vs_co2.png", width = 10, height = 6)
+```
+

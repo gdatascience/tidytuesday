@@ -1,0 +1,63 @@
+---
+title: "Simpsons Guest Stars"
+author: "Tony Galvan"
+date: "8/26/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r ttsetup, echo=FALSE, warning=FALSE, message=FALSE}
+# Load libraries, set the default theme & caption, and grab the data
+library(tidyverse)
+theme_set(theme_light())
+
+default_caption <- "Source: Wikipedia  |  Designer: Tony Galvan @gdatascience1  |  #TidyTuesday 2019 Week 35"
+
+simpsons <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-08-27/simpsons-guests.csv") #%>%
+  #mutate(season = as.integer(str_replace(season, "Movie", "0")))
+
+glimpse(simpsons)
+```
+
+#### Which season had the most guest stars?
+
+```{r}
+simpsons %>%
+  group_by(season) %>%
+  summarise(n = n()) %>%
+  mutate(season = fct_reorder(season, n)) %>%
+  ggplot(aes(season, n)) +
+  geom_col(fill = "darkblue") + 
+  coord_flip() + 
+  theme(plot.background = element_rect(fill = "yellow"), 
+        panel.background = element_rect(fill = "yellow"))
+```
+
+#### Plot the number of guest stars over time (excluding the movie)
+
+```{r}
+simpsons %>%
+  filter(season != "Movie") %>%
+  group_by(season) %>%
+  summarise(n = n()) %>%
+  mutate(season = as.integer(str_replace(season, "Movie", "0"))) %>%
+  ggplot(aes(season, n)) +
+  geom_line(color = "#70D1FE", size = 2) +
+  theme(plot.background = element_rect(fill = "#FED90F"), 
+        panel.background = element_rect(fill = "#FED90F"),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(color = "#424F46"),
+        plot.subtitle = element_text(color = "#424F46"),
+        plot.caption = element_text(color = "#424F46"),
+        axis.text = element_text(color = "#424F46"),
+        axis.title = element_text(color = "#424F46")) + 
+  labs(x = "Season",
+       y = "# of guest stars",
+       title = "The Simpsons: guest stars per season",
+       subtitle = "Seasons 1 - 30",
+       caption = default_caption)
+```
