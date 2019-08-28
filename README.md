@@ -6,3 +6,7 @@ These are the R Markdown documents produced during my analyses of [#tidytuesday]
 Code: [nuclear_explosions.Rmd](https://github.com/gdatascience/tidytuesday/blob/master/nuclear_explosions.Rmd)
 ![Caption](https://pbs.twimg.com/media/ECho7ECU8AAZKTJ?format=png&name=large)
 ![Caption](https://pbs.twimg.com/media/ECho8q_U8AAjm8R?format=png&name=large)
+
+## Week 35 - Simpsons Guest Stars
+Code: [simpsons.Rmd](https://github.com/gdatascience/tidytuesday/blob/master/simpsons.Rmd)
+![Caption](https://pbs.twimg.com/media/EDEkxcnUYAADiRf?format=png&name=large)
