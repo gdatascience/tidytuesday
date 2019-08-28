@@ -9,15 +9,15 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r ttsetup, echo=FALSE, warning=FALSE, message=FALSE}
+```{r}
 # Load libraries, set the default theme & caption, and grab the data
 library(tidyverse)
+library(patchwork)
 theme_set(theme_light())
 
 default_caption <- "Source: Wikipedia  |  Designer: Tony Galvan @gdatascience1  |  #TidyTuesday 2019 Week 35"
 
-simpsons <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-08-27/simpsons-guests.csv") #%>%
-  #mutate(season = as.integer(str_replace(season, "Movie", "0")))
+simpsons <- readr::read_delim("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-08-27/simpsons-guests.csv", delim = "|", quote = "")
 
 glimpse(simpsons)
 ```
@@ -25,51 +25,70 @@ glimpse(simpsons)
 #### Which season had the most guest stars?
 
 ```{r}
-simpsons %>%
-  group_by(season) %>%
-  summarise(n = n()) %>%
-  mutate(season = fct_reorder(season, n)) %>%
-  ggplot(aes(season, n)) +
-  geom_col(fill = "#70D1FE") + 
-  coord_flip() + 
-  theme(plot.background = element_rect(fill = "#FED90F"), 
-        panel.background = element_rect(fill = "#FED90F"),
-        #panel.border = element_blank(),
-        panel.grid = element_blank(),
-        plot.title = element_text(color = "#424F46"),
-        plot.subtitle = element_text(color = "#424F46"),
-        plot.caption = element_text(color = "#424F46"),
-        axis.text = element_text(color = "#424F46"),
-        axis.title = element_text(color = "#424F46")) + 
-  labs(x = "Season",
-       y = "# of guest stars",
-       title = 'Which season of "The Simpsons" had the most guest stars?',
-       subtitle = "Seasons 1 - 30",
-       caption = default_caption)
-```
-
-#### Plot the number of guest stars over time (excluding the movie)
-
-```{r}
-simpsons %>%
+p1 <- simpsons %>%
   filter(season != "Movie") %>%
   group_by(season) %>%
   summarise(n = n()) %>%
   mutate(season = as.integer(str_replace(season, "Movie", "0"))) %>%
   ggplot(aes(season, n)) +
-  geom_line(color = "#70D1FE", size = 2) +
-  theme(plot.background = element_rect(fill = "#FED90F"), 
-        panel.background = element_rect(fill = "#FED90F"),
-        panel.border = element_blank(),
-        panel.grid = element_blank(),
-        plot.title = element_text(color = "#424F46"),
-        plot.subtitle = element_text(color = "#424F46"),
-        plot.caption = element_text(color = "#424F46"),
-        axis.text = element_text(color = "#424F46"),
-        axis.title = element_text(color = "#424F46")) + 
+  geom_line(color = "#FED90F", size = 3) +
+  scale_x_continuous(breaks = c(1, 10, 20, 30), labels = c(1, 10, 20, 30)) +
+  geom_smooth(method = "lm", se = FALSE, 
+              color = "#70D1FE", linetype = 5, size = 2) +
+  theme(panel.border = element_blank(),
+        panel.grid = element_blank(),) +
   labs(x = "Season",
        y = "# of guest stars",
        title = "The Simpsons: guest stars per season",
        subtitle = "Seasons 1 - 30",
        caption = default_caption)
+
+p1
 ```
+
+#### Which guest stars had the most unique roles?
+
+```{r}
+roles <- simpsons %>%
+  unnest(role = strsplit(role, ";")) %>%
+  mutate(role_name = if_else(role %in% c("Himself", "Herself", "Themselves"), guest_star, role))
+
+glimpse(roles)
+```
+
+```{r}
+p2 <- roles %>%
+  group_by(role_name, guest_star) %>%
+  summarise(n = n()) %>%
+  group_by(guest_star) %>%
+  summarise(star_roles = n()) %>%
+  top_n(10, wt = star_roles) %>%
+  mutate(guest_star = fct_reorder(guest_star, star_roles)) %>%
+  ggplot(aes(guest_star, star_roles)) +
+  geom_col(fill = "#FED90F") + 
+  coord_flip() +
+  theme(panel.border = element_blank(),
+        panel.grid = element_blank(),) +
+  labs(x = "",
+       y = "# of unique roles",
+       title = "Top 10 guest stars with the most unique roles",
+       subtitle = "The Simpsons: seasons 1 - 30",
+       caption = default_caption)
+
+p2
+```
+
+#### Combine the 2 plots
+
+```{r}
+p1 + 
+  labs(title = "The Simpsons: seasons 1 - 30",
+       subtitle = "More guest stars per season; Maurice LaMarche has played the most unique roles",
+       caption = "") +
+  p2 +
+  labs(title = "",
+       subtitle = "")
+
+#ggsave("simpsons.png", width = 10)
+```
+
