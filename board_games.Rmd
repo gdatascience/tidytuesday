@@ -1,0 +1,87 @@
+---
+title: "Board Games"
+author: "Tony Galvan"
+date: "8/29/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r ttsetup, echo=FALSE, warning=FALSE, message=FALSE}
+# Load libraries, set the default theme & caption, and grab the data
+library(tidyverse)
+theme_set(theme_light())
+
+default_caption <- "Source: Board Game Geeks  |  Designer: Tony Galvan @gdatascience1"
+
+board_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-12/board_games.csv")
+
+glimpse(board_games)
+```
+
+#### What are the top rated games?
+
+```{r}
+board_games %>%
+  top_n(10, wt = average_rating) %>%
+  mutate(name = fct_reorder(name, average_rating)) %>%
+  ggplot(aes(name, average_rating, fill = name)) + 
+  geom_col(show.legend = FALSE) +
+  coord_flip()
+```
+
+```{r}
+board_games %>%
+  ggplot(aes(year_published, average_rating)) +
+  geom_point(alpha = 0.025) + 
+  geom_smooth(method = "loess", se = FALSE, color = "red") +
+  labs(x = "",
+       y = "Average user rating",
+       title = "A Golden Age Of Board Games?",
+       subtitle = "Average user ratings for games by original year of production",
+       caption = "Source: Board Game Geeks  |  Inspired by: FiveThirtyEight")
+```
+
+```{r}
+categories <- board_games %>%
+  unnest(category = strsplit(category, ","))
+
+glimpse(categories)
+```
+
+#### Which categories typically get the highest ratings?
+
+```{r}
+categories %>%
+  mutate(total_rating = average_rating * users_rated) %>%
+  group_by(category) %>%
+  summarise(n = n(),
+            category_user_ratings = sum(users_rated),
+            category_rating = sum(total_rating),
+            category_avg_rating = category_rating / category_user_ratings) %>%
+  ungroup() %>%
+  top_n(10, wt = category_avg_rating) %>%
+  mutate(category = fct_reorder(category, category_avg_rating)) %>%
+  ggplot(aes(category, category_avg_rating, fill = category)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip()
+```
+
+#### Examine the description variable
+
+```{r}
+library(tidytext)
+
+board_games %>%
+  unnest_tokens(tbl = ., output = word, input = description) %>%
+  count(word, sort = TRUE) %>%
+  mutate(word = str_to_lower(word)) %>%
+  filter(is.na(as.numeric(word)) & !word %in% c("game", "player", "players")) %>%
+  anti_join(get_stopwords()) %>%
+  filter(n > 1000) %>%
+  na.omit() %>%
+  wordcloud2::wordcloud2(shape = "cardiod")
+```
+
