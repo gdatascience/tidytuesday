@@ -21,6 +21,20 @@ board_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascienc
 glimpse(board_games)
 ```
 
+#### Visualize the relationships between average rating and other variables
+
+```{r}
+board_games %>%
+  mutate(log_playtime = log(max_playtime+1)) %>%
+  select(average_rating, log_playtime, min_age, min_players, 
+         year_published, users_rated) %>%
+  gather(variable, value, -average_rating) %>%
+  ggplot(aes(average_rating, value)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~variable, scales = "free")
+```
+
 #### What are the top rated games?
 
 ```{r}
@@ -83,5 +97,93 @@ board_games %>%
   filter(n > 1000) %>%
   na.omit() %>%
   wordcloud2::wordcloud2(shape = "cardiod")
+```
+
+#### Perform sentiment analysis
+
+```{r}
+library(sentimentr)
+
+game_sentiment <- board_games %>%
+  pull(description) %>%
+  get_sentences() %>%
+  sentiment_by()
+
+glimpse(game_sentiment)
+```
+
+```{r}
+board_games %>%
+  inner_join(game_sentiment, by = c("game_id" = "element_id")) %>%
+  ggplot(aes(average_rating, ave_sentiment)) +
+  geom_point(alpha = 0.05) + 
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+#### Can we predict board game rating?
+
+```{r}
+#split the data into test/training sets
+n <- nrow(board_games)
+set.seed(1874)
+test_index <- sample.int(n,size=round(0.2*n))
+games_train <- board_games[test_index,]
+games_test <- board_games[-test_index,]
+
+lmod1 <- lm(average_rating ~ max_players + log(max_playtime+1) + min_age + 
+       min_players + log(min_playtime+1) + year_published + users_rated, 
+     data = games_train)
+
+summary(lmod1)
+```
+
+#### Feature engineering
+
+```{r}
+lmod2 <- MASS::stepAIC(lmod1)
+summary(lmod2)
+```
+
+#### Check for outliers
+
+```{r}
+summary(cooks.distance(lmod2))
+```
+
+Since there are no values greater than 1, we assume there are no outliers. 
+
+#### Check the model assumptions
+
+```{r}
+ggplot(data = lmod2, aes(lmod2$fitted.values, lmod2$residuals)) + 
+  geom_point() +
+  scale_x_continuous(limits = c(0,10)) + 
+  scale_y_continuous(limits = c(-5,5))
+```
+
+The points are not in a cone shape. The variance appears to be constant.
+
+#### Test the model
+
+```{r}
+games_test %>%
+  mutate(pred = predict(lmod2, new = .),
+         error = abs(pred - average_rating)) %>%
+  ggplot(aes(average_rating, pred, color = error)) +
+  geom_point(alpha = 0.75) + 
+  geom_abline(slope = 1, intercept = 0, color = "darkblue", linetype = 2) +
+  coord_equal() + 
+  scale_color_gradient2(low = "darkorange", mid = "black", high = "black", 
+                        midpoint = 2.5) + 
+  theme(legend.position = c(0.3, 0.8),
+        legend.direction = "horizontal") +
+  labs(x = "Actual Rating",
+       y = "Predicted Rating",
+       color = "Error",
+       title = "Predicting board game ratings: model performance",
+       subtitle = "Model is based on minimum players, minimum age, number of user ratings, \nyear published, and log of maximum play time",
+       caption = default_caption)
+
+#ggsave("board_games.png", height = 5.25, width = 5.25)
 ```
 
