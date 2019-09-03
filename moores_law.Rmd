@@ -1,0 +1,41 @@
+---
+title: "Moore's Law"
+author: "Tony Galvan"
+date: "9/3/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r ttsetup, echo=FALSE, warning=FALSE, message=FALSE}
+# Load libraries, set the default theme & caption, and grab the data
+library(tidyverse)
+theme_set(theme_light())
+
+default_caption <- "Source: Wikipedia  |  Designer: Tony Galvan @gdatascience1"
+
+cpu <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-03/cpu.csv")
+
+gpu <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-03/gpu.csv")
+
+ram <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-09-03/ram.csv")
+```
+
+```{r}
+cpu %>%
+  ggplot(aes(date_of_introduction, transistor_count, color = if_else(designer == "Intel", "Intel", "Other"))) +
+  geom_point(alpha = 0.5) + 
+  scale_y_log10(labels = scales::comma_format()) + 
+  scale_color_manual(values = c("darkblue", "gray50")) +
+  labs(x = "",
+       y = "# of transistors",
+       color = "CPU Designer",
+       title = "Is Moore's Law true?",
+       subtitle = "The number of transistors in a dense integrated circuit\ndoubles approximately every two years",
+       caption = default_caption)
+
+##ggsave("moores_law.png", width = 6, height = 4)
+```
+
