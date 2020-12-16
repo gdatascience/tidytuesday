@@ -90,8 +90,8 @@ p <- ninja_warrior %>%
         panel.grid.minor = element_blank(), 
         panel.grid.major.y = element_blank(), 
         axis.ticks = element_blank(),
-        panel.background = element_rect("#5a5a5a"),
-        plot.background = element_rect(fill = "#5a5a5a"),
+        panel.background = element_rect("#1F1F1F"),
+        plot.background = element_rect(fill = "#1F1F1F"),
         axis.text.y = element_text(color="#d2d2d2", size=12),
         axis.text.x = element_text(color = "#d2d2d2", size = 12),
         axis.title.y = element_text(color="#d2d2d2", size=12),
@@ -101,12 +101,21 @@ p <- ninja_warrior %>%
         plot.caption = element_text(color = "#d2d2d2", size = 8)) +
     labs(x = "# of seasons an obstacle was used",
         y = "# of obstacles",
-        title = paste0(tt_title, " Obstacles"),
+        title = paste0(tt_title, " Obstacle Use By Season"),
         subtitle = "Over 100 obstacles were only used in 1 season",
         caption = tt_caption)
 
 p
   
+```
+
+
+```{r}
+library(ggimage)
+
+p +
+  geom_image(aes(x = 7, y = 20, image = "ninja1.png"), size = 0.2) +
+  geom_image(aes(x = 2, y = 80, image = "ninja2.png"), size = 0.2)
 ```
 
 
