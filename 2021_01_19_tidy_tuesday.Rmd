@@ -127,6 +127,11 @@ census %>%
        subtitle = "10 counties with the largest average household size",
        caption = "Source: rKenyaCensus  |  Analysis: Tony Galvan (@GDataScience1)")
 
+census %>%
+  ggplot(aes(pct_female, average_household_size)) +
+  geom_point(aes(size = farming)) +
+  geom_smooth(method = "lm", se = FALSE)
+
 crops %>%
   filter(sub_county == "KENYA") %>%
   pivot_longer(cols = farming:khat_miraa, names_to = "crop", values_to = "pop_growing") %>%
@@ -136,6 +141,7 @@ crops %>%
   ggplot(aes(pop_growing, crop, fill = crop)) +
   geom_col(show.legend = FALSE) +
   scale_x_continuous(labels = comma_format()) +
+  expand_limits(x = c(0,1050000)) +
   labs(x = "# of people growing the crop",
        y = "",
        title = "Kenya Crops",
