@@ -1,0 +1,158 @@
+---
+title: "TidyTemplate"
+date: 2021-01-18
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(janitor)
+library(scales)
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-01-19")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+gender <- tt$gender %>%
+  clean_names() %>%
+  filter(county != "Total") %>%
+  select(-intersex) %>%
+  mutate(county = ifelse(county == "Nairobi City", "Nairobi", county),
+         sub_county = str_to_upper(str_replace_all(county, " ", "")),
+         pct_male = male/total,
+         pct_female = female/total)
+
+crops <- tt$crops %>%
+  clean_names() %>%
+  mutate(sub_county = str_replace_all(sub_county, " ", ""))
+
+households <- tt$households %>%
+  clean_names() %>%
+  mutate(county = str_trim(county),
+         county = ifelse(county == "NairobiCity", "Nairobi", county),
+         sub_county = str_to_upper(county))
+
+census <- gender %>%
+  inner_join(crops, by = "sub_county") %>%
+  inner_join(households %>% select(-county), by = "sub_county")
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+census %>%
+  top_n(10, wt = -pct_female) %>%
+  mutate(county = fct_reorder(county, pct_female)) %>%
+  ggplot(aes(pct_female, county, fill = county)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(labels = percent_format()) +
+  labs(x = "% female",
+       y = "",
+       title = "Kenya Census",
+       subtitle = "10 counties with lowest percentage of females",
+       caption = "Source: rKenyaCensus  |  Analysis: Tony Galvan (@GDataScience1)")
+
+census %>%
+  top_n(10, wt = pct_female) %>%
+  mutate(county = fct_reorder(county, pct_female)) %>%
+  ggplot(aes(pct_female, county, fill = county)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(labels = percent_format()) +
+  labs(x = "% female",
+       y = "",
+       title = "Kenya Census",
+       subtitle = "10 counties with highest percentage of females",
+       caption = "Source: rKenyaCensus  |  Analysis: Tony Galvan (@GDataScience1)")
+
+census %>%
+  top_n(10, wt = average_household_size) %>%
+  mutate(county = fct_reorder(county, average_household_size)) %>%
+  ggplot(aes(average_household_size, county, fill = county)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "Average household size",
+       y = "",
+       title = "Kenya Census",
+       subtitle = "10 counties with the largest average household size",
+       caption = "Source: rKenyaCensus  |  Analysis: Tony Galvan (@GDataScience1)")
+
+crops %>%
+  filter(sub_county == "KENYA") %>%
+  pivot_longer(cols = farming:khat_miraa, names_to = "crop", values_to = "pop_growing") %>%
+  filter(crop != "farming") %>%
+  mutate(crop = str_to_title(str_replace(crop, "_", " ")),
+         crop = fct_reorder(crop, pop_growing)) %>%
+  ggplot(aes(pop_growing, crop, fill = crop)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(labels = comma_format()) +
+  labs(x = "# of people growing the crop",
+       y = "",
+       title = "Kenya Crops",
+       subtitle = "Avocados and mangos are grown by the most people",
+       caption = "Source: rKenyaCensus  |  Analysis: Tony Galvan (@GDataScience1)")
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "gdatascience1_202104.png",
+  device = "png",
+  width = 5)
+
+```
