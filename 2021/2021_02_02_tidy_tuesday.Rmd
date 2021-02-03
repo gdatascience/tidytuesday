@@ -70,7 +70,7 @@ hbcu_black <- tt$hbcu_black %>% clean_names()
 
 hbcu <- hbcu_all %>%
   mutate(enrollment = "All") %>%
-  rbind(hbcu_black %>%
+  bind_rows(hbcu_black %>%
     mutate(enrollment = "Black"))
 
 pct_hbcu <- hbcu %>%
