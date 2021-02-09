@@ -1,0 +1,169 @@
+---
+title: "TidyTemplate"
+date: 2021-02-08
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(scales)
+library(tidytuesdayR)
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-02-09")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+home_owner <- tt$home_owner
+
+student_debt <- tt$student_debt
+
+summary(home_owner$year)
+
+summary(student_debt$year)
+
+home_owner %>%
+  count(year) %>%
+  filter(n < 3)
+
+student_debt %>%
+  count(year)
+
+since_2015 <- home_owner %>%
+    filter(year %in% c(2005, 2016)) %>%
+    pivot_wider(names_from = "year",
+                values_from = home_owner_pct,
+                names_prefix = "year_") %>%
+    mutate(change_since_2005 = year_2005 - year_2016,
+        change_string = paste0("-", round(change_since_2005 * 100, 1), "%"),
+        year = 2016) %>%
+    select(-year_2005, -year_2016)
+    
+glimpse(since_2015) 
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+home_owner %>%
+    ggplot(aes(year, home_owner_pct, color = race)) +
+    geom_line() + 
+    scale_y_continuous(labels = percent) +
+    theme(legend.position = "top") +
+    labs(x = "",
+        y = "% home owners",
+        color = "Race",
+        title = "Home Ownership started declining in 2005",
+        subtitle = "Hispanic home ownership declined less",
+        caption = "Source: Urban Institute & US Census  |  Analysis: Tony Galvan (@GDataScience1)")
+
+p1 <- home_owner %>%
+    filter(year >= 2005) %>%
+    left_join(since_2015, by = c("year", "race")) %>%
+    mutate(race = fct_reorder(race, -home_owner_pct)) %>%
+    ggplot(aes(year, home_owner_pct, color = race)) +
+    geom_line(size = 1) + 
+    scale_color_manual(values = c("#0072B2", "#D55E00", "#009E73")) +
+    scale_y_continuous(labels = percent) +
+    theme(legend.position = "top")
+
+p1
+
+p2 <- p1 +
+    geom_text(aes(label = change_string), 
+        show.legend = FALSE,
+        fontface = 2, 
+        #hjust = 0,
+        nudge_x = 0.75) + 
+    scale_x_continuous(limits = c(2005, 2017), breaks = c(2005, 2016))
+    
+p2
+
+library(ggtext)
+
+p3 <- p2  +
+  theme(plot.title = element_markdown(lineheight = 1.1),
+    #legend.text = element_markdown(size = 11)
+    legend.position = "none") +
+    labs(x = "",
+        y = "% home owners",
+        color = "Race",
+        title = "**Home Ownership started declining in 2005**<br>
+        <span style='font-size:11pt'><span style='color:#D55E00;'>**Hispanic**</span> home ownership declined less (vs. <span style='color:#0072B2;'>**White**</span> & <span style='color:#009E73;'>**Black**</span>)</span>",
+        caption = "Source: Urban Institute & US Census  |  Analysis: Tony Galvan (@GDataScience1)") 
+
+p3
+  
+p4 <- student_debt %>%
+  ggplot(aes(year, loan_debt_pct, color = race)) + 
+  geom_point() + 
+  geom_smooth(method = "loess", se = FALSE)
+  
+p4
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_02_09_tidy_tuesday.png",
+  device = "png")
+
+```
