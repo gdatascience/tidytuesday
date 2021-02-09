@@ -20,6 +20,7 @@ library(tidyverse)
 library(scales)
 library(tidytuesdayR)
 
+theme_set(theme_light())
 ```
 
 # Load the weekly Data
@@ -97,6 +98,10 @@ glimpse(since_2015)
 Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
+student_debt %>%
+  ggplot(aes(year, loan_debt_pct, color = race)) + 
+  geom_point() + 
+  geom_smooth(method = "loess", se = FALSE)
 
 home_owner %>%
     ggplot(aes(year, home_owner_pct, color = race)) +
@@ -146,13 +151,6 @@ p3 <- p2  +
         caption = "Source: Urban Institute & US Census  |  Analysis: Tony Galvan (@GDataScience1)") 
 
 p3
-  
-p4 <- student_debt %>%
-  ggplot(aes(year, loan_debt_pct, color = race)) + 
-  geom_point() + 
-  geom_smooth(method = "loess", se = FALSE)
-  
-p4
 ```
 
 # Save Image
