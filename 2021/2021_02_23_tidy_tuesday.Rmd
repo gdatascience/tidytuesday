@@ -1,0 +1,133 @@
+---
+title: "TidyTemplate"
+date: 2021-02-23
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(scales)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-02-23")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+earn <- tt$earn
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+p1 <- earn %>%
+  filter(sex == "Both Sexes",
+         #race %in% c("White", "Black or African American"),
+         ethnic_origin == "All Origins",
+         age == "25 to 54 years") %>%
+  mutate(race = case_when(
+    race == "White" ~ "white", 
+    race == "Asian" ~ "asian",
+    race == "All Races" ~ "total",
+    TRUE ~ "black")) %>%
+  pivot_wider(id_cols = c(year, quarter),
+              names_from = race, 
+              values_from = median_weekly_earn) %>%
+  mutate(black = black/total,
+         white = white/total,
+         asian = asian/total,
+         year_quarter = year+quarter/4-.125) %>%
+  select(year_quarter, white, black, asian) %>%
+  pivot_longer(cols = c(white, black, asian),
+               names_to = "race",
+               values_to = "pct_total") %>%
+  ggplot(aes(year_quarter, pct_total, color = race)) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(se = FALSE, size = 1.5) +
+  scale_y_continuous(labels = percent, limits = c(0,1.5))  + 
+  scale_color_manual(values = c("#F46036", "#004FFF", "#1B998B"))
+
+p1
+
+library(ggtext)
+
+p2 <- p1 +
+  theme(plot.title = element_markdown(lineheight = 1.1),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "none") +
+  labs(x = "",
+       y = "% of median earnings vs. all races",
+       title = "**Earnings By Race Compared To All Races**<br>
+                <span style='font-size:11pt'>Increasing for <span style='color:#F46036;'>**Asians**</span> while flat for <span style='color:#1B998B;'>**Whites**</span> & <span style='color:#004FFF;'>**Blacks**</span></span>",
+       caption = "Source: US Bureau of Labor Statistics  |  Analysis: Tony Galvan (@GDataScience1)")
+
+p2
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_02_23_tidy_tuesday.png",
+  device = "png")
+
+```
