@@ -70,7 +70,10 @@ superbowl <- tt$youtube
 
 ```{r}
 superbowl %>%
-  count(brand, sort = TRUE)
+  count(brand, sort = TRUE) %>%
+  mutate(brand = fct_reorder(brand, n)) %>%
+  ggplot(aes(n, brand, fill = brand)) + 
+  geom_col()
 ```
 
 
@@ -89,10 +92,20 @@ superbowl %>%
             danger = sum(danger),
             animals = sum(animals),
             use_sex = sum(use_sex)) %>%
-  pivot_longer(cols = c("funny":"use_sex"), names_to = "attribute", values_to = "count") %>%
+  pivot_longer(cols = c("funny":"use_sex"), 
+               names_to = "attribute", 
+               values_to = "count") %>%
+  #mutate(attribute = fct_relevel(attribute, )) %>%
   ggplot(aes(year, count, color = attribute)) +
   geom_point(alpha = 0.25) +
-  geom_smooth(se = FALSE)
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~attribute) +
+  guides(color = "none") +
+  labs(x = "",
+       y = "# of commercials",
+       title = "Superbowl Commercials",
+       subtitle = "More celebrities and patriotic. Less funny and sex",
+       caption = "Source: FiveThirtyEight  |  Analysis: Tony Galvan (@GDataScience1)")
   
 ```
 
