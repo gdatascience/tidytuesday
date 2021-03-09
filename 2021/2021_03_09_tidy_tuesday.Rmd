@@ -4,6 +4,13 @@ date: 2021-03-08
 output: html_output
 ---
 
+# Shout out to Julia Silge ()!!
+This code is inspired (pretty much copy/paste/change_input) by Julia Silge's blog post:
+
+https://juliasilge.com/blog/animal-crossing/
+
+https://youtu.be/whE85O1XCkg
+
 # TidyTuesday
 
 Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
