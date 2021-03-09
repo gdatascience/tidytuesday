@@ -1,0 +1,233 @@
+---
+title: "TidyTemplate"
+date: 2021-03-08
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-03-09")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+movies <- tt$movies %>%
+  filter(!is.na(plot))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+movies %>%
+  count(clean_test, binary) %>%
+  mutate(clean_test = fct_reorder(clean_test, n)) %>%
+  ggplot(aes(n, clean_test, fill = binary)) +
+  geom_col()
+  
+```
+
+```{r}
+library(tidytext)
+
+words_per_plot <- movies %>%
+  unnest_tokens(word, plot) %>%
+  count(imdb_id, name = "total_words")
+
+words_per_plot %>%
+  ggplot(aes(total_words)) + 
+  geom_histogram()
+```
+
+```{r}
+library(tidymodels)
+
+set.seed(123)
+
+plot_split <- initial_split(movies, strata = binary)
+plot_train <- training(plot_split)
+plot_test <- testing(plot_split)
+```
+
+```{r}
+library(textrecipes)
+
+plot_rec <- recipe(binary ~ plot, data = plot_train) %>%
+  step_tokenize(plot) %>%
+  step_stopwords(plot) %>%
+  step_tokenfilter(plot, max_tokens = 100) %>%
+  step_tfidf(plot) %>%
+  step_normalize(all_predictors())
+
+plot_prep <- prep(plot_rec)
+
+plot_prep
+```
+
+```{r}
+lasso_spec <- logistic_reg(penalty = tune(), mixture = 1) %>%
+  set_engine("glmnet")
+
+lasso_wf <- workflow() %>%
+  add_recipe(plot_rec) %>%
+  add_model(lasso_spec)
+
+lasso_wf
+```
+
+```{r}
+lambda_grid <- grid_regular(penalty(), levels = 40)
+
+set.seed(234)
+plot_folds <- bootstraps(plot_train, strata = binary)
+plot_folds
+```
+
+```{r}
+#doParallel::registerDoParallel()
+
+set.seed(345)
+lasso_grid <- tune_grid(
+  lasso_wf,
+  resamples = plot_folds,
+  grid = lambda_grid,
+  metrics = metric_set(roc_auc, ppv, npv)
+)
+```
+
+```{r}
+lasso_grid %>%
+  collect_metrics()
+```
+
+```{r}
+lasso_grid %>%
+  collect_metrics() %>%
+  ggplot(aes(penalty, mean, color = .metric)) +
+  geom_line(size = 1.5, show.legend = FALSE) +
+  facet_wrap(~.metric) +
+  scale_x_log10()
+```
+
+```{r}
+best_auc <- lasso_grid %>%
+  select_best("roc_auc")
+
+best_auc
+```
+
+```{r}
+final_lasso <- finalize_workflow(lasso_wf, best_auc)
+
+final_lasso
+```
+
+```{r}
+library(vip)
+
+final_lasso %>%
+  fit(plot_train) %>%
+  pull_workflow_fit() %>%
+  vi(lambda = best_auc$penalty) %>%
+  group_by(Sign) %>%
+  top_n(20, wt = abs(Importance)) %>%
+  ungroup() %>%
+  mutate(
+    Importance = abs(Importance),
+    Variable = str_remove(Variable, "tfidf_plot_"),
+    Variable = fct_reorder(Variable, Importance)
+  ) %>%
+  ggplot(aes(Importance, Variable, fill = Sign)) + 
+  geom_col(show.legend = FALSE) + 
+  scale_fill_manual(values = c("#27476E","#AA7BC3")) +
+  facet_wrap(~ifelse(Sign == "NEG", "Fail", "Pass"), 
+             scales = "free_y") +
+  labs(y = "",
+       title = "Bechdel Test - Movies with Quality Female Characters",
+       subtitle = "Top 20 most important words from the plot description",
+       caption = "Source: FiveThirtyEight  |  Analysis: Tony Galvan (@GDataScience1")
+```
+
+```{r}
+plot_final <- last_fit(final_lasso, plot_split)
+
+plot_final %>%
+  collect_metrics()
+```
+
+
+```{r}
+plot_final %>%
+  collect_predictions() %>%
+  conf_mat(binary, .pred_class)
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_03_09_tidy_tuesday.png",
+  device = "png")
+
+```
