@@ -73,6 +73,8 @@ Explore the data and process it into a nice format for plotting! Access each dat
 movies <- tt$movies %>%
   filter(!is.na(plot))
 
+movies
+
 ```
 
 
@@ -80,15 +82,35 @@ movies <- tt$movies %>%
 
 Using your processed dataset, create your unique visualization.
 
+First, let's compare the variables `binary` and `clean_test` to see which one we should focus on going forward.
+
 ```{r Visualize}
 
 movies %>%
   count(clean_test, binary) %>%
   mutate(clean_test = fct_reorder(clean_test, n)) %>%
   ggplot(aes(n, clean_test, fill = binary)) +
-  geom_col()
+  geom_col() +
+  labs(x = "# of movies",
+       title = "The binary = PASS only when clean_test = ok")
   
 ```
+
+The `binary` variable is what I will focus on.
+
+Next, let's explore the `plot` variable.
+
+```{r}
+movies %>%
+  mutate(plot_length = str_length(plot)) %>%
+  ggplot(aes(plot_length, fill = binary)) +
+  geom_histogram(bins = 35) +
+  labs(title = "Binary vs. the length of the plot description")
+```
+
+There are some interesing spikes around 180 characters, but the distributions look similar for both values of `binary`.
+
+Instead, let's do some text mining on the plot descriptions.
 
 ```{r}
 library(tidytext)
@@ -99,8 +121,13 @@ words_per_plot <- movies %>%
 
 words_per_plot %>%
   ggplot(aes(total_words)) + 
-  geom_histogram()
+  geom_histogram() +
+  labs(title = "Distribution of total words per plot description")
 ```
+
+I wonder if I could create a model to predict if a movie will pass or fail the Bechdel Test.  This is a good chance to use the `tidymodels` package!
+
+First, I will split the data into traning and testing sets.
 
 ```{r}
 library(tidymodels)
@@ -112,20 +139,26 @@ plot_train <- training(plot_split)
 plot_test <- testing(plot_split)
 ```
 
+Next, I will create a recipe and use the `textrecipes` package to do some preprossing on the plot descriptions (prep the recipe).
+
 ```{r}
 library(textrecipes)
 
-plot_rec <- recipe(binary ~ plot, data = plot_train) %>%
-  step_tokenize(plot) %>%
-  step_stopwords(plot) %>%
-  step_tokenfilter(plot, max_tokens = 100) %>%
-  step_tfidf(plot) %>%
-  step_normalize(all_predictors())
+plot_rec <- recipe(binary ~ plot, data = plot_train) %>% # model formula
+  step_tokenize(plot) %>% # tokenize the text (split into words)
+  step_stopwords(plot) %>% # remove stop words ("a," "and," "the", etc.)
+  step_tokenfilter(plot, max_tokens = 100) %>% # keep top 100 most-used tokens
+  step_tfidf(plot) %>% # calculate term frequency inverse document frequency
+  step_normalize(all_predictors()) #center and scale
 
-plot_prep <- prep(plot_rec)
+plot_prep <- prep(plot_rec) # prep/evaluate everything in the recipe
 
 plot_prep
 ```
+
+#### Declare model specification
+
+Next, I will specify the model as a lasso regression (with GLM Net computational engine).  We will use a mixture of 1, but we will tune the penalty hyperparameter.  I will utilize a workflow to hold my preprocessing recipe together with my model specification.
 
 ```{r}
 lasso_spec <- logistic_reg(penalty = tune(), mixture = 1) %>%
@@ -138,6 +171,9 @@ lasso_wf <- workflow() %>%
 lasso_wf
 ```
 
+### Hyperparameter tuning
+After creating a lambda grid of values to try for the regularization penalty hyperparameter, I create a set of resampled data to fit and evaluate the different models (1 model per penalty).
+
 ```{r}
 lambda_grid <- grid_regular(penalty(), levels = 40)
 
@@ -146,7 +182,11 @@ plot_folds <- bootstraps(plot_train, strata = binary)
 plot_folds
 ```
 
+Tune the model hyperparameters
+
 ```{r}
+# I had errors running parallel on Win10 machine
+# Un-comment the following line if you want to try
 #doParallel::registerDoParallel()
 
 set.seed(345)
