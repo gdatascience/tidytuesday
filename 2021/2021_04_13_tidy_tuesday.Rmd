@@ -1,0 +1,169 @@
+---
+title: "TidyTemplate"
+date: 2021-04-13
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- 'Blevins, Cameron; Helbock, Richard W., 2021, "US Post Offices", https://doi.org/10.7910/DVN/NUKCNA, Harvard Dataverse, V1, UNF:6:8ROmiI5/4qA8jHrt62PpyA== [fileUNF]'
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-04-13")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+post_offices <- tt$post_offices %>%
+  filter(!is.na(established),
+         established >= 1639,
+         is.na(discontinued) | 
+           (discontinued >= established &
+           discontinued <= 2002)) %>%
+  mutate(longitude = ifelse(longitude > 0, -longitude, longitude),
+         state = ifelse(state == "VAy", "VA", state))
+
+post_offices
+```
+
+Is the `id` variable unique?
+
+```{r}
+post_offices %>%
+  count(id, sort = TRUE)
+```
+
+### Create Yearly Data Set
+Create a data set with a record for each year a post office is active (year between established and discontinued)
+
+```{r}
+
+po_years <- post_offices %>% 
+  select(name, 
+         state, 
+         established, 
+         discontinued, 
+         longitude, 
+         latitude) %>%
+  replace_na(list(discontinued = 2003)) %>% # indicates PO is still active
+  mutate(active_year = map2(established, discontinued, seq)) %>% 
+  unnest(active_year) %>%
+  mutate(age = active_year - established)
+
+
+po_years
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+po_years %>%
+  count(active_year, name = "n_post_offices") %>%
+  ggplot(aes(active_year, n_post_offices)) +
+  geom_area()
+
+```
+
+```{r}
+
+library(ggthemes)
+
+po_years %>%
+  filter(active_year == 1850) %>%
+  filter(!state %in% c("AK", "HI")) %>%
+  #filter(state == "CA") %>%
+  ggplot(aes(longitude, latitude, color = age)) +
+  borders("state") +
+  geom_point(size = 0.01, alpha = 0.25) +
+  theme_map() +
+  coord_map()
+
+#install.packages("gifski")
+library(gganimate)
+
+po_years %>%
+  filter(active_year %% 10 == 0) %>%
+  filter(!state %in% c("AK", "HI")) %>%
+  #filter(state == "CA") %>%
+  ggplot(aes(longitude, latitude, color = age)) +
+  borders("state") +
+  geom_point(size = 0.01, alpha = 0.25) +
+  labs(title = "US Post Offices Active in { current_frame }", 
+       caption = tt_caption) +
+  transition_maual(active_year) +
+  theme_map() +
+  coord_map()
+
+#anim_save(filename = "2021_04_13_tidy_tuesday.gif", 
+#          animation = last_animation())  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+#ggsave(
+#  filename = "2021_04_13_tidy_tuesday.png",
+#  device = "png")
+
+```
