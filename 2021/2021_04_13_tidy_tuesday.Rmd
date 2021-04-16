@@ -22,7 +22,7 @@ library(scales)
 
 theme_set(theme_light())
 
-tt_caption <- 'Blevins, Cameron; Helbock, Richard W., 2021, "US Post Offices", https://doi.org/10.7910/DVN/NUKCNA, Harvard Dataverse, V1, UNF:6:8ROmiI5/4qA8jHrt62PpyA== [fileUNF]'
+tt_caption <- 'Blevins, Cameron; Helbock, Richard W., 2021, "US Post Offices",\n https://doi.org/10.7910/DVN/NUKCNA, Harvard Dataverse, V1, \nUNF:6:8ROmiI5/4qA8jHrt62PpyA== [fileUNF]'
 
 ```
 
@@ -124,35 +124,47 @@ po_years %>%
 ```{r}
 
 library(ggthemes)
+library(viridis)
 
-po_years %>%
-  filter(active_year == 1850) %>%
-  filter(!state %in% c("AK", "HI")) %>%
+p <- po_years %>%
+  filter(!is.na(latitude),
+         !is.na(longitude),
+         active_year %in% c(1802, 1827, 1852, 1877, 
+                            1902, 1927, 1952, 1977, 2002),
+         !state %in% c("AK", "HI")) %>%
   #filter(state == "CA") %>%
   ggplot(aes(longitude, latitude, color = age)) +
   borders("state") +
   geom_point(size = 0.01, alpha = 0.25) +
+  scale_color_viridis() + # option = "magma") +
   theme_map() +
   coord_map()
 
+p_facet <- p + 
+  facet_wrap(~active_year) +
+  theme(legend.position = "right") +
+  labs(title = "How did US Post Offices spread, age, and close?",
+       subtitle = "1802 - 2002",
+       color = "Age",
+       caption = paste0(tt_caption, "\nAnalysis: Tony Galvan (@GDataScience1)"))
+
+p_facet
+
+```
+
+```{r}
 #install.packages("gifski")
 library(gganimate)
 
-po_years %>%
-  filter(active_year %% 10 == 0) %>%
-  filter(!state %in% c("AK", "HI")) %>%
-  #filter(state == "CA") %>%
-  ggplot(aes(longitude, latitude, color = age)) +
-  borders("state") +
-  geom_point(size = 0.01, alpha = 0.25) +
-  labs(title = "US Post Offices Active in { current_frame }", 
-       caption = tt_caption) +
-  transition_maual(active_year) +
-  theme_map() +
-  coord_map()
+p_anim <- p +
+  transition_manual(active_year) +
+  labs(title = "How did US Post Offices spread, age, close from 1802 - 2002?",
+       subtitle = "Each point represents an active office in { current_frame }; Older offices are lighter; Newer offices are darker",
+       color = "Age",
+       caption = paste0(tt_caption, "\nAnalysis: Tony Galvan (@GDataScience1)"))
 
-#anim_save(filename = "2021_04_13_tidy_tuesday.gif", 
-#          animation = last_animation())  
+p_anim
+ 
 ```
 
 # Save Image
@@ -162,6 +174,10 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 ```{r}
 
 # This will save your most recent plot
+
+#anim_save(filename = "2021_04_13_tidy_tuesday.gif", 
+#          animation = last_animation()) 
+
 #ggsave(
 #  filename = "2021_04_13_tidy_tuesday.png",
 #  device = "png")
