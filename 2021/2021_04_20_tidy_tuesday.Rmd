@@ -66,14 +66,27 @@ Explore the data and process it into a nice format for plotting! Access each dat
 ```{r Wrangle}
 
 netflix_titles <- tt$netflix_titles %>%
-  mutate(date_added = mdy(date_added))
+  separate(duration, c("duration", "duration_units"), 
+           sep = " ", convert = TRUE) %>%
+  mutate(date_added = mdy(date_added),
+         added_year = year(date_added),
+         added_age = added_year - release_year,
+         release_decade = 10 * (release_year %/% 10),
+         duration_units = recode(duration_units,
+                                 "Season" = "Seasons"))
 
 ```
 
-# Explore
+When were Nextlix titles added?
 
 ```{r}
 summary(netflix_titles$date_added)
+```
+
+When were Netflix titles released?
+
+```{r}
+summary(netflix_titles$release_year)
 ```
 
 
@@ -96,11 +109,39 @@ netflix_titles %>%
 netflix_titles %>%
   mutate(year_added = year(date_added)) %>%
   count(year_added, type) %>%
-  ggplot(aes(year_added, n)) +
-  geom_col() +
-  facet_wrap(~type)
+  ggplot(aes(year_added, n, fill = type)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~type, ncol = 1)
   
 ```
+
+How many years old are titles when they are added to Netflix?
+
+```{r}
+netflix_titles %>%
+  ggplot(aes(added_age, fill = type)) +
+  geom_histogram(show.legend = FALSE) +
+  facet_wrap(~type, ncol = 1)
+```
+
+```{r}
+netflix_titles %>%
+  filter(type == "Movie",
+         release_decade >= 1940) %>%
+  mutate(release_decade = factor(release_decade)) %>%
+  ggplot(aes(release_decade, duration)) +
+  #geom_jitter(aes(color = release_decade), position = position_jitter(0.2),
+  #             show.legend = FALSE, alpha = 0.15) + 
+  geom_violin(aes(fill = release_decade), draw_quantiles = 0.5,
+               show.legend = FALSE) + 
+  #stat_summary(fun = mean, geom = "point") +
+  labs(x = "Decade",
+       y = "# of minutes",
+       title = "Netflix Movie Durations",
+       subtitle = "By decade of release since 1940",
+       caption = "Source: Kaggle  |  Analysis: Tony Galvan (@GDataScience1")
+```
+
 
 What countries are the titles from?
 
