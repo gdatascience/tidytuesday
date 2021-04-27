@@ -1,0 +1,132 @@
+---
+title: "TidyTemplate"
+date: 2021-04-27
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-04-27")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+departures <- tt$departures %>%
+  mutate(departure_reason = case_when(
+    departure_code == 1 ~ "Death",
+    departure_code == 2 ~ "Ilness",
+    departure_code == 3 ~ "Performance",
+    departure_code == 4 ~ "Legal",
+    departure_code == 5 ~ "Retired",
+    departure_code == 6 ~ "Career",
+    departure_code == 7 ~ "Other",
+    departure_code == 8 ~ "Unknown",
+    departure_code == 9 ~ "Uknnown",
+    TRUE ~ "Unknown"
+  ),
+  departure_vol = case_when(
+    departure_code %in% c(5,6) ~ "Voluntary",
+    TRUE ~ "Other/Unknown"
+  ))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+departures %>%
+  count(departure_reason, sort = TRUE) %>%
+  mutate(departure_reason = fct_reorder(departure_reason, n)) %>%  
+  ggplot(aes(n, departure_reason)) +
+  geom_col()
+  
+```
+
+```{r Visualize}
+
+departures %>%
+  count(departure_reason, ceo_dismissal, sort = TRUE) %>%
+  mutate(departure_reason = fct_reorder(departure_reason, n)) %>%  
+  ggplot(aes(n, departure_reason, fill = factor(ceo_dismissal))) +
+  geom_col()
+  
+```
+
+```{r}
+departures %>%
+  #filter(still_there != "Yes") %>%
+  count(fyear, departure_vol) %>%
+  ggplot(aes(fyear, n, color = departure_vol)) +
+  geom_point()
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_04_27_tidy_tuesday.png",
+  device = "png")
+
+```
