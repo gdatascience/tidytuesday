@@ -1,0 +1,254 @@
+---
+title: "TidyTemplate"
+date: 2021-05-18
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(lubridate)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Ask A Manager  |  Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-05-18")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+survey <- tt$survey %>%
+  mutate(timestamp = mdy_hms(timestamp),
+         gender = recode(gender,
+                         "Prefer not to answer" = "Other/No Answer",
+                         "Other or prefer not to answer" = "Other/No Answer"),
+         country = recode(country, 
+                          "USA" = "United States",
+                          "US" = "United States",
+                          "Us" = "United States",
+                          "U.S." = "United States",
+                          "Usa" = "United States",
+                          "usa" = "United States",
+                          "United states" = "United States",
+                          "united states" = "United States",
+                          "United States of America" = "United States",
+                          "England" = "United Kingdom",
+                          "UK" = "United Kingdom",
+                          "Uk" = "United Kingdom"))
+
+```
+
+```{r}
+survey %>%
+  ggplot(aes(timestamp)) + 
+  geom_histogram()
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+survey %>%
+  count(how_old_are_you) %>%
+  mutate(how_old_are_you = fct_relevel(how_old_are_you, "under 18"),
+         how_old_are_you = fct_rev(how_old_are_you)) %>%
+  ggplot(aes(n, how_old_are_you, fill = how_old_are_you)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of respondents",
+       y = "",
+       title = "Salary Survey",
+       subtitle = "How old were the respondents?",
+       caption = tt_caption)
+  
+```
+
+```{r}
+
+survey %>%
+  mutate(industry = fct_lump(industry, 10)) %>%
+  filter(!is.na(industry),
+         industry != "Other") %>%
+  count(industry) %>%
+  mutate(industry = fct_reorder(industry, n)) %>%
+  ggplot(aes(n, industry, fill = industry)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of respondents",
+       y = "",
+       title = "Salary Survey",
+       subtitle = "What were the top 10 industries for the respondents?",
+       caption = tt_caption)
+
+```
+
+```{r}
+survey %>%
+  mutate(job_title = fct_lump(job_title, 10)) %>%
+  filter(!is.na(job_title),
+         job_title != "Other") %>%
+  count(job_title) %>%
+  mutate(job_title = fct_reorder(job_title, n)) %>%
+  ggplot(aes(n, job_title, fill = job_title)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of respondents",
+       y = "",
+       title = "Salary Survey",
+       subtitle = "What were the top 10 job titles for the respondents?",
+       caption = tt_caption)
+```
+
+```{r}
+survey %>%
+  mutate(country = fct_lump(country, 10)) %>%
+  filter(!is.na(country),
+         country != "Other") %>%
+  count(country) %>%
+  mutate(country = fct_reorder(country, n)) %>%
+  ggplot(aes(n, country, fill = country)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_log10() +
+  labs(x = "# of respondents",
+       y = "",
+       title = "Salary Survey",
+       subtitle = "What were the top 10 countries for the respondents?",
+       caption = tt_caption)
+```
+
+
+```{r}
+
+survey %>%
+  mutate(gender = ifelse(is.na(gender), "Other/No Answer", gender)) %>%
+  count(gender) %>%
+  mutate(gender = fct_reorder(gender, n)) %>%
+  ggplot(aes(n, gender, fill = gender)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of respondents",
+       y = "",
+       title = "Salary Survey",
+       subtitle = "What gender were the respondents?",
+       caption = tt_caption)
+
+```
+
+```{r}
+
+survey %>%
+  mutate(race = ifelse(race == "Another option not listed here or prefer not to answer", "Other", race),
+         race = fct_lump(race, 5)) %>%
+  filter(!is.na(race)) %>%
+  count(race) %>%
+  mutate(race = fct_reorder(race, n)) %>%
+  ggplot(aes(n, race, fill = race)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of respondents",
+       y = "",
+       title = "Salary Survey",
+       subtitle = "What race were the respondents?",
+       caption = tt_caption)
+
+```
+
+
+```{r}
+survey %>%
+  filter(currency == "USD", 
+         annual_salary <= 10000000) %>%
+  mutate(gender = ifelse(is.na(gender), "Other/No Answer", gender),
+         gender = fct_reorder(gender, annual_salary)) %>%
+  ggplot(aes(annual_salary, gender, fill = gender)) + 
+  geom_violin(show.legend = FALSE) + 
+  scale_x_log10(labels = dollar)
+  
+```
+
+
+```{r}
+library(tidytext)
+
+survey %>%
+  filter(currency == "USD", 
+         annual_salary >= 1000,
+         annual_salary <= 10000000) %>%
+  mutate(gender = ifelse(is.na(gender), "Other/No Answer", gender),
+         gender = fct_reorder(gender, -annual_salary),
+         race = ifelse(race == "Another option not listed here or prefer not to answer", "Other", race),
+         race = fct_lump(race, 5),
+         race = reorder_within(race, annual_salary, gender)) %>%
+  ggplot(aes(annual_salary, race, fill = gender)) + 
+  geom_violin(show.legend = FALSE) + 
+  scale_x_log10(labels = dollar) + 
+  scale_y_reordered() +
+  facet_wrap(~gender, scales = "free_y", ncol = 1) +
+  labs(x = "Annual salary in USD",
+       y = "",
+       title = "Salary Survey",
+       subtitle = "Annual salaries reported by race and gender",
+       caption = tt_caption)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_05_18_tidy_tuesday.png",
+  device = "png")
+
+```

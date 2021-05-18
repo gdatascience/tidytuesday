@@ -1,0 +1,139 @@
+---
+title: "TidyTemplate"
+date: 2021-05-11
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Microsoft GitHub  |  Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-05-11")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+broadband_county <- tt$broadband %>%
+  janitor::clean_names() %>%
+  select(county_id, 
+         state = st,
+         county_bb_avlblty = broadband_availability_per_fcc,
+         county_bb_usage = broadband_usage) %>%
+  mutate(county_bb_avlblty = parse_number(county_bb_avlblty),
+         county_bb_usage = parse_number(county_bb_usage))
+
+broadband_zip <- tt$broadband_zip %>%
+  janitor::clean_names() %>%
+  rename(state = st)
+
+broadband <- broadband_zip %>%
+  left_join(broadband_county %>% select(-state), by = "county_id")
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+broadband_county %>%
+  group_by(state) %>%
+  summarize(avg_avlblty = mean(county_bb_avlblty, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(state = fct_reorder(state, avg_avlblty)) %>%
+  ggplot(aes(avg_avlblty, state, fill = state)) + 
+  geom_col(show.legend = FALSE) + 
+  scale_x_continuous(labels = percent) +
+  labs(x = "% of people with access to broadband",
+       y = "",
+       title = "US States: 2017 Access to Broadband",
+       subtitle = "Fixed terrestrial broadband at speeds of 25 Mbps/3 Mbps",
+       caption = tt_caption)
+  
+```
+
+```{r}
+
+library(zipcodeR)
+
+ca_zips <- search_state('CA') %>%
+  mutate(zipcode = parse_number(zipcode))
+
+ca_zip_df <- ca_zips %>%
+  left_join(broadband, by = c("zipcode" = "postal_code"))
+  
+ca_zip_df %>%
+  #mutate(usage_per_dollar = broadband_usage / median_household_income) %>%
+  ggplot(aes(lng, lat, color = broadband_usage)) +
+  geom_point(alpha = 0.5) + 
+  coord_map()
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_05_11_tidy_tuesday.png",
+  device = "png")
+
+```
