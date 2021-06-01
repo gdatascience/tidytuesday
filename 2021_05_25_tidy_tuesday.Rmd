@@ -69,7 +69,8 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
-records <- tt$records
+records <- tt$records %>%
+  mutate(time = ifelse(system_played == "NTSC", time * 1.2024, time))
 
 ```
 
@@ -82,7 +83,9 @@ Using your processed dataset, create your unique visualization.
 
 records %>%
   ggplot(aes(date)) +
-  geom_histogram()
+  geom_histogram() +
+  facet_wrap(~system_played)
+  
 
 ```
 
@@ -113,10 +116,9 @@ records %>%
 
 records %>%
   count(track, system_played) %>%
-  #mutate(track = fct_reorder(track, n)) %>%
+  mutate(track = fct_reorder(track, n)) %>%
   ggplot(aes(n, track, fill = track)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~system_played)
+  geom_col(show.legend = FALSE)
 
 ```
 
@@ -124,22 +126,54 @@ records %>%
 ```{r Visualize4}
 
 records %>%
-  filter(type == "Single Lap") %>%
+  #filter(type == "Single Lap") %>%
   ggplot(aes(date, time, color = track)) +
   geom_step() +
   facet_grid(
-    cols = vars(shortcut),
-    rows = vars(system_played)
+    cols = vars(type, system_played),
+    rows = vars(shortcut)
   ) +
   labs(
     x = "",
     y = "Time in seconds",
     color = "Track",
-    title = "Mario Kart 64 Single Lap World Record Times",
-    subtitle = "Does the end of the line mean this is the 'perfect' lap?",
+    title = "Mario Kart 64 World Record Times",
+    subtitle = "Does the end of the line mean the record still stands today?\nNTSC times calculated using the 1.2024 conversion rate",
     caption = tt_caption
   )
 
+```
+
+```{r}
+records
+```
+
+
+
+```{r}
+records %>%
+  group_by(track) %>%
+  filter(record_duration == max(record_duration))
+```
+
+
+```{r}
+records %>%
+  count(player, sort = TRUE)
+```
+
+
+```{r}
+records %>%
+  add_count(player, name = "total_records") %>%
+  mutate(player = fct_lump(player, 6),
+         year = year(date),
+         decade = 10 * (year(date) %/% 10)) %>%
+  filter(player != "Other") %>%
+  count(player, year) %>%
+  ggplot(aes(year, n, color = player)) + 
+  geom_line(size = 1.5) +
+  scale_y_log10()
 ```
 
 
@@ -152,6 +186,8 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 # This will save your most recent plot
 ggsave(
   filename = "2021_05_25_tidy_tuesday.png",
-  device = "png")
+  device = "png",
+  width = 12,
+  height = 6)
 
 ```
