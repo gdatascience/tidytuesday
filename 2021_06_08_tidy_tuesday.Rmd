@@ -1,0 +1,203 @@
+---
+title: "TidyTemplate"
+date: 2021-06-07
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Great Lakes Database  |  Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-06-08")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+fishing <- tt$fishing
+
+stocked <- stocked <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-06-08/stocked.csv') %>%
+  janitor::clean_names()
+
+```
+
+```{r}
+
+fishing %>%
+  count(region, sort = TRUE)
+
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize1}
+
+fishing %>%
+  filter(!is.na(values),
+         region == "Canada (ONT)") %>%
+  group_by(year) %>%
+  summarize(lbs_total = 1000 * sum(values, na.rm = TRUE)) %>%
+  ggplot(aes(year, lbs_total)) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_y_continuous(labels = comma) +
+  labs(x = "",
+       y = "# of pounds",
+       title = "Commercial Fishing",
+       subtitle = "Production amounts have been going down since the 1930's",
+       caption = tt_caption)
+  
+```
+
+
+```{r Visualize2}
+
+fishing %>%
+  filter(!is.na(values),
+         region != "U.S. Total") %>%
+  group_by(year, region) %>%
+  summarize(lbs_total = 1000 * sum(values, na.rm = TRUE)) %>%
+  ggplot(aes(year, lbs_total)) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_y_continuous(labels = comma) +
+  facet_wrap(~region) +
+  labs(x = "",
+       y = "# of pounds",
+       title = "Commercial Fishing",
+       subtitle = "Production amounts have been going down since the 1930's",
+       caption = tt_caption)
+
+```
+
+
+```{r Visualize3}
+
+fishing %>%
+  filter(!is.na(values),
+         region == "Canada (ONT)") %>%
+  mutate(species = fct_lump(species, 9),
+         lbs_total = 1000 * values) %>%
+  filter(species != "Other") %>%
+  ggplot(aes(year, lbs_total, color = species)) +
+  geom_point(alpha = 0.05) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_y_log10(labels = comma) +
+  facet_wrap(~species) +
+  theme(legend.position = "none") +
+  labs(x = "",
+       y = "# of pounds",
+       color = "Species",
+       title = "Canadian Commercial Fishing: Top 9 species by production",
+       subtitle = "Lake Trout and Lake Whitefish are the only ones increasing",
+       caption = tt_caption)
+
+```
+
+```{r Visualize3.5}
+
+fishing %>%
+  filter(!is.na(values),
+         region == "Canada (ONT)") %>% 
+  group_by(year, lake) %>%
+  summarize(lbs_total = 1000 * sum(values, na.rm = TRUE)) %>%
+  ggplot(aes(year, lbs_total, color = lake)) +
+  geom_point(alpha = 0.05) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_y_log10(labels = comma) +
+  #facet_wrap(~lake) +
+  labs(x = "",
+       y = "# of pounds",
+       color = "Lake",
+       title = "Canadian Commercial Fishing",
+       subtitle = "TBD",
+       caption = tt_caption)
+
+```
+
+
+```{r Visualize4}
+
+stocked %>%
+  group_by(year) %>%
+  summarize(lbs_total = 2.2 * sum(weight, na.rm = TRUE)) %>%
+  ggplot(aes(year, lbs_total)) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_y_continuous(labels = comma) +
+  labs(x = "",
+       y = "# of pounds",
+       title = "Commercial Fish Stocking",
+       subtitle = "Heavier weight of stocked fish since the late 1980's",
+       caption = tt_caption)
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_06_08_tidy_tuesday.png",
+  device = "png")
+
+```

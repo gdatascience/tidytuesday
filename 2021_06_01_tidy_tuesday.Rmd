@@ -34,7 +34,7 @@ Dowload the weekly data and make available in the `tt` object.
 
 ```{r Load}
 
-tt <- tt_load("2021-06-01")
+#tt <- tt_load("2021-06-01")
 
 ```
 
@@ -46,7 +46,7 @@ This includes a data dictionary, source, and a link to an article on the data.
 
 ```{r Readme, eval = interactive()}
 
-tt
+#tt
 
 ```
 
@@ -57,8 +57,8 @@ Take an initial look at the format of the data available.
 
 ```{r Glimpse}
 
-tt %>% 
-  map(glimpse)
+#tt %>% 
+#  map(glimpse)
 
 ```
 
