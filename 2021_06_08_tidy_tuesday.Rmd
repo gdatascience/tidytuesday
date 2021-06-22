@@ -88,7 +88,7 @@ Using your processed dataset, create your unique visualization.
 
 ```{r Visualize1}
 
-fishing %>%
+p1 <- fishing %>%
   filter(!is.na(values),
          region == "Canada (ONT)") %>%
   group_by(year) %>%
@@ -102,6 +102,8 @@ fishing %>%
        title = "Commercial Fishing",
        subtitle = "Production amounts have been going down since the 1930's",
        caption = tt_caption)
+
+p1
   
 ```
 
@@ -142,7 +144,7 @@ fishing %>%
   facet_wrap(~species) +
   theme(legend.position = "none") +
   labs(x = "",
-       y = "# of pounds",
+       y = "# of pounds (log scale)",
        color = "Species",
        title = "Canadian Commercial Fishing: Top 9 species by production",
        subtitle = "Lake Trout and Lake Whitefish are the only ones increasing",
@@ -161,9 +163,10 @@ fishing %>%
   geom_point(alpha = 0.05) +
   geom_smooth(method = "loess", se = FALSE) +
   scale_y_log10(labels = comma) +
+  #scale_y_continuous(labels = comma) +
   #facet_wrap(~lake) +
   labs(x = "",
-       y = "# of pounds",
+       y = "# of pounds (log scale)",
        color = "Lake",
        title = "Canadian Commercial Fishing",
        subtitle = "TBD",
@@ -174,7 +177,8 @@ fishing %>%
 
 ```{r Visualize4}
 
-stocked %>%
+p2 <- stocked %>%
+  filter(state_prov == "ON") %>%
   group_by(year) %>%
   summarize(lbs_total = 2.2 * sum(weight, na.rm = TRUE)) %>%
   ggplot(aes(year, lbs_total)) +
@@ -187,7 +191,16 @@ stocked %>%
        subtitle = "Heavier weight of stocked fish since the late 1980's",
        caption = tt_caption)
 
+p2
+
 ```
+
+```{r}
+library(patchwork)
+
+p1 + p2
+```
+
 
 # Save Image
 
