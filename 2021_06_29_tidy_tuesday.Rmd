@@ -72,8 +72,13 @@ animal_rescues <- tt$animal_rescues %>%
          date_of_call = as.Date(date_time_of_call),
          month_of_call = floor_date(date_of_call, unit = "months"),
          month_name_of_call = month(month_of_call, label = TRUE),
-         pandemic = ifelse(month_of_call >= ymd(20200301), "Pandemic", "Other"))
+         pandemic = ifelse(month_of_call >= ymd(20200301), "Pandemic", "Other"),
+         animal = fct_lump(animal_group_parent, 3))
 
+```
+
+```{r}
+summary(animal_rescues$date_of_call)
 ```
 
 
@@ -95,7 +100,7 @@ animal_rescues %>%
        y = "# of animal rescues",
        color = "",
        fill = "",
-       title = "The London Fire Brigade: Animal Rescues",
+       title = "The London Fire Brigade: Animal Rescues 2009 - 2021",
        subtitle = "Are animal rescues on the rise during the pandemic?",
        caption = tt_caption)
   
@@ -107,14 +112,52 @@ animal_rescues %>%
   count(cal_year, month_name_of_call, pandemic) %>%
   ggplot(aes(month_name_of_call, n, color = pandemic, group = cal_year)) +
   geom_line() +
-  scale_color_manual(values = c("gray75", "darkblue")) +
+  scale_color_manual(values = c("gray85", "darkblue")) +
   theme(legend.position = "top") +
   labs(x = "",
        y = "# of animal rescues",
        color = "",
        fill = "",
-       title = "The London Fire Brigade: Animal Rescues",
+       title = "The London Fire Brigade: Animal Rescues 2009 - 2021",
        subtitle = "Are animal rescues on the rise during the pandemic?",
+       caption = tt_caption)
+```
+
+```{r}
+animal_rescues %>%
+  count(month_of_call, animal, pandemic) %>%
+  ggplot(aes(month_of_call, n, color = animal)) +
+  geom_point(alpha = 0.15) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_fill_manual(values = c("gray50", "darkblue")) +
+  facet_wrap(~animal, scale = "free_y") +
+  theme(legend.position = "top") +
+  labs(x = "",
+       y = "# of animal rescues",
+       color = "",
+       fill = "",
+       title = "The London Fire Brigade: Animal Rescues 2009 - 2021",
+       subtitle = "Are animal rescues on the rise during the pandemic?",
+       caption = tt_caption)
+```
+
+
+```{r}
+animal_rescues %>%
+  mutate(cal_year = as.factor(cal_year),
+         line_color = if_else(pandemic == "Pandemic", paste0(animal, pandemic), pandemic)) %>%
+  count(cal_year, month_name_of_call, animal, pandemic, line_color) %>%
+  ggplot(aes(month_name_of_call, n, color = line_color, group = cal_year)) +
+  geom_line(show.legend = FALSE) +
+  facet_wrap(~animal, scale = "free_y") +
+  scale_color_manual(values = c("cyan", "green", "red", "gray85", "violet")) +
+  theme(legend.position = "top") +
+  labs(x = "",
+       y = "# of animal rescues",
+       color = "",
+       fill = "",
+       title = "The London Fire Brigade: Animal Rescues 2009 - 2021",
+       subtitle = "This pandemic is for the dogs! All other animals need more rescues since March 2020.\n*Highlighted lines are during the pandemic",
        caption = tt_caption)
 ```
 
