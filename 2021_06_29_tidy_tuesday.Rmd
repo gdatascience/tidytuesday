@@ -20,6 +20,7 @@ library(tidyverse)
 library(tidytuesdayR)
 library(scales)
 library(lubridate)
+library(prophet) # forecasting
 
 theme_set(theme_light())
 
@@ -159,6 +160,98 @@ animal_rescues %>%
        title = "The London Fire Brigade: Animal Rescues 2009 - 2021",
        subtitle = "This pandemic is for the dogs! All other animals need more rescues since March 2020.\n*Highlighted lines are during the pandemic",
        caption = tt_caption)
+```
+
+# Create a daily forecast
+
+Prophet
+
+```{r}
+daily_animal_rescues <- animal_rescues %>%
+  count(ds = date_of_call, name = "y")
+
+fit_prophet <- prophet(daily_animal_rescues)
+
+future <- make_future_dataframe(fit_prophet, periods = 12, freq = 'month')
+fcast_prophet <- predict(fit_prophet, future)
+
+fcast_prophet %>%
+  ggplot(aes(ds, yhat,
+             color = ifelse(
+               ds <= ymd("2021-05-31"), "actual", "forecast"
+             ))) +
+  geom_ribbon(
+    data = fcast_prophet %>%
+      filter(ds > today()),
+    aes(ymin = yhat_lower, ymax = yhat_upper),
+    fill = "gray75",
+    color = NA,
+    size = 0,
+    alpha = 0.8
+  ) +
+  geom_line() +
+  scale_color_manual(values = c("gray50", "red")) +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "",
+    y = "# of animal rescues",
+    color = "",
+    title = "The London Fire Brigade: Animal Rescues 2009 - 2021",
+    subtitle = "Forecast created using a Prophet model",
+    caption = tt_caption
+  )
+```
+
+# Create a monthly forecast
+
+```{r}
+monthly_animal_rescues <- animal_rescues %>%
+  count(ds = month_of_call, name = "y")
+
+fit_prophet <- prophet(monthly_animal_rescues)
+
+future <- make_future_dataframe(fit_prophet, periods = 12, freq = 'month')
+fcast_prophet <- predict(fit_prophet, future)
+
+fcast_prophet %>%
+  ggplot(aes(ds, yhat,
+             color = ifelse(
+               ds <= ymd("2021-05-31"), "actual", "forecast"
+             ))) +
+  geom_ribbon(
+    data = fcast_prophet %>%
+      filter(ds > today()),
+    aes(ymin = yhat_lower, ymax = yhat_upper),
+    fill = "gray75",
+    color = NA,
+    size = 0,
+    alpha = 0.8
+  ) +
+  geom_line() +
+  scale_color_manual(values = c("gray50", "red")) +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "",
+    y = "# of animal rescues",
+    color = "",
+    title = "The London Fire Brigade: Animal Rescues 2009 - 2021",
+    subtitle = "Forecast created using a Prophet model",
+    caption = tt_caption
+  )
+```
+
+# Conclusion 
+
+Was it the pandemic or just a trend that started in 2018? Or is there a 4 year cycle?
+
+# Other ideas
+
+### Do forecast by animals
+
+### Add forecast to yearly lines plot
+
+```{r}
+
 ```
 
 
