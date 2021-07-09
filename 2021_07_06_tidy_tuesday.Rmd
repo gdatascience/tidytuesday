@@ -1,0 +1,131 @@
+---
+title: "TidyTemplate"
+date: 2021-07-08
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Wikipedia  |  Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-07-06")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+holidays <- tt$holidays
+
+```
+
+
+```{r}
+library(tidytext)
+
+other_stop_words <- tibble(word = c("date", "effective", "day", "july", 
+                                    "18", "1"))
+
+tokens <- holidays %>%
+  filter(!is.na(event_commemorated_and_notes)) %>%
+  unnest_tokens(word, event_commemorated_and_notes) %>%
+  count(word, sort = TRUE) %>%
+  ungroup() %>%
+  anti_join(stop_words) %>%
+  anti_join(other_stop_words)
+  
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+set.seed(1234) # for reproducibility
+
+library(wordcloud)
+
+pal <- brewer.pal(8,"Dark2")
+
+tokens %>% 
+  with(wordcloud(word, n, random.order = FALSE, max.words = 50, 
+                 scale=c(3,0.75), rot.per=0.35, colors=pal))
+  
+```
+
+```{r}
+
+set.seed(5678) # for reproducibility
+
+library(wordcloud2)
+
+tokens %>%
+  wordcloud2(size=1.6, color = "random-light", backgroundColor = "black")
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_07_06_tidy_tuesday.png",
+  device = "png")
+
+```
