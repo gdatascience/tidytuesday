@@ -1,0 +1,137 @@
+---
+title: "TidyTemplate"
+date: 2021-07-23
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(lubridate)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Drought Monitor  |  Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-07-20")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+drought <- tt$drought %>%
+  mutate(map_date = ymd(map_date),
+         year = year(map_date),
+         drought_level = case_when(
+           drought_lvl == "D0" ~ "Abnormally Dry",
+           drought_lvl == "D1" ~ "Moderate Drought",
+           drought_lvl == "D2" ~ "Severe Drought",
+           drought_lvl == "D3" ~ "Extreme Drought",
+           drought_lvl == "D4" ~ "Exceptional Drought",
+           TRUE ~ "No Drought"
+  ),
+  drought_nbr = case_when(
+    drought_lvl == "D0" ~ 1,
+    drought_lvl == "D1" ~ 2,
+    drought_lvl == "D2" ~ 3,
+    drought_lvl == "D3" ~ 4,
+    drought_lvl == "D4" ~ 5,
+    TRUE ~ 0
+  ))
+
+glimpse(drought)
+
+```
+
+```{r}
+drought %>%
+  count(stat_fmt)
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+library(ggstream)
+
+drought %>%
+  filter(state_abb == "CA",
+         drought_lvl != "None") %>%
+  group_by(map_date, drought_lvl) %>%
+  arrange(desc(map_date), drought_lvl) %>%
+  mutate(area_total_2 = case_when(drought_lvl == "D4" ~ area_total,
+                                  TRUE ~ area_total - lead(area_total))) %>%
+  ungroup() %>% View()
+  drop_na() %>%
+  group_by(map_date, drought_level) %>% 
+  summarise(total_area = sum(area_total_2)) %>% View()
+  ungroup() %>%
+  ggplot(aes(map_date, total_area, fill=drought_level)) +
+  geom_stream() +
+  labs(title="Drought Conditions in the United States")
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "My TidyTuesday Plot.png",
+  device = "png")
+
+```
