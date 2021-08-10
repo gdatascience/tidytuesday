@@ -77,7 +77,8 @@ Explore the data and process it into a nice format for plotting! Access each dat
 ```{r Wrangle}
 
 olympics <- tt$olympics %>%
-  mutate(team = case_when(
+  mutate(decade = 10 * (year %/% 10),
+         team = case_when(
       str_detect(team, "Soviet Union") ~ "Russia",
       str_detect(team, "Russia") ~ "Russia",
       str_detect(team, "Germany") ~ "Germany",
@@ -161,11 +162,35 @@ olympics %>%
 
 ```
 
+```{r Visualize4}
+
+library(gganimate)
+
+olympics %>%
+  filter(!is.na(height),
+         !is.na(weight)) %>%
+  ggplot(aes(weight, height, color = sex)) + 
+  geom_point(alpha = 0.25) + 
+  #facet_wrap(~decade) + 
+  scale_color_manual(values = c("pink", "lightblue")) +
+  transition_states(decade,
+                    transition_length = 2,
+                    state_length = 1) +
+  labs(title = 'Year: {closest_state}', 
+       x = 'Weight', 
+       y = 'Height')
+
+```
+
+
 # Save Image
 
 Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
 
 ```{r}
+
+anim_save(filename = "2021_07_27_tidy_tuesday.gif", 
+          animation = last_animation()) 
 
 # This will save your most recent plot
 ggsave(

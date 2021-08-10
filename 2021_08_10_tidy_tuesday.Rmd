@@ -1,6 +1,6 @@
 ---
 title: "TidyTemplate"
-date: 2021-08-09
+date: 2021-08-10
 output: html_output
 ---
 
@@ -22,7 +22,7 @@ library(scales)
 
 theme_set(theme_light())
 
-tt_caption <- "Source: TBD  |  Analysis: Tony Galvan (@GDataScience1)"
+tt_caption <- "Source: Bureau of Economic Analysis  |  Analysis: Tony Galvan (@GDataScience1)"
 
 ```
 
@@ -66,7 +66,24 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
+investment <- tt$investment
 
+glimpse(investment)
+
+```
+
+
+```{r}
+
+summary(investment$year)
+
+```
+
+
+```{r}
+
+investment %>%
+  count(meta_cat, sort = TRUE)
 
 ```
 
@@ -77,8 +94,38 @@ Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
 
-
+investment %>%
+  filter(!str_detect(meta_cat, "Total")) %>%
+  group_by(meta_cat, year) %>%
+  summarize(total_inv = sum(gross_inv)) %>%
+  ggplot(aes(year, total_inv)) +
+  geom_line() +
+  scale_y_continuous(labels = dollar_format()) +
+  facet_wrap(~meta_cat, scales = "free_y")
   
+```
+
+```{r}
+
+investment %>%
+  filter(group_num == 1) %>%
+  add_count(year, wt = gross_inv, name = "total_inv") %>%
+  mutate(pct_inv = gross_inv / total_inv,
+         category = case_when(
+           str_detect(category, "digital") ~ "Digital",
+           str_detect(category, "social") ~ "Social",
+           TRUE ~ "Basic"
+         ),
+         category = fct_reorder(category, pct_inv)) %>%
+  ggplot(aes(year, pct_inv, fill = category)) +
+  geom_area() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(x = "",
+       y = "% of total investment",
+       title = "BEA Infrastructure Investment",
+       subtitle = "Percentage of total investment in digital and social infrastructure has been increasing",
+       caption = tt_caption)
+
 ```
 
 # Save Image
