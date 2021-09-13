@@ -1,0 +1,146 @@
+---
+title: "TidyTemplate"
+date: 2021-09-13
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Ergast API  |  Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-09-07")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+driver_results_df <- tt$driver_standings %>% 
+  left_join(tt$races, by = "raceId") %>% 
+  rename(driver_url = url) %>% 
+  left_join(tt$drivers, by = "driverId")
+  
+glimpse(driver_results_df)
+
+```
+
+```{r}
+summary(driver_results_df$date)
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+driver_results_df %>%
+  mutate(nationality = fct_lump(nationality, 9)) %>%
+  filter(nationality != "Other") %>%
+  add_count(year, wt = points, name = "total_year_points") %>%
+  group_by(year, nationality, total_year_points) %>%
+  summarize(year_points = sum(points)) %>%
+  ungroup() %>%
+  mutate(pct_points = year_points/total_year_points,
+         nationality = fct_reorder(nationality, -pct_points)) %>%
+  ggplot(aes(year, pct_points, color = nationality)) +
+  geom_line(show.legend = FALSE) +
+  scale_y_continuous(labels = percent_format()) +
+  facet_wrap(~nationality) +
+  labs(x = "",
+       y = "% of yearly points",
+       title = "Formula One Races",
+       subtitle = "Top 9 Nationalities by Percentage of Yearly Points",
+       caption = tt_caption)
+  
+```
+
+```{r Visualize2}
+
+driver_results_df %>%
+  count(driverId, wt = points, name = "driver_points", sort = TRUE) %>%
+  top_n(10, wt = driver_points) %>%
+  left_join(driver_results_df, by = "driverId") %>%
+  arrange(date) %>%
+  group_by(driverId) %>%
+  mutate(cumpoints = cumsum(points)) %>%
+  ungroup() %>%
+  mutate(driver_name = paste0(forename, " ", surname),
+         driver_name = fct_reorder(driver_name, -driver_points)) %>%
+  ggplot(aes(date, cumpoints, color = driver_name)) +
+  geom_step() +
+  scale_y_continuous(labels = comma_format()) +
+  labs(x = "",
+       y = "# of points",
+       color = "",
+       title = "Formula One Top 10 Point Earners",
+       subtitle = "All but Schumacher started racing after 2000",
+       caption = tt_caption)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_09_07_tidy_tuesday.png",
+  device = "png")
+
+```
