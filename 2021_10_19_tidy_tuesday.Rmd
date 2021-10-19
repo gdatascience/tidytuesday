@@ -18,6 +18,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: BigPumpkins.com  |  Analysis: Tony Galvan (@GDataScience1)"
 
 ```
 
@@ -61,7 +66,32 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
+pumpkins <- tt$pumpkins %>%
+  separate(id, sep = "-", into = c("year", "type"), convert = TRUE) %>%
+  mutate(type = case_when(
+      type == "F" ~ "Field Pumpkin", 
+      type == "P" ~ "Giant Pumpkin", 
+      type == "S" ~ "Giant Squash", 
+      type == "W" ~ "Giant Watermelon", 
+      type == "L" ~ "Long Gourd", 
+      type== "T" ~ "Tomato",
+      TRUE ~ "Unknown"),
+    weight_lbs = parse_number(weight_lbs),
+    entry_type = case_when(
+      place == "EXH" ~ "Exhibition",
+      place == "DMG" ~ "Damaged",
+      TRUE ~ "Official"),
+    place = parse_number(place),
+    ott = parse_number(ott))
 
+glimpse(pumpkins)
+
+```
+
+```{r}
+
+pumpkins %>%
+  count(year)
 
 ```
 
@@ -72,7 +102,17 @@ Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
 
-
+pumpkins %>%
+  mutate(type = fct_reorder(type, -weight_lbs)) %>%
+  ggplot(aes(factor(year), weight_lbs, fill = type, group = year)) +
+  geom_violin(show.legend = FALSE) +
+  facet_wrap(~type, scales = "free_y") +
+  scale_y_log10(labels = comma_format(accuracy = 1)) +
+  labs(x = "",
+       y = "Weight (in lbs)",
+       title = "Giant Pumpkin Commonwealth (GPC)",
+       subtitle = "Weight by type: 2013 - 2021",
+       caption = tt_caption)
   
 ```
 
