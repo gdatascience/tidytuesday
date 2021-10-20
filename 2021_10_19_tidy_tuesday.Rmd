@@ -125,6 +125,8 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 # This will save your most recent plot
 ggsave(
   filename = "2021_10_19_tidy_tuesday.png",
-  device = "png")
+  device = "png",
+  width = 12,
+  height = 6)
 
 ```
