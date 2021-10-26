@@ -116,6 +116,26 @@ pumpkins %>%
   
 ```
 
+# Look at Long Gourd data
+```{r}
+
+pumpkins %>%
+  filter(type == "Long Gourd") %>%
+  mutate(country = fct_lump(country, 1),
+         gpc_site = fct_lump(gpc_site, 2),
+         seed_mother = fct_lump(seed_mother, 2),
+         pollinator_father = fct_lump(pollinator_father, 2),
+         state_prov = fct_lump(state_prov, 3),
+         place = ifelse(place %in% c(seq(1:100)), "top", "other")) %>%
+  ggplot(aes(factor(year), weight_lbs)) +
+  geom_violin() +
+  #geom_boxplot(outlier.shape = NA) +
+  geom_jitter(aes(color = state_prov), alpha = 0.25, width = 0.15) +
+  scale_y_log10() +
+  facet_wrap(~country)
+
+```
+
 # Save Image
 
 Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 

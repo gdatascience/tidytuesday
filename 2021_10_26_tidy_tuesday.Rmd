@@ -1,0 +1,119 @@
+---
+title: "TidyTemplate"
+date: 2021-10-26
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: BjnNowak-Github Repo  | Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+#tt <- tt_load("2021-10-26")
+#tt <- tt_load(2021, week = 44)
+
+ultra_rankings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-26/ultra_rankings.csv')
+race <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-10-26/race.csv')
+
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+#tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+#tt %>% 
+#  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+race_rankings <- ultra_rankings %>%
+  left_join(race, by = "race_year_id")
+
+glimpse(race_rankings)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+library(ggtext)
+
+race_rankings %>% 
+  filter(!is.na(gender)) %>%
+  mutate(year = lubridate::year(date)) %>%
+  count(year, gender) %>%
+  ggplot(aes(factor(year), n, fill = gender, alpha = ifelse(year >= 2020, TRUE, FALSE))) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = c("#6F8AB7", "#FF674D")) +
+  scale_alpha_manual(values = c(0.65, 1)) +
+  theme(plot.subtitle = element_markdown(lineheight = 1.1),
+        legend.position = "none") + 
+  labs(x = "",
+       y = "# of participants",
+       title = "Ultra Trail Running",
+       subtitle = "2020 - 2021: COVID impacted both <b style='color:#6F8AB7'>MALE</b> and <b style='color:#FF674D'>FEMALE</b> participation",
+       caption = tt_caption)
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_10_26_tidy_tuesday.png",
+  device = "png")
+
+```
