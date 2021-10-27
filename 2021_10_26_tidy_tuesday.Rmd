@@ -72,7 +72,9 @@ Explore the data and process it into a nice format for plotting! Access each dat
 ```{r Wrangle}
 
 race_rankings <- ultra_rankings %>%
-  left_join(race, by = "race_year_id")
+  left_join(race, by = "race_year_id") %>%
+  mutate(year = lubridate::year(date),
+         speed = distance / ((time_in_seconds / 60) / 60))
 
 glimpse(race_rankings)
 
@@ -89,7 +91,6 @@ library(ggtext)
 
 race_rankings %>% 
   filter(!is.na(gender)) %>%
-  mutate(year = lubridate::year(date)) %>%
   count(year, gender) %>%
   ggplot(aes(factor(year), n, fill = gender, alpha = ifelse(year >= 2020, TRUE, FALSE))) +
   geom_col(position = "dodge") +
@@ -103,6 +104,60 @@ race_rankings %>%
        subtitle = "2020 - 2021: COVID impacted both <b style='color:#6F8AB7'>MALE</b> and <b style='color:#FF674D'>FEMALE</b> participation",
        caption = tt_caption)
   
+```
+
+```{r}
+
+race_rankings %>%
+  count(runner) %>%
+  top_n(5, wt = n) %>%
+  left_join(race_rankings, by = "runner") %>%
+  count(year, runner) %>%
+  #mutate(runner = fct_reorder(runner, -n)) %>%
+  ggplot(aes(year, n, color = runner)) +
+  geom_smooth(method = "loess", se = FALSE)
+
+```
+
+```{r}
+
+race_rankings %>%
+  count(runner, wt = distance, sort = TRUE) %>%
+  top_n(5, wt = n) %>%
+  left_join(race_rankings, by = "runner") %>%
+  count(year, runner, wt = distance) %>%
+  #mutate(runner = fct_reorder(runner, -n)) %>%
+  ggplot(aes(year, n, color = runner)) +
+  #geom_line()
+  geom_smooth(method = "loess", se = FALSE)
+
+```
+
+```{r}
+
+race_rankings %>%
+  filter(!is.na(distance), 
+         distance > 0,
+         !is.na(time_in_seconds),
+         time_in_seconds > 0,
+         !is.na(gender)) %>%
+  mutate(speed = distance / ((time_in_seconds / 60) / 60)) %>%
+  filter(speed <= 20) %>%
+  ggplot(aes(factor(year), speed, fill = gender, group = paste0(year,gender), 
+             alpha = ifelse(year == 2020, TRUE, FALSE))) +
+  geom_violin(position = "dodge", draw_quantiles = 0.5,
+              scale = "area", trim = TRUE, adjust = 0.75) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_fill_manual(values = c("#6F8AB7", "#FF674D")) +
+  scale_alpha_manual(values = c(0.65, 1)) +
+  theme(plot.subtitle = element_markdown(lineheight = 1.1),
+        legend.position = "none") + 
+  labs(x = "",
+       y = "Speed (MPH)",
+       title = "Ultra Trail Running Speeds",
+       subtitle = "2020: <b style='color:#6F8AB7'>MALES</b> finally bridged the gender gap and had a higher mean speed than <b style='color:#FF674D'>FEMALES</b>",
+       caption = tt_caption)
+
 ```
 
 # Save Image
