@@ -155,10 +155,48 @@ race_rankings %>%
   labs(x = "",
        y = "Speed (MPH)",
        title = "Ultra Trail Running Speeds",
-       subtitle = "2020: <b style='color:#6F8AB7'>MALES</b> finally bridged the gender gap and had a higher mean speed than <b style='color:#FF674D'>FEMALES</b>",
+       subtitle = "2020: <b style='color:#6F8AB7'>MALES</b> finally bridged the gender gap and had a higher median speed than <b style='color:#FF674D'>FEMALES</b>",
        caption = tt_caption)
 
 ```
+
+```{r}
+
+race_rankings %>%
+  filter(!is.na(gender),
+         !is.na(age),
+         age < 100,
+         age > 5) %>%
+  ggplot(aes(factor(year), age, fill = gender, group = paste0(year,gender))) +
+  #geom_boxplot(position = "dodge") +
+  geom_violin(position = "dodge", draw_quantiles = 0.5,
+              scale = "area", trim = TRUE, adjust = 0.75) +
+  scale_fill_manual(values = c("#6F8AB7", "#FF674D")) +
+  scale_alpha_manual(values = c(0.65, 1)) +
+  theme(plot.subtitle = element_markdown(lineheight = 1.1),
+        legend.position = "none") + 
+  labs(x = "",
+       y = "Age",
+       title = "Ultra Trail Running Ages",
+       subtitle = "The median age has been decreasing since 2012 for both <b style='color:#6F8AB7'>MALES</b> and <b style='color:#FF674D'>FEMALES</b>",
+       caption = tt_caption)
+
+```
+
+```{r}
+
+race_rankings %>%
+  filter(!is.na(gender),
+         !is.na(age),
+         age < 100,
+         age > 5) %>%
+  group_by(year, gender) %>%
+  summarize(median_age = median(age)) %>%
+  ggplot(aes(year, median_age, color = gender)) +
+  geom_line()
+
+```
+
 
 # Save Image
 
