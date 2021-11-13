@@ -18,6 +18,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: afrilearndata  |  Analysis: Tony Galvan (@GDataScience1)"
 
 ```
 
@@ -27,19 +32,11 @@ Dowload the weekly data and make available in the `tt` object.
 
 ```{r Load}
 
-tt <- tt_load("2021-11-09")
+#tt <- tt_load("2021-11-09")
 
-```
-
-
-# Readme
-
-Take a look at the readme for the weekly data to get insight on the dataset.
-This includes a data dictionary, source, and a link to an article on the data.
-
-```{r Readme, eval = interactive()}
-
-tt
+#remotes::install_github("afrimapr/afrilearndata")
+    
+library(afrilearndata)
 
 ```
 
@@ -50,31 +47,127 @@ Take an initial look at the format of the data available.
 
 ```{r Glimpse}
 
-tt %>% 
-  map(glimpse)
+library(afrilearndata)
+library(sf)
+
+# polygons
+plot(sf::st_geometry(africountries))
 
 ```
 
-# Wrangle
+```{r}
 
-Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+# lines
+plot(sf::st_geometry(afrihighway))
 
-```{r Wrangle}
+```
 
+
+```{r}
+
+# points
+plot(sf::st_geometry(africapitals))
+
+```
+
+
+
+```{r}
+
+library(afrilearndata)
+
+# install.packages("tmap") # if not already installed
+library(tmap)
+
+tm_shape(africountries) +
+     tm_borders("grey", lwd = .5) +
+     tm_text("name_fr", auto.placement=FALSE, remove.overlap=FALSE, just='centre', col='red4', size=0.7 ) 
+
+```
+
+
+```{r}
+
+# points
+plot(sf::st_geometry(afriairports))
+
+```
+
+
+```{r}
+
+#install.packages("mapview") # if not already installed
+
+library(mapview)
+mapview::mapview(africountries, zcol="name")
+#here to show all airports on the continent
+mapview(afriairports, zcol='type', label='name', cex=2)
 
 
 ```
 
 
-# Visualize
+```{r}
 
-Using your processed dataset, create your unique visualization.
+str(afriairports)
 
-```{r Visualize}
-
-
-  
 ```
+
+```{r}
+
+glimpse(afriairports)
+
+```
+
+
+```{r}
+
+df_afriairports <- tibble(afriairports)
+
+glimpse(df_afriairports)
+
+```
+
+```{r}
+
+df_afriairports %>%
+  count(type) %>%
+  mutate(type = str_to_title(str_remove(type, "_airport"))) %>%
+  ggplot(aes(n, type, fill = type)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("#BA2D0B", "#AB92BF", "#3587A4")) +
+  scale_x_log10() +
+  labs(x = "# of airports",
+       y = "",
+       title = "African Airports",
+       caption = tt_caption)
+
+```
+
+
+```{r}
+
+library(ggtext)
+
+df_afriairports %>%
+  ggplot() +
+  borders("world", fill = "grey95", xlim = c(-30, 60), ylim = c(-40, 35)) +
+  geom_sf(aes(geometry = geometry, 
+              color = type, 
+              size = fct_rev(type)),
+          alpha = 0.3) +
+  scale_color_manual(values = c("#BA2D0B", "#AB92BF", "#3587A4")) +
+  scale_size_manual(values = c(0.5, 5, 10)) +
+  theme_void() +
+  theme(legend.position = "none",
+        plot.subtitle = element_markdown()) +
+  labs(title = "African Airports",
+       subtitle = "<b style='color:#3587A4'>Small</b> airports are bunched up in the southern part of the continent<br><b style='color:#BA2D0B'>Large</b> airports are mostly by the coasts<br><b style='color:#AB92BF'>Medium</b> airports are spread all over <br><i style='font-size:8pt'>**size of marks corresponds to size of airport</i>",
+       color = "",
+       caption = tt_caption)
+
+```
+
 
 # Save Image
 
@@ -84,7 +177,7 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 
 # This will save your most recent plot
 ggsave(
-  filename = "My TidyTuesday Plot.png",
+  filename = "2021_11_09_tidy_tuesday.png",
   device = "png")
 
 ```
