@@ -2,6 +2,8 @@
 title: "TidyTemplate"
 date: 2021-11-29
 output: html_output
+editor_options: 
+  chunk_output_type: console
 ---
 
 # TidyTuesday
@@ -18,6 +20,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(tidytuesdayR)
+library(scales)
+library(lubridate)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: ESPN Cricinfo  |  Analysis: Tony Galvan (@GDataScience1)"
 
 ```
 
@@ -61,7 +69,36 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
+matches <- tt$matches %>%
+  mutate(match_date_original = match_date) %>%
+  separate(match_date, 
+           into = c("match_month_day", "match_year"), 
+           sep = ", ", 
+           convert = TRUE,
+           remove = TRUE) %>%
+  separate(match_month_day, 
+           into = c("match_month", "match_day"), 
+           sep = " ") %>%
+  mutate(match_day_num = parse_number(match_day),
+         match_date = mdy(paste0(match_month, "-", match_day_num, "-", match_year))) %>%
+  select(-match_day)
 
+glimpse(matches)
+
+```
+
+
+```{r}
+
+matches %>%
+  filter(str_detect(match_date_original, "-")) %>%
+  select(24:28)
+
+```
+
+```{r}
+
+summary(matches$match_date)
 
 ```
 
@@ -72,8 +109,38 @@ Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
 
+matches %>%
+  mutate(winner = fct_lump(winner, 8, other_level = "All others")) %>%
+  count(winner, sort = TRUE) %>%
+  mutate(winner = fct_reorder(winner, n)) %>%
+  ggplot(aes(n, winner, fill = winner)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of matches won",
+       y = "",
+       title = "Cricket: One Day International (ODI)",
+       subtitle = "Teams with the most wins",
+       caption = tt_caption)
 
-  
+```
+
+
+```{r Visualize}
+matches %>%
+  mutate(winner = fct_lump(winner, 8, other_level = "All others")) %>%
+  count(match_year, winner, sort = TRUE) %>%
+  mutate(winner = fct_reorder(winner, -n)) %>%
+  ggplot(aes(match_year, n, color = winner)) +
+  geom_line(alpha = 0.25) +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~winner) + #, scales = "free_y") +
+  scale_x_continuous(breaks = c(1996, 1999, 2002, 2005)) +
+  theme(legend.position = "none") +
+  labs(x = "",
+       y = "# of matches won",
+       title = "Cricket: One Day International (ODI) Matches (1996 - 2005)",
+       subtitle = "Australia, New Zealand, and England improved during this time",
+       caption = tt_caption)
+
 ```
 
 # Save Image
