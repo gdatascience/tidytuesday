@@ -88,6 +88,34 @@ glimpse(matches)
 ```
 
 
+```{r Wrangle}
+
+team_matches <- matches %>%
+  count(team = team1) %>%
+  bind_rows(matches %>%
+              count(team = team2)) %>%
+  count(team, wt = n, name = "total_matches")
+  
+
+glimpse(team_matches)
+
+```
+
+
+```{r Wrangle}
+
+team_year_matches <- matches %>%
+  count(team = team1, match_year) %>%
+  bind_rows(matches %>%
+              count(team = team2, match_year)) %>%
+  count(team, match_year, wt = n, name = "total_matches")
+  
+
+glimpse(team_year_matches)
+
+```
+
+
 ```{r}
 
 matches %>%
@@ -125,6 +153,31 @@ matches %>%
 
 
 ```{r Visualize}
+
+matches %>%
+  count(winner, name = "wins") %>%
+  inner_join(team_matches, by = c("winner" = "team")) %>%
+  mutate(winner = fct_lump(winner, 8, w = wins, other_level = "All others")) %>%
+  group_by(winner) %>%
+  summarize(total_wins = sum(wins),
+            grand_total_matches = sum(total_matches),
+            win_pct = total_wins / grand_total_matches) %>%
+  mutate(winner = fct_reorder(winner, win_pct)) %>%
+  ggplot(aes(win_pct, winner, fill = winner)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(labels = percent_format()) +
+  labs(x = "# of matches won",
+       y = "",
+       title = "Cricket Matches",
+       subtitle = "Teams with the most wins",
+       caption = tt_caption)
+
+```
+
+
+
+```{r Visualize}
+
 matches %>%
   mutate(winner = fct_lump(winner, 8, other_level = "All others")) %>%
   count(match_year, winner, sort = TRUE) %>%
@@ -137,8 +190,35 @@ matches %>%
   theme(legend.position = "none") +
   labs(x = "",
        y = "# of matches won",
-       title = "Cricket: One Day International (ODI) Matches (1996 - 2005)",
-       subtitle = "Australia, New Zealand, and England improved during this time",
+       title = "Cricket Matches (1996 - 2005)",
+       subtitle = "Australia, New Zealand, and England increased the number of wins",
+       caption = tt_caption)
+
+```
+
+
+```{r}
+
+matches %>%
+  count(winner, match_year, name = "wins") %>%
+  inner_join(team_year_matches, by = c("winner" = "team", "match_year" = "match_year")) %>%
+  mutate(winner = fct_lump(winner, 8, w = wins, other_level = "All others")) %>%
+  group_by(winner, match_year) %>%
+  summarize(total_wins = sum(wins),
+            grand_total_matches = sum(total_matches),
+            win_pct = total_wins / grand_total_matches) %>%
+  mutate(winner = fct_reorder(winner, win_pct)) %>%
+  ggplot(aes(match_year, win_pct, color = winner)) +
+  geom_line(alpha = 0.25) +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~winner) + #, scales = "free_y") +
+  scale_x_continuous(breaks = c(1996, 1999, 2002, 2005)) +
+  scale_y_continuous(labels = percent_format()) +
+  theme(legend.position = "none") +
+  labs(x = "",
+       y = "% of matches won",
+       title = "Cricket: Matches (1996 - 2005)",
+       subtitle = "Australia, New Zealand, India, Pakistan, and England improved during this time",
        caption = tt_caption)
 
 ```
