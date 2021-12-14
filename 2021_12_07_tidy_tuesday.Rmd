@@ -1,0 +1,195 @@
+---
+title: "TidyTemplate"
+date: 2021-12-09
+output: html_output
+editor_options: 
+  chunk_output_type: console
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: World Spiders Database  |  Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-12-07")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+spiders <-tt$spiders
+
+spider_distribution <- spiders %>%
+  mutate(country = str_remove_all(distribution, " \\s*\\([^\\)]+\\)")) %>%
+  mutate(country = str_split(country, pattern = ", ")) %>%
+  unnest(country)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+spiders %>%
+  count(year, sort = TRUE) %>%
+  ggplot(aes(year, n)) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(x = "",
+       y = "# of species",
+       title = "Spider Species",
+       caption = tt_caption)
+
+```
+
+
+```{r Visualize}
+
+spiders %>%
+  mutate(family = fct_lump(family, 10)) %>%
+  filter(family != "Other") %>%
+  count(family, sort = TRUE) %>%
+  mutate(family = fct_reorder(family, n)) %>%
+  ggplot(aes(n, family, fill = family)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of species",
+       y = "Family",
+       title = "Spider Families",
+       subtitle = "Top 10 families with the most species",
+       caption = tt_caption)
+
+```
+
+
+```{r Visualize}
+
+spiders %>%
+  mutate(genus = fct_lump(genus, 10)) %>%
+  filter(genus != "Other") %>%
+  count(genus, sort = TRUE) %>%
+  mutate(genus = fct_reorder(genus, n)) %>%
+  ggplot(aes(n, genus, fill = genus)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of species",
+       y = "Genus",
+       title = "Spider Genera",
+       subtitle = "Top 10 genera with the most species",
+       caption = tt_caption)
+
+```
+
+
+```{r Visualize}
+
+spider_distribution %>%
+  mutate(country = fct_lump(country, 10)) %>%
+  filter(country != "Other") %>%
+  count(country, sort = TRUE) %>%
+  mutate(country = fct_reorder(country, n)) %>%
+  ggplot(aes(n, country, fill = country)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of species",
+       y = "",
+       title = "Spider Distribution",
+       subtitle = "China has more than 5000 species. Australia, Brazil, and USA have 3000 to 4000 species.",
+       caption = tt_caption)
+
+```
+
+
+```{r Visualize}
+
+world <- map_data("world") %>%
+  left_join(spider_distribution %>%
+              count(country, name = "total_species"), 
+            by = c("region" = "country")) %>%
+  filter(region != "Antarctica")
+  
+ggplot() +
+  geom_map(
+    data = world, 
+    map = world, 
+    aes(long, lat, map_id = region, fill = total_species), 
+    size = 0.1) +
+  #scale_fill_gradientn(colors = heat.colors(6)) +
+  scale_fill_viridis_c(
+    option = "plasma", 
+    breaks = c(1000, 2000, 3000, 4000, 5000),
+    labels = c("1K", "2K", "3K", "4K", "5K")) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  coord_fixed() +
+  labs(fill = "# of species",
+       title = "Spider Distribution",
+       subtitle = "China has more than 5000 species.\nAustralia, Brazil, and USA have 3000 to 4000 species.\nEvery other country has ~2000 or less",
+       caption = tt_caption)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2021_12_07_tidy_tuesday.png",
+  device = "png")
+
+```
