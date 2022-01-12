@@ -30,6 +30,34 @@ iot <- res_stocks$interest_over_time %>%
 scale_factor <- mean(res_stocks$interest_over_time$hits) / mean(res_acorns$interest_over_time$hits)
 ```
 
+```{r}
+iot %>%
+  ggplot(aes(x = date)) +
+  geom_smooth(aes(y = acorns), method = "loess", se = FALSE, color = "#74c947") +
+  geom_smooth(aes(y = stocks), method = "loess", se = FALSE, color = "#9471f6") +
+  theme(plot.title = element_markdown()) +
+  labs(x = "",
+       y = "Interest (relative to peak for the time period)",
+       title = "Google Trends (2018 - 2021): <span style = 'color:#74c947;'><b>Acorns</b></span> vs. <span style = 'color:#9471f6;'><b>Stock Market</b></span>",
+       subtitle = "Web searches peak for both around mid-2020",
+       caption = "Source: Google Trends  |  Analysis: Tony Galvan (agalvan@acorns.com)")
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_01_04_tidy_tuesday2.png",
+  device = "png")
+
+```
+
+
 
 ```{r visualize}
 iot %>%
@@ -45,7 +73,6 @@ iot %>%
     axis.text.y.right=element_text(color="#9471f6"),
     plot.title = element_markdown()
   ) +
-  #ggthemes::theme_clean(base_size = 14, base_family = "Avenir Next") +
   labs(x = "",
        title = "Google Trends (2018 - 2021): <span style = 'color:#74c947;'><b>Acorns</b></span> vs. <span style = 'color:#9471f6;'><b>Stock Market</b></span>",
        subtitle = "Web searches peak for both around mid-2020",
