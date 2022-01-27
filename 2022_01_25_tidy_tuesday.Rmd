@@ -1,0 +1,183 @@
+---
+title: "TidyTemplate"
+date: 2022-01-26
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Kaggle by way of Board Games Geek  |  Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-01-25")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+ratings <- tt$ratings
+
+details <- tt$details
+
+games <- details %>%
+  left_join(ratings %>% select(-num), by = "id") %>%
+  #filter(yearpublished > 1950) %>%
+  mutate(decade = yearpublished - (yearpublished %% 10),
+         high_quality = ifelse(bayes_average >= 6, 1, 0))
+```
+
+```{r EDA}
+summary(games$yearpublished)
+```
+
+```{r EDA}
+summary(games$bayes_average)
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+games %>%
+  count(decade) %>%
+  top_n(10, wt = n) %>%
+  mutate(decade = ifelse(decade == 0, "Unknown", paste0(decade, "'s")),
+         decade = fct_reorder(decade, n)) %>%
+  ggplot(aes(n, decade, fill = decade)) +
+  geom_col(show.legend = FALSE) +
+  #scale_x_log10() +
+  labs(x = "# of board games published (log scale)",
+       y = "",
+       title = "Board Games",
+       subtitle = "Decades with the most board games published",
+       caption = tt_caption)
+```
+
+
+```{r Visualize}
+games %>%
+  add_count(decade) %>%
+  filter(n > 25,
+         bayes_average > 0) %>%
+  mutate(decade = ifelse(decade == 0, "Unknown", paste0(decade, "'s")),
+         decade = fct_reorder(decade, bayes_average)) %>%
+  ggplot(aes(bayes_average, decade, fill = decade)) +
+  geom_boxplot(show.legend = FALSE)
+```
+
+
+```{r Visualize}
+library(tidytext)
+library(tidylo)
+
+blacklist_words <- c("10", "236", "235", "alpha", "beta", "omicron", "epsilon", "nu", "iota", "sigma", "lambda")
+
+games_lo <- games %>%
+  unnest_tokens(word, description) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!word %in% blacklist_words) %>%
+  count(high_quality, word) %>%
+  bind_log_odds(high_quality, word, n) %>%
+  arrange(-log_odds_weighted)
+
+games_lo %>%
+  group_by(high_quality) %>%
+  top_n(15) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, log_odds_weighted)) %>%
+  ggplot(aes(log_odds_weighted, word, fill = factor(high_quality))) +
+  geom_col(alpha = 0.8, show.legend = FALSE) +
+  facet_wrap(~ifelse(high_quality==1, "high quality (>= 6 rating)", "low quality (< 6 rating)"), scales = "free") +
+  scale_fill_manual(values = c("gray75", "skyblue")) +
+  labs(y = NULL,
+       x = "Weighted log odds ratio",
+       title = "Board Game Reviews",
+       subtitle = "Which descriptors are most specific to high or low quality board games?",
+       caption = tt_caption)
+```
+
+
+```{r Visualize}
+games %>%
+  separate_rows(boardgamecategory, sep = ",") %>%
+  mutate(boardgamecategory = str_remove_all(boardgamecategory, "\\["),
+         boardgamecategory = str_remove_all(boardgamecategory, "\\]"),
+         boardgamecategory = str_remove_all(boardgamecategory, '\\"'),
+         boardgamecategory = str_remove_all(boardgamecategory, "'"),
+         boardgamecategory = str_trim(boardgamecategory)) %>%
+  add_count(boardgamecategory) %>%
+  filter(n > 1000) %>%
+  mutate(boardgamecategory = fct_reorder(boardgamecategory, bayes_average)) %>%
+  ggplot(aes(bayes_average, boardgamecategory, fill = boardgamecategory)) +
+  geom_boxplot(show.legend = FALSE) +
+  labs(y = NULL,
+       x = "Bayes average rating",
+       title = "Board Game Reviews",
+       subtitle = "Categories with at least 1000 board games",
+       caption = tt_caption)
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_01_25_tidy_tuesday.png",
+  device = "png")
+
+```
