@@ -1,0 +1,159 @@
+---
+title: "TidyTemplate"
+date: 2022-02-04
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(janitor)
+library(camcorder)
+
+gg_record(
+  dir = file.path("~/Documents/GitHub/tidytuesday","recording"), # where to save the recording
+  device = "png", # device to use to save images
+  width = 5, # width of saved image
+  height = 5, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: American Kennel Club  |  Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+#tt <- tt_load("2022-02-01")
+
+breed_traits <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/breed_traits.csv')
+
+trait_description <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/trait_description.csv')
+
+breed_rank_all <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/breed_rank.csv')
+
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+glimpse(breed_traits)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+traits <- breed_traits  %>%
+  clean_names()
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+## Correlation Plot
+Compute and plot a matrix of correlation p-values
+
+```{r corrplot}
+corrplot <- traits %>%
+  select(-breed, -coat_type, -coat_length) %>%
+  cor(., use = "pairwise.complete") %>%
+  ggcorrplot::ggcorrplot()
+
+corrplot
+
+corrplot <- corrplot +
+  labs(title = "Correlation Plot",
+       caption = tt_caption)
+
+corrplot
+```
+
+## Polychoric Correlation Plot
+Compute and plot a matrix of polychoric correlation p-values
+
+```{r polycorrs}
+polycorrs <- traits %>%
+  select(-breed, -coat_type, -coat_length) %>%
+  psych::polychoric()
+  
+pcorrplot <- ggcorrplot::ggcorrplot(polycorrs$rho)
+
+pcorrplot
+
+pcorrplot <- pcorrplot +
+  labs(title = "Polychoric Correlation Plot",
+       caption = tt_caption)
+
+pcorrplot
+```
+
+The plots look similar because we have 5 categories, which gets close to approximating a continuous variable.
+
+## Item Response Theory
+Perform exploratory IRT with 5 factors
+
+```{r mirt}
+mirt_mod <- traits %>%
+  select(-breed, -coat_type, -coat_length) %>%
+  mirt::mirt(., 5, itemtype = "graded", method = "QMCEM")
+
+#save(mirt_mod, file = "mirt_mod.Rdata")
+load("mirt_mod.Rdata")
+
+mirt_mod
+```
+
+
+```{r mirt}
+coef(mirt_mod)$good_with_young_children
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_02_01_tidy_tuesday.png",
+  device = "png")
+
+gg_playback(
+  name = file.path("~/Documents/GitHub/tidytuesday","recording","2022_02_01_tidy_tuesday.gif"),
+  first_image_duration = 8,
+  last_image_duration = 12,
+  frame_duration = .25
+)
+
+```
