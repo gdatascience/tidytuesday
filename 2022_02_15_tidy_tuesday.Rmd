@@ -1,0 +1,127 @@
+---
+title: "TidyTemplate"
+date: 2022-02-15
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light(base_family = "Charter"))
+
+tt_caption <- "SOURCE: ANTHONY STARKS  |  ANALYSIS: TONY GALVAN (@GDATASCIENCE1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+#tt <- tt_load("2022-02-15")
+
+cc <- read_csv("https://raw.githubusercontent.com/ajstarks/dubois-data-portraits/master/challenge/2022/challenge07/data.csv")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+#tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+cc %>% 
+  glimpse()
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+cc_long <- cc %>%
+  pivot_longer(
+    cols = c(3:5), 
+    names_to = "cojugal_condition", 
+    values_to = "per_cents") %>%
+  mutate(per_cents = if_else(Gender == "Male", -per_cents, per_cents))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+cc_long %>%
+  mutate(cojugal_condition = fct_relevel(cojugal_condition, "Widowed")) %>%
+  ggplot(aes(per_cents, Group, fill = cojugal_condition)) +
+  geom_col(
+    show.legend = FALSE,
+    position = "stack", 
+    width = 1, 
+    alpha = 0.8) +
+  scale_fill_manual(values = c("#00aa00", "#dc143c", "#4682b4")) +
+  scale_x_continuous(
+    breaks = c(seq(-100, 100, 10)), 
+    labels = c(seq(100, 10, -10), "", seq(10, 100, 10))) +
+  labs(x = "PER CENTS",
+       y = "AGE",
+       title = "Conjugal condition of American Negros according to age periods.",
+       caption = tt_caption)
+```
+
+
+```{r Visualize}
+library(waffle)
+
+cc_long %>%
+  count(cojugal_condition, wt = per_cents) %>%
+  ggplot(aes(fill = cojugal_condition, values = n)) +
+  expand_limits(x=c(0,0), y=c(0,0)) +
+  coord_equal() +
+  theme_enhance_waffle() #+
+  #geom_waffle(n_rows = 20, size = 0.33, color = "white", flip = TRUE)
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_02_15_tidy_tuesday.png",
+  device = "png")
+
+```
