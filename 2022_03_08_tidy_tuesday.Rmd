@@ -1,0 +1,127 @@
+---
+title: "TidyTemplate"
+date: 2022-03-15
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Data.Europa  |  Designed by: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-03-08")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+erasmus <- tt$erasmus
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+library(skimr)
+skim(erasmus)
+
+```
+
+
+```{r Visualize}
+
+erasmus %>%
+  filter(participant_age >= 0,
+         participant_age <= 125) %>%
+  count(participant_age, wt = participants, name = "participants") %>% 
+  ggplot(aes(participant_age, participants, fill = factor(-participant_age))) +
+  geom_col(show.legend = FALSE) +
+  scale_y_log10()
+
+```
+
+
+```{r Visualize}
+
+erasmus %>%
+  filter(participant_age >= 10,
+         participant_age <= 80) %>%
+  count(academic_year, participant_age, wt = participants, name = "participants") %>%
+  ggplot(aes(participant_age, participants, fill = factor(-participant_age))) +
+  geom_col(show.legend = FALSE) +
+  scale_y_log10() +
+  facet_wrap(~academic_year) +
+  labs(x = "Participant age",
+       y = "# of participants",
+       title = "ERASMUS: EU program for education, training, youth and sport",
+       subtitle = "Participant ages by academic year",
+       caption = tt_caption)
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_03_08_tidy_tuesday.png",
+  device = "png")
+
+```
