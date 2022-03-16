@@ -1,0 +1,237 @@
+---
+title: "TidyTemplate"
+date: 2022-03-15
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(lubridate)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Robert Flight  |  Designed by: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-03-15")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+bioc <- tt$bioc %>%
+  mutate(package = str_to_lower(package),
+         date = as.Date(date),
+         version = NULL) %>%
+  filter(date > ymd("1990-01-01"))
+
+cran <- tt$cran %>%
+  mutate(package = str_to_lower(package),
+         date = as.Date(date)) %>%
+  filter(date > ymd("1990-01-01"))
+
+bioc_cran <- bioc %>%
+  bind_rows(cran)
+
+```
+
+```{r EDA}
+
+bioc %>%
+  distinct(package)
+
+cran %>%
+  distinct(package)
+
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+bioc_cran %>%
+  ggplot(aes(date)) +
+  geom_histogram()
+```
+
+
+```{r Visualize}
+oldest_packages <- bioc_cran %>%
+  distinct(package, date) %>%
+  group_by(package) %>%
+  summarize(days_updated = n(),
+            min_date = min(date),
+            max_date = max(date),
+            age = max(date) - min(date),
+            days_per_update = age / days_updated) %>%
+  top_n(10, wt = age)
+```
+
+
+```{r Visualize}
+oldest_packages %>%
+  mutate(package = fct_reorder(package, days_updated)) %>%
+  ggplot(aes(days_updated, package, fill = package)) +
+  geom_col(show.legend = FALSE)
+```
+
+
+```{r Visualize}
+oldest_packages %>%
+  mutate(package = fct_reorder(package, days_per_update)) %>%
+  ggplot(aes(days_per_update, package, fill = package)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of days between updates",
+       y = "",
+       title = "Oldest R Packages",
+       subtitle = "Is the ROC package the most stable?",
+       caption = tt_caption)
+```
+
+
+```{r Visualize}
+bioc_cran %>%
+  distinct(package) %>%
+  filter(str_detect(package, "plot") |
+         str_detect(package, "graph")) %>%
+  inner_join(bioc_cran, by = "package") %>%
+  distinct(package, date) %>%
+  group_by(package) %>%
+  summarize(days_updated = n(),
+            min_date = min(date),
+            max_date = max(date),
+            age = max(date) - min(date),
+            days_per_update = age / days_updated)
+```
+
+
+```{r Visualize}
+library(cranlogs)
+library(gt)
+
+downloads <- cran_top_downloads("last-month", count = 100) %>%
+  mutate(package = str_to_lower(package))
+
+gt_tab <- bioc_cran %>%
+  inner_join(downloads, by = "package") %>%
+  distinct(rank, package, count, date, rmd, rnw) %>%
+  group_by(rank, package, count) %>%
+  summarize(#days_updated = n(),
+            #min_date = min(date),
+            #max_date = max(date),
+            vignettes = max(rmd) + max(rnw),
+            age = round((max(date) - min(date)) / 365.25, 1)#,
+            #days_per_update = age / days_updated
+            ) %>%
+  ungroup() %>%
+  head(10) %>%
+  select(rank, package, age, vignettes, count) %>%
+  gt()
+
+gt_tab
+```
+
+
+```{r Visualize}
+gt_tab <- gt_tab %>%
+  tab_header(title = "Top 10 Most Downloaded R Packages",
+             subtitle = paste0("Since ", today() - 30)) %>%
+  fmt_number(columns = count,
+             decimals = 0) %>%
+  cols_label(rank = "Rank",
+             package = "Package",
+             count = "Downloads",
+             vignettes = "Vignettes",
+             age = "Age (in years)")
+
+gt_tab
+```
+
+
+```{r Visualize}
+#remotes::install_github("jthomasmock/gtExtras")
+library(gtExtras)
+
+gt_tab <- gt_tab %>%
+  gt_theme_538()
+  #gt_theme_espn()
+  #gt_theme_nytimes()
+  #gt_theme_guardian()
+  #gt_theme_dot_matrix()
+  #gt_theme_dark()
+  #gt_theme_excel()
+
+gt_tab
+```
+
+
+```{r Visualize}
+gt_tab <- gt_tab %>%
+  gt_plt_bar(column = count,
+             keep_column = TRUE, 
+             color = "Red",
+             width = 60) %>%
+  tab_source_note(source_note = tt_caption)
+
+gt_tab
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+gtsave(gt_tab,
+  filename = "2022_03_15_tidy_tuesday.png")
+
+```
