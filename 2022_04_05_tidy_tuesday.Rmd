@@ -1,0 +1,136 @@
+---
+title: "TidyTemplate"
+date: 2022-04-11
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-04-05")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+news_orgs <- tt$news_orgs %>%
+  filter(year_founded >= 1993, 
+         year_founded < 2021) %>%
+  mutate(president = case_when(
+    year_founded >= 1993 & year_founded < 2001 ~ "CLINTON",
+    year_founded >= 2001 & year_founded < 2009 ~ "BUSH",
+    year_founded >= 2009 & year_founded < 2017 ~ "OBAMA",
+    year_founded >= 2017 & year_founded < 2021 ~ "TRUMP",
+    TRUE ~ "BIDEN"))
+
+news_orgs_products <- news_orgs %>%
+  separate_rows(products, sep = ", ")
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+news_orgs %>%
+  count(year_founded, president) %>%
+  ggplot(aes(year_founded, n, fill = president)) +
+  geom_col()
+
+news_orgs %>%
+  count(president) %>%
+  mutate(president = fct_reorder(president, n)) %>%
+  ggplot(aes(n, president, fill = president)) +
+  geom_col(show.legend = FALSE)
+
+news_orgs_products %>%
+  filter(!is.na(products),
+         !products %in% c("Branded Merchandise", "Radio")) %>%
+  count(year_founded, products, president) %>%
+  mutate(products = fct_reorder(products, -n)) %>%
+  ggplot(aes(year_founded, n, fill = president)) +
+  geom_col() +
+  facet_wrap(~products)
+
+news_orgs_products %>%
+  filter(!is.na(products),
+         !products %in% c("Branded Merchandise", "Radio")) %>%
+  count(president, products) %>%
+  mutate(president = fct_reorder(president, n),
+         products = fct_reorder(products, -n)) %>%
+  ggplot(aes(n, president, fill = president)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~products) +
+  labs(x = "# of organizations founded",
+       y = "Presidency",
+       title = "Digitally Focused Local News Organizations by Product",
+       subtitle = "Largest increase in organizations founded during the Obama Presidency",
+       caption = "Data Source: Project Oasis  |  Data Viz: Tony Galvan (@GDataScience1)")
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_04_05_tidy_tuesday.png",
+  device = "png")
+
+```
