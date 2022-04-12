@@ -1,0 +1,125 @@
+---
+title: "TidyTemplate"
+date: 2022-04-12
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+
+tt_caption <- "DATA SOURCE: OUR WORLD IN DATA  |  DATAVIZ: TONY GALVAN (@GDATASCIENCE1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-04-12")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+indoor_pollution <- tt$indoor_pollution %>%
+  inner_join(tt$fuel_gdp, by = c("Entity", "Code", "Year")) %>%
+  inner_join(tt$death_source, by = c("Entity", "Code", "Year")) %>%
+  janitor::clean_names() %>%
+  rename(pct_deaths = 4,
+         pct_access = 5,
+         gdp_per_capita = 6,
+         population = 7,
+         deaths_num = 9) %>%
+  group_by(entity) %>%
+  fill(continent, .direction = "downup") %>%
+  ungroup()
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+indoor_pollution %>%
+  filter(!is.na(code),
+         year %in% c(1990, 2019)) %>%
+  transmute(COUNTRY = str_to_upper(entity), code, year, pct_deaths) %>%
+  pivot_wider(names_from = year, values_from = pct_deaths, names_prefix = "year_") %>%
+  mutate(pct_change = (year_2019 - year_1990) / 100,
+         COUNTRY = fct_reorder(COUNTRY, -pct_change)) %>%
+  ggplot(aes(pct_change, COUNTRY, color = pct_change)) +
+  geom_point() +
+  scale_x_continuous(labels = scales::percent_format()) +
+  scale_color_gradient2(labels = scales::percent_format(accuracy = 1), 
+                        high = "red", mid = "gray90", low = "blue") +
+  theme(legend.position = "top") +
+  labs(x = "% CHANGE IN DEATHS",
+       y = "",
+       color = "% CHANGE IN DEATHS",
+       title = "INDOOR AIR POLLUTION IS DEADLY",
+       subtitle = "BUT IT IS IMPROVING FOR MOST OF THE WORLD",
+       caption = tt_caption)
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_04_12_tidy_tuesday.png",
+  device = "png",
+  width = 6,
+  height = 24)
+
+```
