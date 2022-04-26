@@ -1,0 +1,145 @@
+---
+title: "TidyTemplate"
+date: 2022-04-26
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(lubridate)
+
+theme_set(theme_light())
+
+tt_caption <- "Data Source: cryptics.georgeho.org  |  DataViz: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-04-19")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+clues <- tt$big_dave %>%
+  bind_rows(tt$times)
+
+glimpse(clues)
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+clues %>%
+  count(puzzle_name, name = "clues") %>%
+  mutate(even_odd = if_else(clues %% 2 == 0, "Even", "Odd"),
+         clues = factor(clues),
+         clues = fct_lump(clues, 15)) %>%
+  count(clues, even_odd) %>%
+  mutate(clues = fct_relevel(clues, "Other", after = Inf)) %>%
+  ggplot(aes(clues, n, fill = even_odd)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_fill_manual(values = c("black", "gray75")) +
+  theme(legend.position = "bottom") +
+  labs(x = "# of clues",
+       y = "# of puzzles",
+       fill = "",
+       title = "Cryptic Crossword Puzzle Clues",
+       subtitle = "Puzzles tend to have around 30 clues and and even number of clues",
+       caption = tt_caption)
+
+```
+
+
+```{r Visualize}
+
+clues %>%
+  filter(puzzle_date >= ymd("2009-03-01"),
+         puzzle_date < ymd("2022-04-01")) %>%
+  count(puzzle_date, puzzle_name, name = "clues") %>%
+  mutate(puzzle_month = floor_date(puzzle_date, unit = "month")) %>%
+  group_by(puzzle_month) %>%
+  summarize(avg_clues = mean(clues)) %>%
+  ggplot(aes(puzzle_month, avg_clues)) +
+  geom_line() +
+  geom_smooth(method = "loess", se = FALSE)
+
+```
+
+
+```{r Visualize}
+
+clues %>%
+  filter(puzzle_date >= ymd("2009-04-01"),
+         puzzle_date < ymd("2022-04-01")) %>%
+  count(puzzle_date, puzzle_name, name = "clues") %>%
+  mutate(puzzle_quarter = floor_date(puzzle_date, unit = "quarter")) %>%
+  group_by(puzzle_quarter) %>%
+  summarize(avg_clues = mean(clues)) %>%
+  ggplot(aes(puzzle_quarter, avg_clues)) +
+  geom_line() +
+  geom_smooth(method = "loess", se = FALSE)
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_04_19_tidy_tuesday.png",
+  device = "png")
+
+```
