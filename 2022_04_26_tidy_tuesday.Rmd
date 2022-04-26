@@ -18,9 +18,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(tidytuesdayR)
+library(lubridate)
 library(tidytext)
+library(sentimentr)
 
 theme_set(theme_light())
+
+tt_caption <- "DATA SOURCE: KAGGLE  |  DATAVIZ: TONY GALVAN (@GDATASCIENCE1)"
 
 ```
 
@@ -64,12 +68,20 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
-hidden_gems <- tt$hidden_gems
+hidden_gems <- tt$hidden_gems %>%
+  mutate(id = row_number(),
+         review_month = floor_date(date, unit = "month"),
+         review_quarter = floor_date(date, unit = "quarter"))
 
-hidden_gems_review <- hidden_gems %>%
+review_sentiment <- hidden_gems %>%
   unnest_tokens(word, review) %>%
-  anti_join(stop_words, by = "word") %>%
-  count(word, sort = TRUE)
+  #anti_join(stop_words, by = "word") %>%
+  group_by(id) %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(sentiment) %>%
+  ungroup() %>%
+  pivot_wider(names_from = "sentiment", values_from = "n", values_fill = 0) %>%
+  mutate(sentiment = positive - negative)
 
 ```
 
@@ -80,7 +92,38 @@ Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
 
-summary(hidden_gems$date)
+hidden_gems %>%
+  left_join(review_sentiment, by = "id") %>%
+  mutate(sentiment = coalesce(sentiment, 0),
+         fill_color = case_when(
+           sentiment > 0 ~ "Positive",
+           sentiment < 0 ~ "Negative",
+           TRUE ~ "Neutral")) %>%
+  count(sentiment, fill_color) %>%
+  mutate() %>%
+  ggplot(aes(sentiment, n, fill = fill_color)) +
+  geom_col()
+
+```
+
+
+```{r Visualize}
+
+hidden_gems %>%
+  filter(date >= ymd("2020-07-01"),
+         date < ymd("2022-04-01")) %>%
+  left_join(review_sentiment, by = "id") %>%
+  mutate(sentiment = coalesce(sentiment, 0)) %>%
+  ggplot(aes(review_quarter, sentiment, 
+             group = review_quarter)) +
+  geom_violin(aes(fill = factor(review_quarter)), 
+               show.legend = FALSE, outlier.shape = NA) +
+  geom_jitter(show.legend = FALSE, alpha = 0.5, width = 20) +
+  labs(x = "QUARTER",
+       y = "SENTIMENT SCORE",
+       title = "KAGGLE HIDDEN GEMS: REVIEW SENTIMENT",
+       subtitle = "NOTEBOOK REVIEW SENTIMENT HAS BEEN CONSISTENTLY POSITIVE",
+       caption = tt_caption)
 
 ```
 
