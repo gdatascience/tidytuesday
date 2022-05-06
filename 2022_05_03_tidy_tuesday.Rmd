@@ -1,0 +1,310 @@
+---
+title: "TidyTemplate"
+date: 2022-05-05
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Data Source: Berkeley Lab  |  DataViz: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-05-03")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+average_cost <- tt$average_cost %>%
+  pivot_longer(cols = -year, names_to = "power_type", values_to = "average_cost") %>%
+  mutate(power_type = str_remove(power_type, "_mwh"),
+         power_type = str_to_title(power_type))
+
+projected_data <- tt$wind %>%
+  transmute(date, type = "Wind",
+            price = wind_mwh,
+            capacity = wind_capacity) %>%
+  bind_rows(tt$solar %>%
+              transmute(date, type = "Solar",
+                        price = solar_mwh,
+                        capacity = solar_capacity)) %>%
+  pivot_longer(cols = c(price, capacity), names_to = "projected_data", values_to = "value")
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+average_cost %>%
+  ggplot(aes(year, average_cost, color = power_type)) +
+  geom_line() +
+  scale_y_continuous(labels = dollar_format()) +
+  labs(x = "",
+       y = "Average cost ($/MWh)",
+       color = "",
+       title = "US Energy Costs",
+       subtitle = "Average costs were decreasing until 2018",
+       caption = tt_caption)
+```
+
+
+```{r Visualize2}
+projected_data %>%
+  ggplot(aes(date, value, color = type)) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  facet_wrap(~projected_data, ncol = 1, scales = "free_y")
+```
+
+
+```{r Visualize3}
+library(patchwork)
+
+p1 <- projected_data %>%
+  filter(projected_data == "price") %>%
+  ggplot(aes(date, value, color = type)) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_y_log10(labels = dollar_format()) +
+  theme(legend.position = "top") +
+  #expand_limits(y = 1) +
+  labs(x = "",
+       y = "Projected price ($/MWh)",
+       color = "")
+
+p2 <- projected_data %>%
+  filter(projected_data == "capacity") %>%
+  ggplot(aes(date, value, color = type)) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_y_log10() +
+  theme(legend.position = "none") +
+  #expand_limits(y = 1) +
+  labs(x = "",
+       y = "Projected capacity (Gigawatts)",
+       color = "")
+
+p1 / p2 +
+  plot_annotation(
+    title = "US Solar & Wind Energy",
+    subtitle = "Solar energy will soon be cheaper and have more capacity than Wind energy",
+    caption = tt_caption
+  )
+```
+
+
+```{r Visualize4}
+library(prophet)
+
+solar_price <- projected_data %>%
+  filter(projected_data == "price",
+         type == "Solar") %>%
+  group_by(ds = date) %>%
+  summarize(y = mean(value)) %>%
+  ungroup()
+
+fit_solar_price <- prophet(solar_price)
+
+future_solar_price <- make_future_dataframe(fit_solar_price, periods = 24, freq = 'month')
+
+fcast_solar_price <- predict(fit_solar_price, future_solar_price)
+
+solar_price_forecast <- solar_price %>%
+  full_join(fcast_solar_price, by = "ds") %>%
+  mutate(price = coalesce(y, yhat),
+         color = ifelse(is.na(y), "Forecast", "Actual")) 
+
+p3 <- solar_price_forecast %>%
+  ggplot(aes(ds, price, color = color)) +
+  geom_ribbon(data = solar_price_forecast %>% filter(color == "Forecast"),
+              aes(x = ds, ymin = ifelse(yhat_lower < 0, 0, yhat_lower), ymax = yhat_upper),
+              fill = "gray75",
+              color = NA,
+              size = 0,
+              alpha = 0.8) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  expand_limits(y = 300) +
+  scale_y_continuous(labels = dollar_format()) +
+  theme(legend.position = "none") +
+  labs(x = "",
+       y = "Solar energy price  ($/MWh)",
+       color = NULL)
+
+wind_price <- projected_data %>%
+  filter(projected_data == "price",
+         type == "Wind") %>%
+  group_by(ds = date) %>%
+  summarize(y = mean(value)) %>%
+  ungroup()
+
+fit_wind_price <- prophet(wind_price)
+
+future_wind_price <- make_future_dataframe(fit_wind_price, periods = 24, freq = 'month')
+
+fcast_wind_price <- predict(fit_wind_price, future_wind_price)
+
+wind_price_forecast <- wind_price %>%
+  full_join(fcast_wind_price, by = "ds") %>%
+  mutate(price = coalesce(y, yhat),
+         color = ifelse(is.na(y), "Forecast", "Actual")) 
+
+p4 <- wind_price_forecast %>%
+  ggplot(aes(ds, price, color = color)) +
+  geom_ribbon(data = wind_price_forecast %>% filter(color == "Forecast"),
+              aes(x = ds, ymin = ifelse(yhat_lower < 0, 0, yhat_lower), ymax = yhat_upper),
+              fill = "gray75",
+              color = NA,
+              size = 0,
+              alpha = 0.8) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  expand_limits(y = 300) +
+  scale_y_continuous(labels = dollar_format()) +
+  theme(legend.position = "none") +
+  labs(x = "",
+       y = "Wind energy price  ($/MWh)",
+       color = NULL)
+
+solar_capacity <- projected_data %>%
+  filter(projected_data == "capacity",
+         type == "Solar") %>%
+  group_by(ds = date) %>%
+  summarize(y = mean(value)) %>%
+  ungroup()
+
+fit_solar_capacity <- prophet(solar_capacity)
+
+future_solar_capacity <- make_future_dataframe(fit_solar_capacity, periods = 24, freq = 'month')
+
+fcast_solar_capacity <- predict(fit_solar_capacity, future_solar_capacity)
+
+solar_capacity_forecast <- solar_capacity %>%
+  full_join(fcast_solar_capacity, by = "ds") %>%
+  mutate(capacity = coalesce(y, yhat),
+         color = ifelse(is.na(y), "Forecast", "Actual")) 
+
+p5 <- solar_capacity_forecast %>%
+  ggplot(aes(ds, capacity, color = color)) +
+  geom_ribbon(data = solar_capacity_forecast %>% filter(color == "Forecast"),
+              aes(x = ds, ymin = ifelse(yhat_lower < 0, 0, yhat_lower), ymax = yhat_upper),
+              fill = "gray75",
+              color = NA,
+              size = 0,
+              alpha = 0.8) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  expand_limits(y = 450) +
+  theme(legend.position = "bottom") +
+  labs(x = "",
+       y = "Solar energy capacity  (Gigawatts)",
+       color = NULL)
+
+wind_capacity <- projected_data %>%
+  filter(projected_data == "capacity",
+         type == "Wind") %>%
+  group_by(ds = date) %>%
+  summarize(y = mean(value)) %>%
+  ungroup()
+
+fit_wind_capacity <- prophet(wind_capacity)
+
+future_wind_capacity <- make_future_dataframe(fit_wind_capacity, periods = 24, freq = 'month')
+
+fcast_wind_capacity <- predict(fit_wind_capacity, future_wind_capacity)
+
+wind_capacity_forecast <- wind_capacity %>%
+  full_join(fcast_wind_capacity, by = "ds") %>%
+  mutate(capacity = coalesce(y, yhat),
+         color = ifelse(is.na(y), "Forecast", "Actual")) 
+
+p6 <- wind_capacity_forecast %>%
+  ggplot(aes(ds, capacity, color = color)) +
+  geom_ribbon(data = wind_capacity_forecast %>% filter(color == "Forecast"),
+              aes(x = ds, ymin = ifelse(yhat_lower < 0, 0, yhat_lower), ymax = yhat_upper),
+              fill = "gray75",
+              color = NA,
+              size = 0,
+              alpha = 0.8) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE) +
+  expand_limits(y = 450) +
+  theme(legend.position = "none") +
+  labs(x = "",
+       y = "Wind energy capacity  (Gigawatts)",
+       color = NULL)
+
+((p3 + p4) / (p5 + p6))  +
+  plot_annotation(
+    title = "US Solar & Wind Energy: Forecasted Price & Capacity",
+    subtitle = "Solar and wind energy price will continue to approach $0\nWind may have more capacity, but variability makes the forecast less certain",
+    caption = tt_caption
+  )
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_05_03_tidy_tuesday.png",
+  device = "png")
+
+```
