@@ -1,0 +1,110 @@
+---
+title: "TidyTemplate"
+date: 2022-05-13
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+
+theme_set(theme_light())
+
+tt_caption <- "SOURCE: POST45 DATA  |  DATAVIZ: TONY GALVAN (@GDATASCIENCE1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+nyt_titles <- readr::read_tsv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-05-10/nyt_titles.tsv')
+nyt_full <- readr::read_tsv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-05-10/nyt_full.tsv')
+
+```
+
+
+# Explore nyt_titles
+
+Some problems were pointed out on Twitter by Art Steinmetz (@adababbage) - https://twitter.com/adababbage/status/1525176027034550274
+
+```{r}
+
+nyt_titles %>%
+  filter(debut_rank < best_rank)
+
+```
+
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+nyt_titles_new <- nyt_full %>%
+  group_by(id = title_id, title, author) %>%
+  summarize(first_week = min(week),
+            best_rank = min(rank),
+            total_weeks = n()) %>%
+  ungroup() %>%
+  left_join(nyt_full %>%
+              select(title_id, week, rank, year), by = c("id" = "title_id", "first_week" = "week")) %>%
+  rename(debut_rank = rank)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+library(waffle)
+
+nyt_titles_new %>%
+  filter(best_rank == 1,
+         year < 2020) %>%
+  count(decade = 10 * (year %/% 10)) %>%
+  mutate(decade = factor(decade)) %>%
+  ggplot(aes(fill = decade, values = n)) +
+  geom_waffle(color = "white", size = .25, n_rows = 10, flip = TRUE) +
+  facet_wrap(~decade, nrow = 1, strip.position = "bottom") +
+  scale_x_discrete() + 
+  scale_y_continuous(labels = function(x) x * 10,
+                     expand = c(0,0)) +
+  coord_equal() +
+  theme(legend.position = "none") +
+  labs(x = "DECADE",
+       y = "# OF TOP RANKED BOOKS",
+       title = "NEW YORK TIMES BESTSELLERS",
+       subtitle = "WIDER VARIETY OF BOOKS GET THE #1 RANKING IN RECENT DECADES",
+       caption = tt_caption)
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_05_10_tidy_tuesday.png",
+  device = "png")
+
+```
