@@ -80,15 +80,92 @@ Using your processed dataset, create your unique visualization.
 
 eurovision %>%
   count(year) %>%
-  ggplot(aes(year, n)) +
-  geom_line() +
+  ggplot(aes(year, n, color = year >= 2003)) +
+  geom_line(size = 2, show.legend = FALSE) +
+  scale_color_manual(values = c("gray75", "darkblue")) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank()) +
   labs(x = "",
        y = "# OF PERFORMANCES",
        title = "EUROVISION",
-       subtitle = "THE NUMBER OF PERFORMANCES PER YEAR SKYROCKETED AROUND 2005",
+       subtitle = "THE NUMBER OF PERFORMANCES PER YEAR SKYROCKETED AFTER 2003",
        caption = tt_caption)
   
 ```
+
+```{r Visualize2}
+
+p_first <- eurovision %>%
+  filter(winner,
+         section == "final") %>%
+  count(artist_country) %>%
+  mutate(artist_country = fct_reorder(artist_country, n)) %>%
+  ggplot(aes(n, artist_country, fill = artist_country == "Ireland")) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(x = 0, label = artist_country), hjust = 0, nudge_x = 0.075) +
+  scale_fill_manual(values = c("gray75", "#2a9d8f")) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text.y = element_blank(),
+        plot.margin = margin(t = 0, r = 0, b = 0, l = 0, unit = "pt")) +
+  labs(x = "# OF VICTORIES",
+       y = NULL,
+       #title = "EUROVISION",
+       #subtitle = "WITH 7 VICTORIES, IRELAND IS THE MOST SUCCESSFUL COUNTRY IN THE CONTEST",
+       #caption = tt_caption
+       )
+
+p_first
+
+```
+
+
+```{r Visualize3}
+
+p_last <- eurovision %>%
+  group_by(year) %>%
+  filter(rank == max(rank)) %>%
+  ungroup() %>%
+  distinct(year, artist_country) %>%
+  count(artist_country) %>%
+  mutate(artist_country = fct_reorder(artist_country, n),
+         n = -n) %>%
+  ggplot(aes(n, artist_country, fill = artist_country == "Norway")) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(x = 0, label = artist_country), hjust = 1, nudge_x = -0.1) +
+  scale_fill_manual(values = c("gray75", "#e76f51")) +
+  scale_x_continuous(labels = c("0", "3", "6", "9"), breaks = c(0, -3, -6, -9)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text.y = element_blank(),
+        plot.margin = margin(t = 0, r = 0, b = 0, l = 0, unit = "pt")) +
+  labs(x = "# OF LAST PLACE FINISHES",
+       y = NULL,
+       #title = "EUROVISION",
+       #subtitle = "NORWAY HAS THE MOST LAST PLACE FINISHES",
+       #caption = tt_caption
+       )
+
+p_last
+
+```
+
+
+```{r}
+library(patchwork)
+
+p_last + p_first +
+  plot_annotation(title = "EUROVISION",
+                  subtitle = "NORWAY HAS THE MOST LAST PLACE FINISHES; IRELAND HAS THE MOST VICTORIES",
+                  caption = tt_caption)
+```
+
 
 # Save Image
 
