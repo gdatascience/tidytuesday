@@ -120,7 +120,7 @@ sevens %>%
     experienced_team == "same" ~ "Same",
     experienced_team == winner_team ~ "More",
     TRUE ~ "Less"),
-    experienced_winner = fct_relevel(experienced_winner, "More experience")) %>%
+    experienced_winner = fct_relevel(experienced_winner, "More")) %>%
   count(year, experienced_winner) %>%
   ggplot() +
   geom_col(aes(year, n, fill = experienced_winner), position = "dodge") +
