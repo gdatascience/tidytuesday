@@ -129,7 +129,8 @@ fig <- plot_ly(
     type = 'scatterpolar',
     fill = 'tonext',
     mode = 'markers'
-  )
+  ) |>
+  layout(title = 'Bank Reputation (Source: Axios & Harris Poll  |  DataViz: Tony Galvan (@GDataScience1))')
 
 fig <- fig %>%
   add_trace(
