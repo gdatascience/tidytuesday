@@ -85,7 +85,7 @@ company_labels <- reputation |>
              by = "company") |>
   filter(name == "VISION") |>
   mutate(score = case_when(
-    company == "The Coca-Cola Company" ~ score + 1,
+    company == "The Hershey Company" ~ score + 1,
     company == "Samsung" ~ score + 0.25,
     company == "Patagonia" ~ score + 0.75,
     company == "Trader Joe's" ~ score - 0.25,
@@ -120,6 +120,48 @@ reputation |>
        caption = tt_caption)
   
 ```
+
+
+```{r}
+library(plotly)
+
+fig <- plot_ly(
+    type = 'scatterpolar',
+    fill = 'tonext',
+    mode = 'markers'
+  )
+
+fig <- fig %>%
+  add_trace(
+    r = reputation$score[reputation$company == "American Express"],
+    theta = reputation$name[reputation$company == "American Express"],
+    name = 'American Express'
+  )
+
+fig <- fig %>%
+  add_trace(
+    r = reputation$score[reputation$company == "Citigroup"],
+    theta = reputation$name[reputation$company == "Citigroup"],
+    name = 'Citigroup'
+  )
+
+fig <- fig %>%
+  add_trace(
+    r = reputation$score[reputation$company == "Bank of America"],
+    theta = reputation$name[reputation$company == "Bank of America"],
+    name = 'Bank of America'
+  )
+
+fig <- fig %>%
+  add_trace(
+    r = reputation$score[reputation$company == "Wells Fargo & Company"],
+    theta = reputation$name[reputation$company == "Wells Fargo & Company"],
+    name = "Wells Fargo & Company"
+  )
+
+fig
+```
+
 
 
 # Save Image
