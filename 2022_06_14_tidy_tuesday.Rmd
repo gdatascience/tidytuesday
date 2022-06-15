@@ -1,0 +1,126 @@
+---
+title: "TidyTemplate"
+date: 2022-06-15
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(tidycensus)
+library(tigris)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: National Integrated Drought Information System  |  DataViz: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-06-14")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+drought <- tt$drought
+
+data(fips_codes)
+
+drought_fips <- tt$`drought-fips` %>%
+  janitor::clean_names() %>%
+  separate(fips, into = c("state_cd", "fips_cd"), sep = 2) %>%
+  select(-state) %>%
+  inner_join(fips_codes, by = c("state_cd" = "state_code", "fips_cd" = "county_code"))
+
+ca_counties <- counties(state = 'CA', cb = TRUE, resolution = '20m') %>%
+  janitor::clean_names() %>%
+  select(countyfp, geometry)
+
+ca_drought_fips <- drought_fips %>%
+  filter(state == "CA") %>%
+  group_by(quarter = lubridate::floor_date(unit = "quarter", date), fips_cd) %>%
+  summarize(avg_dsci = mean(dsci)) %>%
+  inner_join(ca_counties, by = c("fips_cd" = "countyfp"))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+library(gganimate)
+
+ca_drought_fips %>%
+  #filter(year == max(year)) %>%
+  ggplot() +
+  geom_sf(aes(geometry = geometry, fill = avg_dsci)) +
+  scale_fill_gradient(low = "blue", high = "red") +
+  coord_sf() +
+  theme_void() +
+  #facet_wrap(~year)
+  transition_time(quarter) +
+  labs(title = "California Drought Conditions (2000 - present)",
+       subtitle = "Date: {frame_time}",
+       fill = "Average drought score",
+       caption = tt_caption)
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+anim_save(
+  filename = "2022_06_14_tidy_tuesday.gif")
+
+```
