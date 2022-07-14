@@ -94,10 +94,10 @@ Using your processed dataset, create your unique visualization.
 ```{r Visualize2}
 
 rent %>%
-  ggplot(aes(year, price)) +
-  geom_jitter(alpha = 0.05) +
+  ggplot(aes(year, price_per_bed)) +
+  #geom_jitter(alpha = 0.05) +
   geom_smooth(method = "loess", se = FALSE) +
-  scale_y_log10() +
+  scale_y_continuous(labels = dollar_format(accuracy = 1)) +
   facet_wrap(~quarter, nrow = 1) 
 
 ```
