@@ -130,6 +130,37 @@ flights %>%
   
 ```
 
+
+```{r Visualize2}
+
+library(gganimate)
+
+flights %>%
+  group_by(year, month_mon) %>%
+  summarize(total_departures = sum(flt_dep_1, na.rm = TRUE)) %>%
+  mutate(month_mon = fct_relevel(month_mon, "JAN", "FEB", "MAR", "APR", "MAY", 
+                                 "JUN", "JUL", "AUG", "SEP", "OCT", "NOV")) %>%
+  ggplot() +
+  geom_col(aes(month_mon, total_departures, fill = as.factor(year)),
+           show.legend = FALSE) +
+  geom_text(aes(x = "NOV", y = 825000, label = year, color = as.factor(year)),
+            size = 10, fontface = "bold", show.legend = FALSE) +
+  #facet_wrap(~year) +
+  transition_time(as.integer(year)) +
+  ease_aes('cubic-in') +
+  enter_fade() + 
+  exit_fade() +
+  scale_y_continuous(labels = comma_format()) +
+  theme_light() +
+  labs(x = "",
+       y = "# of departures",
+       title = "Commercial flights in the EU",
+       subtitle = "2016 - 2022",
+       caption = "Source: Eurocontrol  |  DataViz: Tony Galvan (@GDataScience1)")
+
+```
+
+
 # Save Image
 
 Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
@@ -137,6 +168,9 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 ```{r}
 
 # This will save your most recent plot
+anim_save(
+  filename = "2022_07_12_tidy_tuesday.gif")
+
 ggsave(
   filename = "2022_07_12_tidy_tuesday.png",
   device = "png")
