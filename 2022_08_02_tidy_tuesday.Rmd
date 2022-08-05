@@ -129,7 +129,7 @@ p2 <- frogs %>%
   labs(y = "", #"% of frogs that changed water depth",
        x = "",
        #title = tt_title,
-       subtitle = "Percent of frogs that changed water depth\n(Deep water, No water, Shallow water, etc.)"
+       subtitle = "Percent of frogs that changed water depth\n(deep water, no water, shallow water, etc.)"
        #caption = tt_caption
        )
 
