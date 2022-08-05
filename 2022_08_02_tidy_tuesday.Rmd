@@ -1,0 +1,254 @@
+---
+title: "TidyTemplate"
+date: 2022-08-04
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(lubridate)
+library(ggchicklet)
+library(scales)
+library(patchwork)
+
+theme_set(theme_light())
+
+tt_title <- "Oregon spotted frogs (Rana pretiosa) at Crane Prairie Reservoir"
+tt_caption <- "Source: USGS  |  DataViz: Tony Galvan (@GDataScience1) #TidyTuesday"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-08-02")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+frogs <- tt$frogs %>%
+  janitor::clean_names() %>%
+  mutate(survey_date = mdy(survey_date),
+         gender = if_else(female == 1, "Female", "Male"),
+         frequency = factor(frequency),
+         sighting_num = interval + 1)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+p1 <- frogs %>%
+  distinct(frequency, gender) %>%
+  count(gender, sort = TRUE) %>%
+  mutate(gender = fct_reorder(gender, n)) %>%
+  ggplot(aes(gender, n, fill = gender)) +
+  #geom_col(show.legend = FALSE) +
+  geom_chicklet(width = 0.75) +
+  scale_fill_manual(values = c("darkgreen", "lightgreen")) +
+  coord_flip() +
+  theme(legend.position = "none") +
+  labs(y = "", #"# of frogs studied",
+       x = "",
+       #title = tt_title,
+       #caption = tt_caption
+       subtitle = "Total frogs studied"
+       )
+
+p1
+  
+```
+
+
+```{r Visualize2}
+
+p2 <- frogs %>%
+  distinct(frequency, gender, water) %>%
+  count(frequency, gender) %>%
+  add_count(gender, name = "gender_total") %>%
+  group_by(gender, gender_total) %>%
+  summarize(changed_water = sum(n > 1)) %>%
+  ungroup() %>%
+  mutate(pct_changed_water = changed_water / gender_total,
+         gender = fct_relevel(gender, "Male")) %>%
+  ggplot(aes(gender, pct_changed_water, fill = gender)) +
+  geom_chicklet(width = 0.75) +
+  scale_fill_manual(values = c("darkgreen", "lightgreen")) +
+  scale_y_continuous(labels = percent_format()) +
+  coord_flip() +
+  expand_limits(y = 1) +
+  theme(legend.position = "none") +
+  labs(y = "", #"% of frogs that changed water depth",
+       x = "",
+       #title = tt_title,
+       subtitle = "Percent of frogs that changed water depth\n(Deep water, No water, Shallow water, etc.)"
+       #caption = tt_caption
+       )
+
+p2
+
+```
+
+
+```{r Visualize3}
+
+p3 <- frogs %>%
+  distinct(frequency, gender, type) %>%
+  count(frequency, gender) %>%
+  add_count(gender, name = "gender_total") %>%
+  group_by(gender, gender_total) %>%
+  summarize(changed_type = sum(n > 1)) %>%
+  ungroup() %>%
+  mutate(pct_changed_type = changed_type / gender_total,
+         gender = fct_relevel(gender, "Male")) %>%
+  ggplot(aes(gender, pct_changed_type, fill = gender)) +
+  geom_chicklet(width = 0.75) +
+  scale_fill_manual(values = c("darkgreen", "lightgreen")) +
+  scale_y_continuous(labels = percent_format()) +
+  coord_flip() +
+  expand_limits(y = 1) +
+  theme(legend.position = "none") +
+  labs(y = "", #"% of frogs that changed water type",
+       x = "",
+       #title = tt_title,
+       subtitle = "Percent of frogs that changed water type\n(marsh/pond, non-aquatic, reservoir, stream/canal)"
+       #caption = tt_caption
+       )
+
+p3
+
+```
+
+
+```{r Visualize4}
+
+p4 <- frogs %>%
+  distinct(frequency, gender, structure) %>%
+  count(frequency, gender) %>%
+  add_count(gender, name = "gender_total") %>%
+  group_by(gender, gender_total) %>%
+  summarize(changed_structure = sum(n > 1)) %>%
+  ungroup() %>%
+  mutate(pct_changed_structure = changed_structure / gender_total,
+         gender = fct_relevel(gender, "Male")) %>%
+  ggplot(aes(gender, pct_changed_structure, fill = gender)) +
+  geom_chicklet(width = 0.75) +
+  scale_fill_manual(values = c("darkgreen", "lightgreen")) +
+  scale_y_continuous(labels = percent_format()) +
+  coord_flip() +
+  expand_limits(y = 1) +
+  theme(legend.position = "none") +
+  labs(y = "", #"% of frogs that changed structure",
+       x = "",
+       #title = tt_title,
+       subtitle = "Percent of frogs that changed structure\n(herbaceous/woody veg, leaf litter, open, woody debris, etc.)"
+       #caption = tt_caption
+       )
+
+p4
+
+```
+
+
+```{r Visualize5}
+
+p5 <- frogs %>%
+  distinct(frequency, gender, substrate) %>%
+  count(frequency, gender) %>%
+  add_count(gender, name = "gender_total") %>%
+  group_by(gender, gender_total) %>%
+  summarize(changed_substrate = sum(n > 1)) %>%
+  ungroup() %>%
+  mutate(pct_changed_substrate = changed_substrate / gender_total,
+         gender = fct_relevel(gender, "Male")) %>%
+  ggplot(aes(gender, pct_changed_substrate, fill = gender)) +
+  geom_chicklet(width = 0.75) +
+  scale_fill_manual(values = c("darkgreen", "lightgreen")) +
+  scale_y_continuous(labels = percent_format()) +
+  coord_flip() +
+  expand_limits(y = 1) +
+  theme(legend.position = "none") +
+  labs(y = "", #"% of frogs that changed substrate",
+       x = "",
+       #title = tt_title,
+       subtitle = "Percent of frogs that changed substrate\n(flocc, mineral soil, organic soil, etc.)"
+       #caption = tt_caption
+       )
+
+p5
+
+```
+
+
+```{r VisualizeFinal}
+
+p1 / p2 / p3 / p4 / p5 + 
+  plot_annotation(
+    title = tt_title,
+    caption = tt_caption
+  )
+
+```
+
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_08_02_tidy_tuesday.png",
+  device = "png")
+
+```

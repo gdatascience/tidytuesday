@@ -1,0 +1,143 @@
+---
+title: "TidyTemplate"
+date: 2022-08-02
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(countrycode)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: data.nber.org  |  DataViz: Tony Galvan (@GDataScience1)"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-07-19")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+technology <- tt$technology %>%
+  filter(group == "Creation")
+
+technology$country <- countrycode(technology$iso3c, origin = "iso3c", destination = "country.name")
+
+```
+
+```{r}
+summary(technology$year)
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+technology %>%
+  inner_join(technology %>%
+            filter(group == "Creation") %>%
+            count(iso3c, wt = value) %>%
+            top_n(9, n) %>%
+            select(iso3c),
+    by = "iso3c") %>%
+  mutate(country = fct_reorder(country, -value)) %>%
+  ggplot(aes(year, value, color = country)) +
+  geom_line(size = 2, show.legend = FALSE) +
+  scale_y_log10(labels = scales::comma_format()) +
+  facet_wrap(~country, scales = "free_y") +
+  labs(x = "",
+      y = "# of patent applications",
+      title = "Technology: Creation",
+      subtitle = "Top 9 Countries Patent Applications: 1980 - 2019",
+      caption = tt_caption)
+  
+```
+
+```{r Visualize2}
+
+technology %>%
+  inner_join(technology %>%
+            filter(group == "Creation") %>%
+            count(iso3c, wt = value) %>%
+            top_n(9, n) %>%
+            select(iso3c),
+    by = "iso3c") %>%
+  group_by(iso3c) %>%
+  mutate(running_total = cumsum(value)) %>%
+  ungroup() %>%
+  mutate(country = fct_reorder(country, -running_total, .fun = last)) %>%
+  ggplot(aes(year, running_total, color = country)) +
+  geom_line(size = 2) +
+  scale_y_log10(labels = scales::comma_format()) +
+  labs(x = "",
+      y = "Running total # of patent applications",
+      color = "",
+      title = "Technology: Creation",
+      subtitle = "Top 9 Countries Patent Applications: 1980 - 2019",
+      caption = tt_caption)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_07_19_tidy_tuesday.png",
+  device = "png")
+
+```
