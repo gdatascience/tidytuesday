@@ -108,24 +108,35 @@ p1
 ```
 
 
+```{r PlotFunction}
+
+frog_plot <- function(tbl, y_axis) {
+  tbl %>%
+    distinct(frequency, gender, {{ y_axis }}) %>%
+    count(frequency, gender) %>%
+    add_count(gender, name = "gender_total") %>%
+    group_by(gender, gender_total) %>%
+    summarize(changed = sum(n > 1)) %>%
+    ungroup() %>%
+    mutate(pct_changed = changed / gender_total,
+           gender = fct_relevel(gender, "Male")) %>%
+    ggplot(aes(gender, pct_changed, fill = gender)) +
+    geom_chicklet(width = 0.75) +
+    scale_fill_manual(values = c("darkgreen", "lightgreen")) +
+    scale_y_continuous(labels = percent_format()) +
+    coord_flip() +
+    expand_limits(y = 1) +
+    theme(legend.position = "none")
+}
+
+```
+
+
+
 ```{r Visualize2}
 
 p2 <- frogs %>%
-  distinct(frequency, gender, water) %>%
-  count(frequency, gender) %>%
-  add_count(gender, name = "gender_total") %>%
-  group_by(gender, gender_total) %>%
-  summarize(changed_water = sum(n > 1)) %>%
-  ungroup() %>%
-  mutate(pct_changed_water = changed_water / gender_total,
-         gender = fct_relevel(gender, "Male")) %>%
-  ggplot(aes(gender, pct_changed_water, fill = gender)) +
-  geom_chicklet(width = 0.75) +
-  scale_fill_manual(values = c("darkgreen", "lightgreen")) +
-  scale_y_continuous(labels = percent_format()) +
-  coord_flip() +
-  expand_limits(y = 1) +
-  theme(legend.position = "none") +
+  frog_plot(water) +
   labs(y = "", #"% of frogs that changed water depth",
        x = "",
        #title = tt_title,
@@ -141,21 +152,7 @@ p2
 ```{r Visualize3}
 
 p3 <- frogs %>%
-  distinct(frequency, gender, type) %>%
-  count(frequency, gender) %>%
-  add_count(gender, name = "gender_total") %>%
-  group_by(gender, gender_total) %>%
-  summarize(changed_type = sum(n > 1)) %>%
-  ungroup() %>%
-  mutate(pct_changed_type = changed_type / gender_total,
-         gender = fct_relevel(gender, "Male")) %>%
-  ggplot(aes(gender, pct_changed_type, fill = gender)) +
-  geom_chicklet(width = 0.75) +
-  scale_fill_manual(values = c("darkgreen", "lightgreen")) +
-  scale_y_continuous(labels = percent_format()) +
-  coord_flip() +
-  expand_limits(y = 1) +
-  theme(legend.position = "none") +
+  frog_plot(water) +
   labs(y = "", #"% of frogs that changed water type",
        x = "",
        #title = tt_title,
@@ -171,21 +168,7 @@ p3
 ```{r Visualize4}
 
 p4 <- frogs %>%
-  distinct(frequency, gender, structure) %>%
-  count(frequency, gender) %>%
-  add_count(gender, name = "gender_total") %>%
-  group_by(gender, gender_total) %>%
-  summarize(changed_structure = sum(n > 1)) %>%
-  ungroup() %>%
-  mutate(pct_changed_structure = changed_structure / gender_total,
-         gender = fct_relevel(gender, "Male")) %>%
-  ggplot(aes(gender, pct_changed_structure, fill = gender)) +
-  geom_chicklet(width = 0.75) +
-  scale_fill_manual(values = c("darkgreen", "lightgreen")) +
-  scale_y_continuous(labels = percent_format()) +
-  coord_flip() +
-  expand_limits(y = 1) +
-  theme(legend.position = "none") +
+  frog_plot(water) +
   labs(y = "", #"% of frogs that changed structure",
        x = "",
        #title = tt_title,
@@ -201,21 +184,7 @@ p4
 ```{r Visualize5}
 
 p5 <- frogs %>%
-  distinct(frequency, gender, substrate) %>%
-  count(frequency, gender) %>%
-  add_count(gender, name = "gender_total") %>%
-  group_by(gender, gender_total) %>%
-  summarize(changed_substrate = sum(n > 1)) %>%
-  ungroup() %>%
-  mutate(pct_changed_substrate = changed_substrate / gender_total,
-         gender = fct_relevel(gender, "Male")) %>%
-  ggplot(aes(gender, pct_changed_substrate, fill = gender)) +
-  geom_chicklet(width = 0.75) +
-  scale_fill_manual(values = c("darkgreen", "lightgreen")) +
-  scale_y_continuous(labels = percent_format()) +
-  coord_flip() +
-  expand_limits(y = 1) +
-  theme(legend.position = "none") +
+  frog_plot(water) +
   labs(y = "", #"% of frogs that changed substrate",
        x = "",
        #title = tt_title,
