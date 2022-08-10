@@ -1,0 +1,119 @@
+---
+title: "TidyTemplate"
+date: 2022-08-09
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-08-09")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+wheels <- tt$wheels %>%
+  mutate(year_opened = lubridate::year(opened),
+         decade_opened = year_opened - (year_opened %% 10),
+         diameter_bin = case_when(
+           diameter < 200 ~ "Less than 200 feet",
+           diameter >= 200 & diameter < 399 ~ "200 - 399 feet",
+           diameter >= 400 & diameter < 599 ~ "400 - 599 feet",
+           TRUE ~ "600+ feet"
+         ),
+         diameter_bin = fct_relevel(diameter_bin, "Less than 200 feet"))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+wheels %>%
+  count(decade_opened, diameter_bin) %>%
+  ggplot() +
+  geom_segment(aes(x = decade_opened, xend = decade_opened, y = 0, yend = n)) +
+  geom_point(aes(decade_opened, 
+                 n, 
+                 size = diameter_bin, 
+                 color = diameter_bin),
+             alpha = 0.5) +
+  scale_size_manual(values = c(2, 6, 10, 14)) +
+  expand_limits(y = c(0, 20)) +
+  theme(legend.position = "bottom") +
+  labs(x = "Decade opened",
+       y = "# of ferris wheels opened",
+       size = "",
+       color = "",
+       title = "Ferris Wheels by Diameter",
+       subtitle = "The largest ferris wheels have opened mostly since the 1980's",
+       caption = "Source: {ferriswheels} package  |  DataViz: Tony Galvan (@GDataScience1) #TidyTuesday")
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_08_09_tidy_tuesday.png",
+  device = "png")
+
+```
