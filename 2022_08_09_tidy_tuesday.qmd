@@ -1,0 +1,88 @@
+---
+title: "#TidyTuesday Ferris Wheels & Quarto"
+author: "Tony Galvan"
+format: 
+  revealjs:
+    theme: night
+editor: visual
+---
+
+# Part 1
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished presentation. To learn more about Quarto presentations see <https://quarto.org/docs/presentations/>:
+
+-   "Welcome to Quarto Workshop" - <https://youtu.be/yvi5uXQMvu4>
+-   UPCOMING: "RStudio Meetup: Building a Blog with Quarto" - <https://youtu.be/CVcvXfRyfE0>
+
+# Part 2
+
+## Ferris Wheels
+
+```{r}
+library(tidyverse)
+
+theme_set(theme_light())
+
+wheels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-09/wheels.csv')
+```
+
+The data this week comes from **ferriswheels** package by **Emil Hvitfeldt**:
+
+-   `r nrow(wheels)` observations
+-   `r ncol(wheels)` variables
+
+```{r}
+colnames(wheels)
+```
+
+## Countries
+
+```{r}
+#| echo: true
+
+wheels %>%
+  mutate(country = fct_lump(country, 8)) %>%
+  count(country, sort = TRUE) %>%
+  mutate(country = fct_reorder(country, n),
+         country = fct_relevel(country, "Other")) %>%
+  ggplot(aes(n, country, fill = country)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of ferris wheels", y = "", title = "Where are the Ferris Wheels?")
+```
+
+## Wheel Status
+
+```{r}
+#| echo: true
+
+wheels %>%
+  mutate(country = fct_lump(country, 8),
+         status = fct_lump(status, 1, other_level = "Non-Operational")) %>%
+  add_count(country, name = "country_total") %>%
+  count(country, country_total, status, sort = TRUE) %>%
+  mutate(country = fct_reorder(country, country_total),
+         country = fct_relevel(country, "Other"),
+         status = fct_reorder(status, -n)) %>%
+  ggplot(aes(n, country, fill = status)) +
+  geom_col() +
+  labs(x = "# of ferris wheels", y = "")
+```
+
+## Wheel Heights
+
+```{r}
+#| echo: true
+
+wheels %>%
+  ggplot(aes(height)) +
+  geom_histogram(bins = 10) +
+  labs(title = "Heights")
+```
+
+# Part 3
+
+## Twitter
+
+<https://twitter.com/GDataScience1/likes>

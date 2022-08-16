@@ -1,0 +1,253 @@
+---
+title: "TidyTemplate"
+date: 2022-08-16
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-08-16")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+characters <- tt$characters
+
+psych_stats <- tt$psych_stats 
+
+top_questions <- psych_stats %>%
+  count(question, wt = number_ratings) %>%
+  top_n(10, wt = n) %>%
+  select(-n) %>%
+  inner_join(psych_stats, by = "question") %>%
+  select(char_id, question, avg_rating) %>%
+  pivot_wider(names_from = question, values_from = avg_rating, values_fn = mean) %>%
+  janitor::clean_names()
+
+char_psych <- characters %>%
+  select(id, name, uni_name, notability) %>%
+  left_join(top_questions, by = c("id" = "char_id"))
+
+```
+
+
+```{r}
+library(tidymodels)
+
+set.seed(1234)
+psych_split <- char_psych %>%
+  initial_split(strata = notability)
+
+psych_train <- training(psych_split)
+psych_test <- testing(psych_split)
+```
+
+
+```{r}
+lm_spec <- linear_reg() %>%
+  set_engine(engine = "lm")
+
+lm_spec
+```
+
+
+```{r}
+psych_rec <- recipe(notability ~ ., data = psych_train) %>%
+  update_role(id, name, uni_name, new_role = "ID") %>%
+  step_zv(all_numeric(), -all_outcomes()) %>%
+  step_normalize(all_numeric(), -all_outcomes())
+
+psych_rec
+```
+
+
+```{r}
+wf <- workflow() %>%
+  add_recipe(psych_rec)
+
+lm_fit <- wf %>%
+  add_model(lm_spec) %>%
+  fit(data = psych_train)
+
+lm_fit %>%
+  extract_fit_parsnip() %>%
+  tidy()
+```
+
+
+```{r}
+rf_spec <- rand_forest(mode = "regression") %>%
+  set_engine("ranger")
+
+rf_spec
+```
+
+
+```{r}
+rf_fit <- wf %>%
+  add_model(rf_spec) %>%
+  fit(data = psych_train)
+
+rf_fit %>%
+  extract_fit_parsnip()
+```
+
+
+```{r}
+results_train <- lm_fit %>%
+  predict(new_data = psych_train) %>%
+  mutate(
+    truth = psych_train$notability,
+    model = "lm"
+  ) %>%
+  bind_rows(rf_fit %>%
+    predict(new_data = psych_train) %>%
+    mutate(
+      truth = psych_train$notability,
+      model = "rf"
+    ))
+
+results_test <- lm_fit %>%
+  predict(new_data = psych_test) %>%
+  mutate(
+    truth = psych_test$notability,
+    model = "lm"
+  ) %>%
+  bind_rows(rf_fit %>%
+    predict(new_data = psych_test) %>%
+    mutate(
+      truth = psych_test$notability,
+      model = "rf"
+    ))
+```
+
+
+```{r}
+results_train %>%
+  group_by(model) %>%
+  rmse(truth = truth, estimate = .pred)
+```
+
+
+```{r}
+results_test %>%
+  group_by(model) %>%
+  rmse(truth = truth, estimate = .pred)
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+results_test %>%
+  mutate(train = "testing") %>%
+  bind_rows(results_train %>%
+    mutate(train = "training")) %>%
+  ggplot(aes(truth, .pred, color = model)) +
+  geom_abline(lty = 2, color = "gray80", size = 1.5) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~train) +
+  labs(
+    x = "Truth",
+    y = "Predicted attendance",
+    color = "Type of model"
+  )
+  
+```
+
+
+```{r Visualize2}
+lm_test_error <- lm_fit %>%
+  predict(new_data = psych_test) %>%
+  mutate(
+    name = psych_test$name,
+    uni_name = psych_test$uni_name,
+    truth = psych_test$notability,
+    diff = .pred - truth
+  )
+
+lm_test_error %>%
+  top_n(10, diff) %>%
+  bind_rows(lm_test_error %>%
+  top_n(10, -diff)) %>%
+  mutate(name_uni = paste0(name, " (", uni_name, ")"),
+         name_uni = fct_reorder(name_uni, diff)) %>%
+  ggplot(aes(color = diff > 0)) +
+  geom_point(aes(x = diff, y = name_uni)) +
+  geom_segment(aes(x = 0, xend = diff, y = name_uni, yend = name_uni)) +
+  theme(legend.position = "none") +
+  labs(x = "Model error (prediction minus truth)",
+       y = "",
+       title = "Linear Model Predicted Notability",
+       subtitle = "Largest over/under predictions of notability",
+       caption = "Source: Open-Source Psychometrics Project  |  DataViz: Tony Galvan (@GDataScience1) #TidyTuesday")
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_08_16_tidy_tuesday.png",
+  device = "png")
+
+```
