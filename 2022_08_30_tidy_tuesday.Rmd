@@ -96,10 +96,13 @@ pell %>%
   labs(x = "",
        y = "",
        title = "Pell Grants Awarded",
-       subtitle = "What caused the jump in awards/recipients in 2019?",
+       subtitle = "What caused the jump in awards/recipients in 2009?",
        caption = tt_caption)
   
 ```
+
+## Answer to what happened in 2009
+In 2008 and 2009, both the number of Pell Grant recipients and the cost of the program rose rapidly. This growth can be attributed to a combination of large increases in college enrollment and Pell Grant applications, the effect of a weak economy on applicants’ incomes and grant eligibility, broader eligibility rules that Congress passed in 2007 and 2008, and a substantial increase in the maximum grant that Congress included in the American Recovery and Reinvestment Act of 2009 (the economic stimulus bill). Source - https://www.newamerica.org/education-policy/topics/higher-education-funding-and-financial-aid/federal-student-aid/federal-pell-grants/pell-grant-funding/
 
 # Save Image
 
