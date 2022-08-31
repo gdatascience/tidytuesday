@@ -18,8 +18,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(tidytuesdayR)
+library(scales)
+library(geofacet)
+library(ggtext)
 
-theme_set(theme_light())
+theme_set(theme_light(base_family = "Avenir Next"))
 
 tt_caption <- "Source: US Dept of Education  |  DataViz: Tony Galvan (@GDataScience1) #TidyTuesday"
 
@@ -92,7 +95,7 @@ pell %>%
   ggplot(aes(year, value, fill = metric)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~metric, scales = "free_y", nrow = 3) +
-  scale_y_continuous(labels = scales::comma_format()) +
+  scale_y_continuous(labels = comma_format()) +
   labs(x = "",
        y = "",
        title = "Pell Grants Awarded",
@@ -103,6 +106,37 @@ pell %>%
 
 ## Answer to what happened in 2009
 In 2008 and 2009, both the number of Pell Grant recipients and the cost of the program rose rapidly. This growth can be attributed to a combination of large increases in college enrollment and Pell Grant applications, the effect of a weak economy on applicants’ incomes and grant eligibility, broader eligibility rules that Congress passed in 2007 and 2008, and a substantial increase in the maximum grant that Congress included in the American Recovery and Reinvestment Act of 2009 (the economic stimulus bill). Source - https://www.newamerica.org/education-policy/topics/higher-education-funding-and-financial-aid/federal-student-aid/federal-pell-grants/pell-grant-funding/
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r GeoFacet}
+
+pell %>%
+  group_by(year, state) %>%
+  summarize(total_award = sum(award, na.rm = TRUE),
+            total_recipient = sum(recipient)) %>%
+  ungroup() %>%
+  mutate(award_per_recipient = total_award / total_recipient) %>%
+  ggplot(aes(year, award_per_recipient, color = state == "NH")) +
+  geom_line(size = 2) +
+  facet_geo(~state, grid = "us_state_grid2", label = "name") +
+  scale_y_continuous(labels = dollar_format(scale = 0.001, suffix = "K"), 
+                     breaks = c(2000, 3000, 4000)) +
+  scale_x_continuous(breaks = c(2000, 2005, 2010, 2015), 
+                     labels = c("'00", "'05", "'10", "'15")) +
+  scale_color_manual(values = c("gray75", "#456990")) +
+  theme(legend.position = "none",
+        plot.title = element_markdown(size = 24),
+        plot.subtitle = element_markdown(size = 18)) +
+  labs(x = "",
+       y = "Amount awarded per recipient",
+       title = "<b>Pell Grants</b>",
+       subtitle = "Why did the award per reciepent in <span style = 'color:#456990;'><b>New Hampshire</b></span> decrease from 2010 to 2016?",
+       caption = tt_caption)
+
+```
 
 # Save Image
 
