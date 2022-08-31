@@ -1,0 +1,115 @@
+---
+title: "TidyTemplate"
+date: 2022-08-30
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: US Dept of Education  |  DataViz: Tony Galvan (@GDataScience1) #TidyTuesday"
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-08-30")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+pell <- tt$pell %>%
+  janitor::clean_names() %>%
+  select(-session)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+pell %>%
+  group_by(year) %>%
+  summarize(total_award = sum(award, na.rm = TRUE),
+            total_recipient = sum(recipient)) %>%
+  ungroup() %>%
+  mutate(award_per_recipient = total_award / total_recipient) %>%
+  pivot_longer(cols = -year, names_to = "metric", values_to = "value") %>%
+  mutate(metric = case_when(metric == "total_award" ~ "Total Awarded ($)",
+                            metric == "total_recipient" ~ "Total Recipients",
+                            TRUE ~ "Award per Recipient ($)"),
+         metric = fct_relevel(metric, "Total Awarded ($)", "Total Recipients")) %>%
+  ggplot(aes(year, value, fill = metric)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~metric, scales = "free_y", nrow = 3) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  labs(x = "",
+       y = "",
+       title = "Pell Grants Awarded",
+       subtitle = "What caused the jump in awards/recipients in 2019?",
+       caption = tt_caption)
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_08_30_tidy_tuesday.png",
+  device = "png")
+
+```
