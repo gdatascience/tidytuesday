@@ -133,7 +133,7 @@ pell %>%
   labs(x = "",
        y = "Amount awarded per recipient",
        title = "<b>Pell Grants</b>",
-       subtitle = "Why did the award per reciepent in <span style = 'color:#456990;'><b>New Hampshire</b></span> decrease from 2010 to 2016?",
+       subtitle = "Why did the award per recipient in <span style = 'color:#456990;'><b>New Hampshire</b></span> decrease from 2010 to 2016?",
        caption = tt_caption)
 
 ```
