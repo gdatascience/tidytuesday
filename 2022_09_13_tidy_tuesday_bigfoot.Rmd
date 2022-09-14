@@ -1,0 +1,373 @@
+---
+title: "TidyTemplate"
+date: 2022-09-13
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event! Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data. While the dataset will be "tamed", it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format. The goal of TidyTuesday is to apply your R skills, get feedback, explore other's work, and connect with the greater #RStats community! As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(ggthemes)
+
+theme_set(theme_light(base_family = "Tahoma"))
+
+tt_caption <- "Source: Bigfoot Field Researchers Organization  |  DataViz: Tony Galvan (@GDataScience1) #TidyTuesday"
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-09-13")
+
+```
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset. This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+bigfoot <- tt$bigfoot %>%
+  mutate(class_a = if_else(classification == "Class A", "yes", "no"),
+         season = na_if(season, "Unknown"),
+         title = str_remove(title, "Report \\d+\\: "),
+         year = lubridate::year(date),
+         decade = 10 * year %/% 10) %>% 
+  rename(id = number)
+
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+bigfoot %>%
+  count(state) %>%
+  mutate(state = fct_reorder(state, n)) %>%
+  ggplot(aes(n, state)) +
+  geom_col() +
+  labs(x = "# of sightings",
+       y = "",
+       title = "Bigfoot Sightings",
+       caption = tt_caption)
+  
+```
+
+```{r Visualize2}
+
+bigfoot %>%
+  filter(year >= 1950) %>%
+  count(year, classification) %>%
+  ggplot(aes(year, n, fill = classification)) +
+  geom_col() +
+  labs(x = "",
+       y = "# of sightings",
+       title = "Bigfoot Sightings",
+       caption = tt_caption)
+  
+```
+
+```{r Visualize3}
+
+bigfoot %>%
+  filter(longitude >= -130,
+    !is.na(longitude),
+    !is.na(latitude)) %>%
+  ggplot(aes(longitude, latitude, color = classification)) +
+  borders("state") +
+  geom_point(size = 0.5, alpha = 0.5) +
+  coord_map() +
+  theme_map(base_family = "Tahoma") +
+  theme(plot.title = element_text(size = 32, face = "bold")) +
+  labs(title = "Bigfoot Sightings",
+       color = "",
+       caption = tt_caption)
+  
+```
+
+```{r Animation}
+
+library(gganimate)
+
+bigfoot %>%
+  filter(longitude >= -130, !is.na(longitude), !is.na(latitude)) %>%
+  ggplot(aes(longitude, latitude, color = classification)) +
+  borders("state") +
+  geom_point(size = 0.5, alpha = 0.5) +
+  coord_map() +
+  theme_map(base_family = "Tahoma") +
+  theme(plot.title = element_text(size = 32, face = "bold")) +
+  transition_manual(year, cumulative = TRUE) +
+  labs(title = "Bigfoot Sightings: { current_frame}",
+       color = "",
+       caption = tt_caption)
+  
+```
+
+# Text Mining
+
+```{r}
+library(tidytext)
+library(patchwork)
+
+h1 <- bigfoot %>%
+  unnest_tokens(word, title) %>%
+  count(id, name = "total_words") %>%
+  mutate(text_field = "Title") %>% 
+  ggplot(aes(total_words)) +
+  geom_histogram() +
+  facet_wrap(~text_field) +
+  labs(x = "# of words")
+
+h2 <- bigfoot %>%
+  unnest_tokens(word, observed) %>%
+  count(id, name = "total_words") %>%
+  mutate(text_field = "Description of what was observed") %>% 
+  ggplot(aes(total_words)) +
+  geom_histogram() +
+  facet_wrap(~text_field) +
+  labs(x = "# of words")
+
+h3 <- bigfoot %>%
+  unnest_tokens(word, location_details) %>%
+  count(id, name = "total_words") %>%
+  mutate(text_field = "Description of location") %>% 
+  ggplot(aes(total_words)) +
+  geom_histogram() +
+  facet_wrap(~text_field) +
+  labs(x = "# of words")
+
+h1 / h2 / h3 +
+  plot_annotation(title = "Bigfoot Sightings",
+                  caption = tt_caption)
+
+```
+
+# Machine Learning
+
+Can I predict a Class A classification for Bigfoot sightings? 
+
+Methodology is based on Julia Silge's sentiment analysis with tidymodels and #TidyTuesday Animal Crossing reviews  https://juliasilge.com/blog/animal-crossing/
+
+## Setup
+
+Split our data into training and testing sets
+
+```{r MLSetup}
+
+library(tidymodels)
+library(textrecipes)
+
+set.seed(123)
+bigfoot_split <- initial_split(bigfoot, strata = class_a)
+bigfoot_train <- training(bigfoot_split)
+bigfoot_test <- testing(bigfoot_split)
+
+```
+
+## Preprocessing
+
+Prepare the data for modeling
+
+-   A recipe stores what our model is going to be (the formula) and what data to use (training set)
+-   Tokenize the text (break into individual words)
+-   Remove "stop" words (common useless words, such as "a", "the", etc.)
+-   Filter down to only keep the top 500 most-used words
+-   Weight the words by TF-IDF (<https://www.tidytextmining.com/tfidf.html> - measure how important a word is to a document in a collection (or corpus) of documents)
+-   Center and scale (i.e. normalize) all the newly created TF-IDF values because the model we are going to use is sensitive to this
+
+```{r Preprocessing}
+
+bigfoot_rec <- recipe(class_a ~ observed, data = bigfoot_train) %>%
+  step_tokenize(observed) %>%
+  step_stopwords(observed) %>%
+  step_tokenfilter(observed, max_tokens = 500) %>%
+  step_tfidf(observed) %>%
+  step_normalize(all_predictors())
+
+bigfoot_prep <- prep(bigfoot_rec)
+
+bigfoot_prep
+
+```
+
+## Specify the model
+
+Set up the model specification for lasso regression with penalty = tune() since we don't yet know the best value for the regularization parameter and mixture = 1 for lasso.
+
+```{r Specify}
+
+lasso_spec <- logistic_reg(penalty = tune(), mixture = 1) %>%
+  set_engine("glmnet")
+
+lasso_wf <- workflow() %>%
+  add_recipe(bigfoot_rec) %>%
+  add_model(lasso_spec)
+
+lasso_wf
+
+```
+
+## Tuning
+
+Try different values for the "penalty" model hyper-parameter
+
+```{r Tuning}
+
+lambda_grid <- grid_regular(penalty(), levels = 40)
+
+set.seed(123)
+bigfoot_folds <- bootstraps(bigfoot_train, strata = class_a)
+
+doParallel::registerDoParallel()
+
+set.seed(2020)
+lasso_grid <- tune_grid(
+  lasso_wf,
+  resamples = bigfoot_folds,
+  grid = lambda_grid,
+  metrics = metric_set(roc_auc, ppv, npv)
+)
+
+lasso_grid %>%
+  collect_metrics() %>%
+  ggplot(aes(penalty, mean, color = .metric)) +
+  geom_line(size = 1.5, show.legend = FALSE) +
+  facet_wrap(~.metric) +
+  scale_x_log10()
+
+```
+
+## Choose the final model
+
+Choose a final model based on AUC
+
+```{r FinalModel}
+
+best_auc <- lasso_grid %>%
+  select_best("roc_auc")
+
+final_lasso <- finalize_workflow(lasso_wf, best_auc)
+
+final_lasso
+
+```
+
+## Model results
+
+```{r ModelResults}
+
+library(vip)
+library(cowplot)
+library(magick)
+
+bigfoot_image <- "https://www.kindpng.com/picc/m/692-6929123_bigfoot-transparent-mystery-hd-png-download.png"
+hairyman_image <- "https://thumbs.dreamstime.com/b/hairy-swimmer-54697.jpg"
+
+
+p <- final_lasso %>%
+  fit(bigfoot_train) %>%
+  extract_fit_parsnip() %>%
+  vi(lambda = best_auc$penalty) %>%
+  group_by(Sign) %>%
+  top_n(20, wt = abs(Importance)) %>%
+  ungroup() %>%
+  mutate(
+    Importance = abs(Importance),
+    Variable = str_remove(Variable, "tfidf_observed_"),
+    Variable = fct_reorder(Variable, Importance)
+  ) %>%
+  ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~if_else(Sign == "POS", 'More "credible"', 'Less "credible"'), 
+             scales = "free_y") +
+  scale_fill_manual(values = c("#8E3B46", "#0075F2")) +
+  theme(plot.title = element_text(face = "bold"),
+        panel.grid = element_blank()) +
+  labs(title = 'Bigfoot Sightings: predicting more "credible" sightings (Class A)',
+       subtitle = "Which words were most predictive in the description of what was observed?",
+       y = NULL,
+       caption = paste0(tt_caption, "\n",
+                        "Hairy Man Image: ", hairyman_image, "\n",
+                        "Bigfoot Image: ", bigfoot_image))
+
+ggdraw() +
+  draw_plot(p) +
+  draw_image(bigfoot_image, x = 0.35, y = -0.15, scale = 0.4) +
+  draw_image(hairyman_image, x = -0.175, y = -0.15, scale = 0.4)
+
+```
+
+## Performance on Test Data
+
+Fit the model one last time on the training data and evaluate it on the testing data
+
+```{r TestEval}
+
+bigfoot_final <- last_fit(final_lasso, bigfoot_split)
+
+bigfoot_final %>%
+  collect_metrics()
+
+```
+
+## Confusion Matrix
+
+Compare our predictions against the truth
+
+```{r ConfMat}
+
+bigfoot_final %>%
+  collect_predictions() %>%
+  conf_mat(class_a, .pred_class)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter!
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_09_13_tidy_tuesday_bigfoot.png",
+  device = "png")
+
+```
