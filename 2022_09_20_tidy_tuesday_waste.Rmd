@@ -1,0 +1,117 @@
+---
+title: "TidyTemplate"
+date: 2022-09-23
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event! Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data. While the dataset will be "tamed", it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format. The goal of TidyTuesday is to apply your R skills, get feedback, explore other's work, and connect with the greater #RStats community! As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(ggtext)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Macedo et al, 2022  |  DataViz: Tony Galvan (@GDataScience1) #TidyTuesday"
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-09-20")
+
+```
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset. This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+waste <- tt$HydroWASTE_v10 %>%
+  janitor::clean_names()
+
+glimpse(waste)
+
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+# library(showtext)
+# 
+# font_add_google("Special Elite", "se")
+# 
+# showtext_auto()
+
+waste %>%
+  mutate(country = fct_lump(country, 12, other_level = "Rest of the world")) %>%
+  count(country, sort = TRUE) %>%
+  mutate(country = fct_reorder(country, n)) %>%
+  ggplot(aes(n, 
+             country, 
+             fill = case_when(
+               country == "Rest of the world" ~ "World",
+               country == "United States" ~ "Unites States",
+               TRUE ~ "Other"))) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(labels = comma_format()) +
+  scale_fill_manual(values = c("#CDD3CE", "#3772FF", "#F86624")) +
+  theme(plot.title = element_text(face = "bold"), #, family = "se"), 
+        plot.subtitle = element_markdown(),
+        plot.caption = element_markdown()) +
+  labs(x = "# of wastewater plants",
+       y = "",
+       title = "Wastewater Plants: Top 12 Countries",
+       subtitle = "The <span style = 'color:#3772FF;'><b>United States</b></span> has as many plants as the <span style = 'color:#F86624;'><b>rest of the world</b></span> outside of the top 12 countries",
+       caption = tt_caption)
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter!
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_09_20_tidy_tuesday_waste.png",
+  device = "png")
+
+```
