@@ -167,6 +167,39 @@ artists %>%
 ```
 
 
+```{r}
+
+artists %>%
+  filter(state != "Puerto Rico") %>%
+  mutate(race = fct_reorder(race, location_quotient),
+         race = fct_rev(race)) %>%
+  ggplot(aes(location_quotient, race, fill = race)) +
+  geom_violin(scale = "width", trim = FALSE, adjust = 2, size = 0.25) +
+  scale_x_continuous(limits = c(-0.25, 2.5)) +
+  scale_fill_manual(values = c("African-American" = "#713E5A", 
+                               "Asian" = "#CA6680", 
+                               "Hispanic" = "#63A375", 
+                               "Other" = "#EDC79B", 
+                               "White" = "#D57A66")) +
+  coord_polar() +
+  facet_geo(~state) +
+  theme_minimal(base_family = "Tahoma") +
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(face = "bold"),
+        strip.text = element_text(size = 4),
+        legend.text = element_text(size = 6),
+        legend.position = "top") +
+  labs(x = "",
+       y = "",
+       fill = "",
+       title = "Artists in the USA",
+       caption = tt_caption)
+
+```
+
+
 # Save Image
 
 Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
