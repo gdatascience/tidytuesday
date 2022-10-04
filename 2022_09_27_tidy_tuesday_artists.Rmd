@@ -1,0 +1,181 @@
+---
+title: "TidyTemplate"
+date: 2022-09-29
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: arts.gov  |  DataViz: Tony Galvan  |  Twitter: @GDataScience1  |  #TidyTuesday"
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-09-27")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+artists <- tt$artists
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+artists %>%
+  count(type, race, wt = artists_n, name = "total_artists") %>%
+  mutate(type = fct_reorder(type, total_artists, .fun = sum),
+         race = fct_relevel(race, "White", "Hispanic", "Asian")) %>%
+  ggplot(aes(total_artists, type, fill = race)) +
+  geom_col() +
+  scale_x_continuous(labels = comma_format()) +
+  labs(x = "# of artists",
+       y = "Type of artist",
+       fill = "Race",
+       title = "Artists in the USA: 2015-2019",
+       subtitle = "Total artists by race",
+       caption = tt_caption)
+  
+```
+
+
+```{r Visualize2}
+
+artists %>%
+  count(type, race, wt = artists_n, name = "total_artists") %>%
+  mutate(type = fct_reorder(type, total_artists, .fun = sum),
+         race = fct_relevel(race, "White", "Hispanic", "Asian")) %>%
+  ggplot(aes(total_artists, type, fill = race)) +
+  geom_col(position = "fill") +
+  scale_x_continuous(labels = percent_format()) +
+  labs(x = "% of artists",
+       y = "Type of artist",
+       fill = "Race",
+       title = "Artists in the USA: 2015-2019",
+       subtitle = "Percent of artists by race",
+       caption = tt_caption)
+  
+```
+
+
+```{r Visualize3}
+
+library(aRtsy)
+
+art_palette <- c("#432818", "#926328", "#ffc343", "#dbb765", "#ebd494")
+
+set.seed(1)
+
+canvas_flow(
+  colors = art_palette,
+  lines = 100,
+  lwd = 0.85,
+  stepmax = 0.08,
+  iterations = 20,
+  polar = TRUE
+    )
+```
+
+
+```{r Visualize4}
+
+library(geofacet)
+
+artists %>%
+  filter(state != "Puerto Rico") %>%
+  count(state, race, wt = artists_n, name = "race_artists_n") %>%
+  add_count(state, wt = race_artists_n, name = "state_artists_n") %>%
+  mutate(pct_race_artists = race_artists_n / state_artists_n,
+         race = fct_reorder(race, pct_race_artists),
+         race = fct_rev(race)) %>%
+  ggplot(aes(pct_race_artists, race, fill = race)) +
+  geom_col() +
+  scale_x_continuous(labels = percent_format()) +
+  scale_fill_manual(values = c("African-American" = "#432818", 
+                               "Hispanic" = "#926328", 
+                               "Asian" = "#ffc343", 
+                               "Other" = "gray75", 
+                               "White" = "#ebd494")) +
+  coord_polar() +
+  facet_geo(~state, label = "code") + 
+  theme_minimal() +
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "top") +
+  labs(x = "",
+       y = "",
+       fill = "Race",
+       title = "Artists in the USA",
+       caption = tt_caption)
+  
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_09_27_tidy_tuesday_artists.png",
+  device = "png")
+
+```
