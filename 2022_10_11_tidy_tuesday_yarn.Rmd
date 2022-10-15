@@ -1,0 +1,145 @@
+---
+title: "TidyTemplate"
+date: 2022-10-12
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: ravelry.com  |  DataViz: Tony Galvan  |  Twitter: @GDataScience1  |  #TidyTuesday"
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-10-11")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+yarn <- tt$yarn %>%
+  select(-yarn_weight_crochet_gauge) %>%
+  mutate(yarn_weight_name = na_if(yarn_weight_name, "No weight specified"))
+
+skimr::skim(yarn)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+yarn %>%
+  ggplot(aes(rating_average)) +
+  geom_histogram() +
+  facet_wrap(~machine_washable, ncol = 1, scale = "free_y")
+  
+```
+
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize2}
+
+yarn %>%
+  filter(!is.na(yarn_weight_name)) %>%
+  group_by(yarn_weight_name) %>%
+  summarize(avg_rating = sum(rating_total, na.rm = TRUE) / sum(rating_count, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(yarn_weight_name = fct_reorder(yarn_weight_name, avg_rating)) %>%
+  ggplot(aes(avg_rating, yarn_weight_name, fill = yarn_weight_name)) +
+  geom_col(show.legend = FALSE)
+
+```
+
+
+```{r}
+
+yarn %>%
+  filter(!is.na(yarn_weight_name)) %>%
+  add_count(yarn_weight_name) %>%
+  mutate(yarn_weight_name = fct_reorder(yarn_weight_name, n)) %>%
+  ggplot(aes(rating_average, yarn_weight_name)) +
+  geom_jitter(aes(color = yarn_weight_name), alpha = 0.05, show.legend = FALSE) +
+  geom_boxplot(show.legend = FALSE, alpha = 0.5, outlier.shape = NA) +
+  labs(x = "Average rating",
+       y = "",
+       title = "Ravelry Pattern Ratings",
+       caption = tt_caption)
+  
+```
+
+
+```{r}
+
+yarn %>%
+  separate_rows(permalink, sep = "-") %>%
+  count(permalink, sort = TRUE)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_10_11_tidy_tuesday_yarn.png",
+  device = "png")
+
+```
