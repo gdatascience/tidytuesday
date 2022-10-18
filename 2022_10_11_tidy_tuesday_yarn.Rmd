@@ -124,9 +124,52 @@ yarn %>%
 
 ```{r}
 
-yarn %>%
+library(wordcloud2)
+
+yarn_words <- yarn %>%
   separate_rows(permalink, sep = "-") %>%
-  count(permalink, sort = TRUE)
+  filter(permalink != "",
+         permalink != "yarn",
+         permalink != "yarns") %>%
+  count(word = permalink, name = "freq") %>%
+  top_n(500, wt = freq)
+  
+set.seed(123)
+wordcloud2(yarn_words, 
+           shape = 'circle',
+           size = 1.7,
+           #scale=c(3.5,0.25),
+           fontFamily = "Tahoma")
+
+letterCloud(yarn_words,
+            word = "YARN",
+            wordSize = 1)
+
+```
+
+
+
+```{r}
+
+library(ggwordcloud)
+
+yarn_words2 <- yarn %>%
+  separate_rows(permalink, sep = "-") %>%
+  filter(permalink != "",
+         permalink != "yarn",
+         permalink != "yarns") %>%
+  count(yarn_weight_name, word = permalink, name = "freq") %>%
+  group_by(yarn_weight_name) %>%
+  arrange(desc(freq)) %>%
+  mutate(rn = row_number()) %>%
+  ungroup() %>%
+  filter(rn <= 20)
+
+yarn_words2 %>%
+  ggplot(aes(label = word, size = freq)) +
+  geom_text_wordcloud_area() +
+  scale_size_area(max_size = 20) +
+  facet_wrap(~yarn_weight_name)
 
 ```
 
