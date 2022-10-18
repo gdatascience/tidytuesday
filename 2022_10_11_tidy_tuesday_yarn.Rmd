@@ -163,13 +163,23 @@ yarn_words2 <- yarn %>%
   arrange(desc(freq)) %>%
   mutate(rn = row_number()) %>%
   ungroup() %>%
-  filter(rn <= 20)
+  filter(rn <= 50)
 
 yarn_words2 %>%
-  ggplot(aes(label = word, size = freq)) +
+  filter(!is.na(yarn_weight_name),
+         !yarn_weight_name %in% c("DK / Sport", 
+                                  "Aran / Worsted", 
+                                  "Jumbo",
+                                  "Cobweb",
+                                  "Thread")) %>%
+  mutate(yarn_weight_name = fct_reorder(yarn_weight_name, -freq)) %>%
+  ggplot(aes(label = word, size = freq, color = yarn_weight_name)) +
   geom_text_wordcloud_area() +
-  scale_size_area(max_size = 20) +
-  facet_wrap(~yarn_weight_name)
+  scale_size_area(max_size = 12) +
+  facet_wrap(~yarn_weight_name) +
+  labs(title = "Ravelry Top 9 Yarn Weights",
+       subtitle = "Wordclouds showwing the most common words from permalinks",
+       caption = tt_caption)
 
 ```
 
