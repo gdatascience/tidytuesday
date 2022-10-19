@@ -19,6 +19,10 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(tidytuesdayR)
 
+theme_set(theme_light())
+
+tt_caption <- "Source: 8flix.com  |  DataViz: Tony Galvan  |  Twitter: @GDataScience1  |  #TidyTuesday"
+
 ```
 
 # Load the weekly Data
@@ -61,7 +65,17 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
-
+dialogue <- tt$stranger_things_all_dialogue %>%
+  mutate(characters = case_when(
+    str_detect(stage_direction, "Russian") ~ NA_character_,
+    str_detect(stage_direction, "English") ~ NA_character_,
+    stage_direction == str_to_lower(stage_direction) ~ NA_character_, 
+    TRUE ~ stage_direction)
+    , characters = str_remove_all(characters, "\\b([a-z]+)\\b")
+    , characters = str_remove_all(characters, "\\[|\\]|,|'|-")
+    , characters = str_trim(characters, side = "both")
+    ) %>%
+  fill(characters, .direction = "downup")
 
 ```
 
@@ -72,7 +86,17 @@ Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
 
-
+dialogue %>%
+  count(characters, sort = TRUE) %>%
+  top_n(10, wt = n) %>%
+  mutate(characters = fct_reorder(characters, n)) %>%
+  ggplot(aes(n, characters, fill = characters)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of lines",
+       y = "",
+       title = "Stranger Things: Dialogue",
+       subtitle = "Top 10 Characters by Number of Lines",
+       caption = tt_caption)
   
 ```
 
@@ -84,7 +108,7 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 
 # This will save your most recent plot
 ggsave(
-  filename = "My TidyTuesday Plot.png",
+  filename = "2022_10_18_tidy_tuesday_stranger_things.png",
   device = "png")
 
 ```
