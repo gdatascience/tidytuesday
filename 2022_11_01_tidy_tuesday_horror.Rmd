@@ -1,0 +1,220 @@
+---
+title: "TidyTemplate"
+date: 2022-10-31
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event! Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data. While the dataset will be "tamed", it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format. The goal of TidyTuesday is to apply your R skills, get feedback, explore other's work, and connect with the greater #RStats community! As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(lubridate)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: The Movie Database   |  DataViz: Tony Galvan (@GDataScience1) #TidyTuesday"
+
+image_url_prefix <- "https://www.themoviedb.org/t/p/w1280"
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-11-01")
+
+```
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset. This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+horror_movies <- tt$horror_movies %>%
+  select(-adult) %>%
+  mutate(release_date = ymd(release_date),
+         release_year = year(release_date),
+         vote_total = vote_average * vote_count,
+         backdrop_path = paste0(image_url_prefix, backdrop_path),
+         poster_path = paste0(image_url_prefix, poster_path))
+
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize1}
+
+horror_movies %>%
+  filter(runtime > 0) %>%
+  top_n(10, wt = popularity) %>%
+  mutate(title = fct_reorder(title, popularity)) %>%
+  ggplot(aes(popularity, title, fill = title)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "Popularity",
+       y = "",
+       title = "Most Popular Horror Movies",
+       subtitle = "According to TMDB ()",
+       caption = tt_caption)
+
+```
+
+### GT Table
+
+Create a table using the {gt} package
+
+```{r gt1}
+
+library(gt)
+
+gt_tbl1 <- horror_movies %>%
+  filter(vote_count >= 1000,
+         runtime > 60) %>%
+  top_n(5, wt = vote_average) %>%
+  arrange(desc(vote_average)) %>%
+  mutate(rank = row_number(),
+         votes = vote_count,
+         title = paste0(title, " (", release_year, ") - ", runtime, " minutes")) %>%
+  select(rank, poster_path, backdrop_path, title, vote_average, revenue, votes, vote_count) %>%
+  gt() 
+
+gt_tbl1
+
+```
+
+Convert raw URLs into images to display
+
+```{r gt2}
+
+gt_tbl2 <- gt_tbl1 %>%
+  text_transform(
+    locations = cells_body(columns = c(poster_path, backdrop_path)),
+    fn = function(x){
+      web_image(
+        url = x,
+        height = 100
+      )
+    }
+  )
+  
+gt_tbl2
+
+```
+
+Add title, subtitle, and caption
+
+```{r gt3}
+
+gt_tbl3 <- gt_tbl2 %>%
+  tab_header(
+    title = md("**Highest Rated Horror Movies**"),
+    subtitle = "With at least 1000 votes"
+  ) %>%
+  tab_source_note(
+    source_note = tt_caption
+  )
+
+gt_tbl3
+
+```
+
+Fix column labels
+
+```{r gt4}
+
+gt_tbl4 <- gt_tbl3 %>%
+  cols_label(rank = md("**Rank**"),
+             poster_path = "",
+             backdrop_path = "",
+             title = md("**Title**"),
+             vote_average = md("**Rating**"),
+             revenue = md("**Revenue**<br>(in millions)"),
+             votes = md("**Votes**"),
+             vote_count = ""
+  )
+  
+gt_tbl4
+
+```
+
+Change votes to bar plot
+
+```{r gt5}
+
+library(gtExtras)
+
+gt_tbl5 <- gt_tbl4 %>%
+  gt_plt_bar(column = vote_count, width = 40, color = "red") %>%
+  fmt_number(columns = votes, decimals = 0) %>%
+  fmt_currency(columns = revenue, decimals = 1, scale = 0.000001, suffixing = TRUE) %>%
+  cols_align(columns = c(rank, vote_average, revenue), align = "center")
+
+gt_tbl5
+
+```
+
+Give the table a "darker" feel
+
+```{r gt6}
+
+gt_tbl6 <- gt_tbl5 %>%
+  tab_options(table.background.color = "gray25") %>%
+  cols_width(revenue ~ px(140)) %>%
+  opt_table_font(
+    font = list(
+      google_font(name = "Libre Baskerville"),
+      default_fonts()
+    )
+  )
+
+gt_tbl6
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter!
+
+```{r}
+
+# This will save your most recent plot
+gtsave(
+  gt_tbl6,
+  filename = "2022_11_01_tidy_tuesday_horror.png"
+  )
+
+```
