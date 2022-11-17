@@ -192,15 +192,40 @@ Give the table a "darker" feel
 
 gt_tbl6 <- gt_tbl5 %>%
   tab_options(table.background.color = "gray25") %>%
-  cols_width(revenue ~ px(140)) %>%
+  cols_width(revenue ~ px(140)) #%>%
+  # opt_table_font(
+  #   font = list(
+  #     google_font(name = "Libre Baskerville"),
+  #     default_fonts()
+  #   )
+  # )
+
+gt_tbl6
+
+```
+
+Change the title font
+
+```{r}
+
+gt_tbl7 <- gt_tbl6 %>%
   opt_table_font(
     font = list(
-      google_font(name = "Libre Baskerville"),
+      google_font(name = "Creepster"),
       default_fonts()
+    )
+  ) %>%
+  tab_options(
+    heading.title.font.size = 48
+  ) %>%
+  tab_style(
+    style = cell_text(size = "xx-large"),
+    locations = cells_body(
+      columns = rank
     )
   )
 
-gt_tbl6
+gt_tbl7
 
 ```
 
@@ -213,7 +238,7 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 
 # This will save your most recent plot
 gtsave(
-  gt_tbl6,
+  gt_tbl7,
   filename = "2022_11_01_tidy_tuesday_horror.png"
   )
 
