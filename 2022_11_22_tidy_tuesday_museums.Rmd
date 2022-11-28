@@ -21,6 +21,8 @@ library(tidytuesdayR)
 
 theme_set(theme_light())
 
+cooler_pal <- c("#fcf300", "#ffc600", "#a2d6f9", "#1e96fc", "#072ac8")
+
 ```
 
 # Load the weekly Data
@@ -64,7 +66,8 @@ Explore the data and process it into a nice format for plotting! Access each dat
 ```{r Wrangle}
 
 museums <- tt$museums %>%
-  janitor::clean_names()
+  janitor::clean_names() %>%
+  filter(latitude <= 65)
 
 ```
 
@@ -76,27 +79,31 @@ Using your processed dataset, create your unique visualization.
 ```{r VisualizeBar}
 
 custom_legend <- museums %>%
-  filter(latitude <= 65) %>%
   count(size) %>%
   mutate(size = str_to_upper(size),
          size = fct_rev(size)) %>%
   ggplot(aes(n, size, fill = size)) +
   geom_col() +
-  geom_text(aes(label = n, color = size), hjust = 0, size = 8, nudge_x = 0.1) +
+  geom_text(aes(label = n, color = size), 
+            hjust = 0, 
+            size = 7, 
+            fontface = "bold",
+            nudge_x = 0.1) +
   expand_limits(x = 100000) +
   scale_x_log10() +
   scale_fill_manual(
-    values = c("gray", "#540D6E", "#337CA0", "#FF934F", "#F7E733")) +
+    values = rev(cooler_pal)) + 
   scale_color_manual(
-    values = c("gray", "#540D6E", "#337CA0", "#FF934F", "#F7E733")) +
+    values = rev(cooler_pal)) + 
   theme(legend.position = "none",
         panel.grid = element_blank(),
-        panel.background = element_rect(fill = "black"),
-        plot.background = element_rect(fill = "black"),
+        panel.background = element_blank(),
+        plot.background = element_blank(),
         panel.border = element_blank(),
         axis.ticks = element_blank(),
         axis.text.x = element_blank(),
-        axis.text.y = element_text(size = 16, color = "white"))
+        axis.title = element_blank(),
+        axis.text.y = element_text(size = 16, color = "white", face = "bold"))
 
 custom_legend
 
@@ -117,54 +124,15 @@ font_add_google("Monoton", "monton")
 ## Automatically use showtext to render text
 showtext_auto()
 
-museums %>%
-  filter(latitude <= 65) %>%
-  mutate(size = str_to_upper(size)) %>%
-  ggplot() +
-  geom_polygon(data = UK, 
-               aes(x=long, y = lat, group = group), 
-               fill="grey25") +
-  geom_point(aes(longitude, latitude, color = size),
-             alpha = 0.75, size = 0.25) +
-  scale_color_manual(
-    values = c("#F7E733", "#FF934F", "#337CA0", "#540D6E", "gray")
-    #values = c("#e6c535", "#e6a835", "#c28e2c", "#a27e3c", "#765830")
-    ) +
-  coord_equal() +
-  theme_map() +
-  guides(color = guide_legend(override.aes = list(size = 3))) +
-  theme(panel.background = element_rect(fill = "black"),
-        plot.background = element_rect(fill = "black"),
-        legend.background = element_rect(fill = "black"),
-        legend.key = element_rect(fill = "black"),
-        legend.text = element_text(color = "white", size = 20),
-        plot.title = element_text(color = "white", 
-                                  family = "monton",
-                                  size = 96, 
-                                  hjust = 0.5,
-                                  face = "bold"),
-        plot.caption = element_text(color = "white", hjust = 0.5, size = 12)) +
-  labs(color = "",
-       title = str_to_upper("UK   Museums"),
-       caption = str_to_upper("Source: MuseWeb  |  DataViz: Tony Galvan  |  Twitter: @GDataScience1  |  #TidyTuesday"))
-
-```
-
-
-```{r MapWithCustomLegend}
-
 map <- museums %>%
-  filter(latitude <= 65) %>%
   mutate(size = str_to_upper(size)) %>%
   ggplot() +
   geom_polygon(data = UK, 
                aes(x=long, y = lat, group = group), 
                fill="grey25") +
   geom_point(aes(longitude, latitude, color = size),
-             alpha = 0.75, size = 0.25) +
-  scale_color_manual(
-    values = c("#F7E733", "#FF934F", "#337CA0", "#540D6E", "gray")
-    ) +
+             alpha = 0.5, size = 1.75) +
+  scale_color_manual(values = cooler_pal) +
   coord_equal() +
   theme_map() +
   theme(legend.position = "none",
@@ -181,14 +149,19 @@ map <- museums %>%
 
 map
 
+```
+
+
+```{r VisualizeCombined}
+
 library(cowplot)
 
 ggdraw(map) +
   draw_plot(custom_legend,
-            x = 0.215,
-            y = 0.215,
-            width = 0.175,
-            height = 0.115)
+            x = 0.015,
+            y = 0.1525,
+            width = 0.35,
+            height = 0.125)
 
 ```
 
@@ -203,6 +176,7 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 ggsave(
   filename = "2022_11_22_tidy_tuesday_museums.png",
   device = "png",
-  height = 5)
+  width = 11,
+  height = 15)
 
 ```
