@@ -1,0 +1,77 @@
+---
+title: "Horror Movies"
+author: "Tony Galvan"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(gt)
+library(gtExtras)
+
+tt_caption <- "Source: The Movie Database   |  DataViz: Tony Galvan (@GDataScience1) #TidyTuesday"
+
+image_url_prefix <- "https://www.themoviedb.org/t/p/w1280"
+
+readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-01/horror_movies.csv') %>%
+  select(-adult) %>%
+  mutate(release_year = year(release_date),
+         backdrop_path = paste0(image_url_prefix, backdrop_path),
+         poster_path = paste0(image_url_prefix, poster_path)) %>%
+  filter(vote_count >= 1000,
+         runtime > 60) %>%
+  top_n(5, wt = vote_average) %>%
+  arrange(desc(vote_average)) %>%
+  mutate(rank = row_number(),
+         votes = vote_count,
+         title = paste0(title, " (", release_year, ") - ", runtime, " minutes")) %>%
+  select(rank, poster_path, backdrop_path, title, vote_average, revenue, votes, vote_count) %>%
+  gt() %>%
+  text_transform(
+    locations = cells_body(columns = c(poster_path, backdrop_path)),
+    fn = function(x){
+      web_image(
+        url = x,
+        height = 100
+      )
+    }
+  ) %>%
+  tab_header(
+    title = md("**Highest Rated Horror Movies**"),
+    subtitle = "With at least 1000 votes"
+  ) %>%
+  tab_source_note(
+    source_note = tt_caption
+  ) %>%
+  cols_label(rank = md("**Rank**"),
+             poster_path = "",
+             backdrop_path = "",
+             title = md("**Title**"),
+             vote_average = md("**Rating**"),
+             revenue = md("**Revenue**<br>(in millions)"),
+             votes = md("**Votes**"),
+             vote_count = ""
+  ) %>%
+  gt_plt_bar(column = vote_count, width = 40, color = "red") %>%
+  fmt_number(columns = votes, decimals = 0) %>%
+  fmt_currency(columns = revenue, decimals = 1, scale = 0.000001, suffixing = TRUE) %>%
+  cols_align(columns = c(rank, vote_average, revenue), align = "center") %>%
+  tab_options(table.background.color = "gray25") %>%
+  cols_width(revenue ~ px(140)) %>%
+  opt_table_font(
+    font = list(
+      google_font(name = "Creepster"),
+      default_fonts()
+    )
+  ) %>%
+  tab_options(
+    heading.title.font.size = 48
+  ) %>%
+  tab_style(
+    style = cell_text(size = "xx-large"),
+    locations = cells_body(
+      columns = rank
+    )
+  )
+```

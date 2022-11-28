@@ -1,0 +1,4 @@
+- source: horror_movies.qmd
+  quarto-pub:
+    - id: c231d405-2a91-4b6c-9a02-3b0d760cf757
+      url: 'https://quartopub.com/sites/gdatascience/horror-movies'

@@ -1,0 +1,189 @@
+---
+title: "TidyTemplate"
+date: 2022-11-18
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2018-07-10")
+tt2 <- tt_load("2020-10-20")
+
+breweries <- read_csv("~/Downloads/breweries.csv") %>%
+  rename(id = 1,
+         brewery = name)
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+tt2
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+tt2 %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+beer <- tt$week15_beers %>%
+  rename(beer_name = name) %>%
+  select(-count)
+
+awards <- tt2$beer_awards %>%
+  mutate(brewery = str_replace(brewery, " Co\\.", " Company")) %>%
+  select(-city, -state) %>%
+  mutate(key = str_to_lower(beer_name),
+         key = paste0(key, " ", str_to_lower(brewery)),
+         key = str_remove_all(key, "[[:punct:]]"),
+         key = str_remove_all(key, "company"),
+         key = str_remove_all(key, "beer"),
+         key = str_remove_all(key, "brewery"),
+         key = str_remove_all(key, "brewing"))
+
+beer_df <- beer %>%
+  inner_join(breweries, by = c("brewery_id" = "id")) %>%
+  select(-id, -brewery_id) %>%
+  mutate(key = str_to_lower(beer_name),
+         key = paste0(key, " ", str_to_lower(brewery)),
+         key = str_remove_all(key, "[[:punct:]]"),
+         key = str_remove_all(key, "company"),
+         key = str_remove_all(key, "beer"),
+         key = str_remove_all(key, "brewery"),
+         key = str_remove_all(key, "brewing"))
+
+```
+
+Try to use the {fuzzyjoin} package to join the beer and awards data sets
+
+```{r fuzzyjoin}
+
+library(fuzzyjoin)
+
+beer_awards <- awards %>%
+  stringdist_join(
+    beer_df, 
+    mode = "left", 
+    by = "key", 
+    max_dist = 5, 
+    method = "dl", 
+    distance_col='dist'
+    )
+
+beer_awards %>%
+  group_by(beer_name.x, brewery.x) %>%
+  slice_min(order_by = dist, n = 1) %>%
+  ungroup() %>%
+  select(beer_name.x, brewery.x, beer_name.y, brewery.y, dist) %>%
+  arrange(desc(dist)) %>%
+  View()
+
+```
+
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+library(gt)
+library(gtExtras)
+
+temecula_beer <- tt2$beer_awards %>% 
+  filter(city == "Temecula") %>%
+  arrange(desc(year), medal_order) %>%
+  select(
+    year,
+    medal,
+    brewery,
+    beer_name,
+    category
+  ) %>%
+  mutate(brewery = case_when(
+    brewery == "Garage Brewing Co. & Pizzeria" ~ "Garage Brewing Co.", 
+    str_detect(brewery, "Wiens") ~ "Wiens Brewing Co.",
+    TRUE ~ brewery)
+    )
+
+tbl_beer <- temecula_beer %>%
+  # group_by(year) %>%
+  gt() %>%
+  tab_header(
+    title = md(str_to_upper("**Temecula's Award Winning Beers**")),
+    subtitle = "According to the Great American Beer Festival"
+  ) %>%
+  tab_source_note(
+    source_note = md("Created by: **Tony Galvan**  |  Twitter: **@GDataScience1**  |  #TidyTuesday")
+  ) %>%
+  cols_label(
+    beer_name = "Beer"
+  ) %>%
+  data_color(
+    columns = medal,
+    color = c("orange", "yellow", "grey70")
+  ) %>%
+  gt_theme_pff()
+
+tbl_beer
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+gtsave(
+  tbl_beer,
+  filename = "2022_11_15_tidy_tuesday_beer.png"
+  )
+
+```
