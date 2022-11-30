@@ -1,0 +1,137 @@
+---
+title: "TidyTemplate"
+date: 2022-11-29
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(circlize)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: FIFA World Cup  |  DataViz: Tony Galvan  |  Twitter: @GDataScience1  |  #TidyTuesday"
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-11-29")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+wcmatches <- tt$wcmatches %>%
+  mutate(game_id = row_number())
+
+wc_winners <- wcmatches %>%
+  filter(outcome != "D") %>%
+  transmute(game_id, winning_team, w_score = if_else(home_score > away_score, home_score, away_score))
+
+wc_losers <- wcmatches %>%
+  filter(outcome != "D") %>%
+  transmute(game_id, losing_team, l_score = if_else(home_score < away_score, home_score, away_score))
+
+mat <- wc_winners %>%
+  left_join(wc_losers, by = "game_id") %>%
+  group_by(winning_team, losing_team) %>%
+  summarize(games = n(),
+            avg_score_diff = mean(w_score - l_score)) %>%
+  ungroup() %>%
+  filter(games > 2) %>% 
+  select(-games)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+grid.col <- setNames(rainbow(length(unlist(dimnames(mat)))), union(rownames(mat), colnames(mat)))
+
+circos.clear()
+  
+circlize::chordDiagram(
+  mat, 
+  annotationTrack = "grid", 
+  preAllocateTracks = 1, 
+  transparency = 0.25,
+  link.lwd = 1, link.lty = 1, link.border = "gray25",
+  grid.col = grid.col)
+
+# Rotates the Labels so they are 90 Degrees to the chord diagram
+circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) {
+ xlim = get.cell.meta.data("xlim")
+ ylim = get.cell.meta.data("ylim")
+ sector.name = get.cell.meta.data("sector.index")
+ circos.text(mean(xlim), ylim[1] + .1, sector.name, facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5))
+ circos.axis(h = "top", labels.cex = 0.5, major.tick.length = 0.2,     sector.index = sector.name, track.index = 2)
+}, bg.border = NA)
+
+text(0, 0.3, "FIFA", cex = 12, font = 2)
+text(0, 0, str_to_upper("World Cup"), cex = 5.5, font = 2)
+text(0, -0.2, str_to_upper("Scoring Differentials"), cex = 2.5, font = 2)
+text(0, -0.925, str_to_upper(tt_caption), cex = 0.5)
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_11_29_tidy_tuesday_worldcup.png",
+  device = "png")
+
+```
