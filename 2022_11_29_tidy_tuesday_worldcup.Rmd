@@ -118,7 +118,8 @@ circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) {
 
 text(0, 0.3, "FIFA", cex = 12, font = 2)
 text(0, 0, str_to_upper("World Cup"), cex = 5.5, font = 2)
-text(0, -0.2, str_to_upper("Scoring Differentials"), cex = 2.5, font = 2)
+text(0, -0.2, str_to_upper("Scoring Differentials *"), cex = 2.25, font = 2)
+text(0, -0.9, str_to_upper("* teams that have played at least twice"), cex = 0.5)
 text(0, -0.925, str_to_upper(tt_caption), cex = 0.5)
   
 ```
