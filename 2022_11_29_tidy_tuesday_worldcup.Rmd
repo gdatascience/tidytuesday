@@ -18,6 +18,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(tidytuesdayR)
+library(scales)
+library(patchwork)
+library(ggtext)
 library(circlize)
 
 theme_set(theme_light())
@@ -93,7 +96,127 @@ mat <- wc_winners %>%
 
 Using your processed dataset, create your unique visualization.
 
-```{r Visualize}
+```{r VisualizeWL}
+p_win <- wcmatches %>%
+  filter(outcome != "D") %>%
+  count(winning_team, sort = TRUE) %>%
+  top_n(10, wt = n) %>%
+  mutate(team = fct_reorder(winning_team, n)) %>%
+  ggplot(aes(n, team, fill = team)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "Wins", y = "")
+
+p_lose <- wcmatches %>%
+  filter(outcome != "D") %>%
+  count(losing_team, sort = TRUE) %>%
+  top_n(10, wt = n) %>%
+  mutate(team = fct_reorder(losing_team, -n)) %>%
+  ggplot(aes(n, team, fill = team)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "Losses", y = "")
+
+p_win / p_lose +
+  plot_annotation(
+    title = "FIFA World Cup",
+    subtitle = "Teams with the most Wins/Losses",
+    caption = tt_caption
+  )
+
+```
+
+
+```{r VisualizeWLPct}
+
+team_results <- wcmatches %>%
+  filter(outcome != "D") %>%
+  count(winning_team, name = "wins") %>%
+  rename(team = winning_team) %>%
+  full_join(wcmatches %>%
+              filter(outcome != "D") %>%
+              count(losing_team, name = "losses") %>%
+              rename(team = losing_team),
+            by = "team") %>%
+  full_join(wcmatches %>%
+              filter(outcome == "D") %>%
+              count(home_team, name = "home_draws") %>%
+              rename(team = home_team),
+            by = "team") %>%
+  full_join(wcmatches %>%
+              filter(outcome == "D") %>%
+              count(away_team, name = "away_draws") %>%
+              rename(team = away_team),
+            by = "team") %>%
+  mutate(wins = coalesce(wins, 0),
+         losses = coalesce(losses, 0),
+         home_draws = coalesce(home_draws, 0),
+         away_draws = coalesce(away_draws, 0),
+         draws = home_draws + away_draws,
+         games_played = wins + losses + draws,
+         pct_win = wins / games_played) %>%
+  select(-home_draws, -away_draws)
+
+games_filter <- 15
+
+team_results %>%
+  filter(games_played >= games_filter) %>%
+  pivot_longer(cols = c("wins", "losses", "draws"), 
+               names_to = "game_result", 
+               values_to = "games"
+  ) %>%
+  mutate(team = paste0(team, " (", percent(pct_win, accuracy = 1), ")"),
+         team = fct_reorder(team, games_played),
+         game_result = fct_relevel(game_result, "losses", "draws")) %>%
+  ggplot(aes(games, team, fill = game_result)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_fill_manual(
+    values = c("#ff3f16", "gray65", "#0e92a8")
+  ) +
+  theme(plot.title = element_markdown(size = 24),
+        plot.subtitle = element_markdown(size = 13.5),
+        panel.grid.major.y = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(x = "# of games",
+       y = "",
+       fill = "",
+       title = "<b>FIFA World Cup</b>: 1930 - 2018",
+       subtitle = paste0("<span style = 'color:#0e92a8;'><b>Wins</b></span>, <span style = 'color:gray65;'><b>Draws</b></span>, and <span style = 'color:#ff3f16;'><b>Losses</b></span> for teams (winning %) that have played at least ", games_filter, " games"),
+       caption = tt_caption
+       )
+
+team_results %>%
+  filter(games_played >= games_filter) %>%
+  pivot_longer(cols = c("wins", "losses", "draws"), 
+               names_to = "game_result", 
+               values_to = "games"
+  ) %>%
+  mutate(team = paste0(team, " (", games_played, ")"),
+         team = fct_reorder(team, pct_win),
+         game_result = fct_relevel(game_result, "losses", "draws")) %>%
+  ggplot(aes(games, team, fill = game_result)) +
+  geom_col(show.legend = FALSE, position = "fill") +
+  scale_x_continuous(expand = c(0, 0), labels = percent_format()) +
+  scale_fill_manual(
+    values = c("#ff3f16", "gray65", "#0e92a8")
+  ) +
+  theme(plot.title = element_markdown(size = 24),
+        plot.subtitle = element_markdown(size = 13.5),
+        panel.grid.major.y = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(x = "% of games",
+       y = "",
+       fill = "",
+       title = "<b>FIFA World Cup</b>: 1930 - 2018",
+       subtitle = paste0("% of games <span style = 'color:#0e92a8;'><b>Won</b></span>, <span style = 'color:gray65;'><b>Draw</b></span>, and <span style = 'color:#ff3f16;'><b>Lost</b></span> for teams (games played) that have played at least ", games_filter, " games"),
+       caption = tt_caption
+       )
+
+```
+
+
+```{r ChordDiagram}
 
 grid.col <- setNames(rainbow(length(unlist(dimnames(mat)))), union(rownames(mat), colnames(mat)))
 
