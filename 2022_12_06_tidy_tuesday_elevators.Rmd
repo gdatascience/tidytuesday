@@ -1,0 +1,182 @@
+---
+title: "TidyTemplate"
+date: 2022-12-06
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(elevators)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: Hvitfeldt E (2022). elevators: Data Package Containing Information About Elevators in NYC. \nhttps://github.com/EmilHvitfeldt/elevators, https://emilhvitfeldt.github.io/elevators/  \n  DataViz: Tony Galvan  |  Twitter: @GDataScience1  |  #TidyTuesday"
+
+```
+
+# Load the weekly Data
+
+```{r Load}
+
+elevators <- elevators
+
+glimpse(elevators)
+
+```
+
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting!
+
+```{r Wrangle}
+
+elevators <- elevators
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+# SAMPLE PLOT - provided in package documentation
+# https://emilhvitfeldt.github.io/elevators/
+elevators |>
+  ggplot(aes(speed_fpm, capacity_lbs)) +
+  geom_point(alpha = 0.1)
+
+elevators |>
+  count(device_type, sort = TRUE)
+
+elevators |>
+  mutate(device_type = fct_relevel(device_type, "Passenger Elevator")) |>
+  ggplot(aes(speed_fpm, capacity_lbs, color = device_type)) +
+  geom_point(alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 0.1, y = 0.1) +
+  scale_x_log10(labels = comma_format()) +
+  scale_y_log10(labels = comma_format()) +
+  facet_wrap(~device_type) +
+  labs(x = "Speed (fpm)",
+       y = "Capacity (lbs)",
+       title = "New York City Registered Elevator Devices",
+       subtitle = "Speed vs. Capacity by Device Type",
+       caption = tt_caption)
+  
+```
+
+
+```{r Visualize2}
+
+# SAMPLE PLOT - provided in package documentation
+# https://emilhvitfeldt.github.io/elevators/
+elevators |>
+  ggplot(aes(longitude, latitude, color = borough)) +
+  coord_map() +
+  geom_point(alpha = 0.1) +
+  theme_minimal()
+
+
+library(maps)
+
+xmin = min(elevators$longitude)
+xmax = max(elevators$longitude)
+ymin = min(elevators$latitude)
+ymax = max(elevators$latitude)
+
+# Get the world polygon and extract UK
+USA <- map_data("world") %>% filter(region == "USA")
+
+elevators %>%
+  mutate(device_type = fct_lump(device_type, 3),
+         device_type = fct_relevel(device_type, "Passenger Elevator"),
+         borough = fct_relevel(borough, "Manhattan")) %>%
+  ggplot() +
+  geom_polygon(data = USA, 
+               aes(x=long, y = lat, group = group), 
+               fill="grey95") +
+  coord_map(xlim = c(xmin - ((xmax - xmin)*0.015), xmax + ((xmax - xmin)*0.015)), 
+            ylim = c(ymin - ((ymax - ymin)*0.015), ymax + ((ymax - ymin)*0.015))) +
+  geom_point(aes(x = longitude, y = latitude, 
+                 color = borough),
+             alpha = 0.75, shape = 0, size = 0.75) +
+  theme_void() +
+  theme(legend.position = "top") +
+  facet_wrap(~device_type) +
+  labs(color = "",
+       title = "New York City Registered Elevator Devices",
+       subtitle = "Types by Borough",
+       caption = tt_caption)
+
+library(sp)
+library(rgdal)
+library(rgeos)
+library(ggthemes)
+
+url <- "https://s-media.nyc.gov/agencies/dcp/assets/files/zip/data-tools/bytes/nybb_22c.zip"
+fil <- basename(url)
+if (!file.exists(fil)) download.file(url, fil)
+
+fils <- unzip(fil)
+
+nyc <- readOGR(fils[1], ogrListLayers(fils[1])[1], stringsAsFactors=FALSE)
+
+# simplifying the polygons speeds up ggplot2 a bit
+nyc_map <- fortify(gSimplify(nyc, 0.05))
+
+nyc %>%
+  ggplot() +
+  geom_map(map = nyc_map,
+           aes(x = long, y = lat, map_id = id),
+           color = "black", fill = "gray75", size = 0.25) +
+  coord_equal() +
+  theme_map()
+
+```
+
+
+```{r Visualize3}
+
+# SAMPLE PLOT - provided in package documentation
+# https://emilhvitfeldt.github.io/elevators/
+elevators |>
+  filter(borough == "Manhattan") |>
+  mutate(floors = str_extract(floor_to, "\\d+"),
+         floors = as.numeric(floors)) |>
+  filter(!is.na(floors), floors < 100, floors > 0) |>
+  ggplot(aes(longitude, latitude, color = floors)) +
+  geom_point(alpha = 0.05) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  facet_wrap(~ cut_width(floors, width = 10, boundary = 0))
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2022_12_06_tidy_tuesday_elevators.png",
+  device = "png")
+
+```
