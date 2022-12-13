@@ -82,7 +82,6 @@ elevators |>
 
 
 ```{r Visualize2}
-
 # SAMPLE PLOT - provided in package documentation
 # https://emilhvitfeldt.github.io/elevators/
 elevators |>
@@ -99,15 +98,16 @@ xmax = max(elevators$longitude)
 ymin = min(elevators$latitude)
 ymax = max(elevators$latitude)
 
-# Get the world polygon and extract UK
-USA <- map_data("world") %>% filter(region == "USA")
+# Get the world polygon and extract USA
+NYC <- map_data("state") %>% 
+  filter(region == "new york")
 
 elevators %>%
   mutate(device_type = fct_lump(device_type, 3),
          device_type = fct_relevel(device_type, "Passenger Elevator"),
          borough = fct_relevel(borough, "Manhattan")) %>%
   ggplot() +
-  geom_polygon(data = USA, 
+  geom_polygon(data = NYC, 
                aes(x=long, y = lat, group = group), 
                fill="grey95") +
   coord_map(xlim = c(xmin - ((xmax - xmin)*0.015), xmax + ((xmax - xmin)*0.015)), 
@@ -122,6 +122,11 @@ elevators %>%
        title = "New York City Registered Elevator Devices",
        subtitle = "Types by Borough",
        caption = tt_caption)
+
+```
+
+
+```{r Visualize3}
 
 library(sp)
 library(rgdal)
@@ -150,7 +155,7 @@ nyc %>%
 ```
 
 
-```{r Visualize3}
+```{r Visualize4}
 
 # SAMPLE PLOT - provided in package documentation
 # https://emilhvitfeldt.github.io/elevators/
@@ -165,7 +170,74 @@ elevators |>
   theme_minimal() +
   facet_wrap(~ cut_width(floors, width = 10, boundary = 0))
 
+elevators |>
+  mutate(floors = str_extract(floor_to, "\\d+"),
+         floors = as.numeric(floors)) |>
+  filter(!is.na(floors), floors < 100, floors > 0) |>
+  ggplot(aes(floors)) +
+  geom_histogram() +
+  scale_x_log10()
+
+elevators |>
+  mutate(floors = str_extract(floor_to, "\\d+"),
+         floors = as.numeric(floors)) |>
+  filter(!is.na(floors), floors < 100, floors > 0) |>
+  arrange(floors) |>
+  ggplot(aes(longitude, latitude, color = floors)) +
+  geom_point(alpha = 0.05) +
+  scale_color_viridis_c()
+
+elevators |>
+  mutate(floors = str_extract(floor_to, "\\d+"),
+         floors = as.numeric(floors)) |>
+  filter(!is.na(floors), floors < 100, floors > 0) |>
+  arrange(floors) |>
+  ggplot(aes(longitude, latitude)) +
+  geom_hex() +
+  scale_fill_viridis_c()
+
+p <- elevators |>
+  mutate(floors = str_extract(floor_to, "\\d+"),
+         floors = as.numeric(floors)) |>
+  filter(!is.na(floors), floors < 100, floors > 0) |>
+  arrange(floors) |>
+  ggplot() +
+  geom_polygon(data = NYC, 
+               aes(x=long, y = lat, group = group), 
+               fill="grey75") +
+  geom_point(aes(x = longitude, y = latitude, 
+                 color = floors),
+             alpha = 0.75, shape = 0, size = 0.75) +
+  scale_color_viridis_c() +
+  coord_map(xlim = c(xmin - ((xmax - xmin)*0.015), xmax + ((xmax - xmin)*0.015)), 
+            ylim = c(ymin - ((ymax - ymin)*0.015), ymax + ((ymax - ymin)*0.015))) +
+  ggthemes::theme_map() +
+  theme(legend.position = "left",
+        panel.background = element_rect(fill = "lightblue"),
+        plot.background = element_rect(fill = "white"),
+        plot.caption = element_text(size = 5)) +
+  labs(color = "Floors",
+       title = "New York City Elevators",
+       subtitle = "Floors serviced",
+       caption = tt_caption)
+
+p
+
 ```
+
+
+```{r}
+# Needed for my Mac
+options(rgl.useNULL=TRUE) 
+library(rgl)
+library(rayshader)
+
+rgl.clear()
+plot_gg(p)
+rglwidget()
+
+```
+
 
 
 # Save Image
