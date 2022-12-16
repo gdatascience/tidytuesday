@@ -102,6 +102,26 @@ retail %>%
   
 ```
 
+```{r Visualize2}
+
+retail %>%
+  filter(state_abbr != "USA",
+         !subsector %in% c("total", "General Merchandise", "Miscellaneous Store Retailers")) %>%
+  ggplot() +
+  # geom_point(aes(month_start_date, change_yoy, color = subsector),
+  #            alpha = 0.25) +
+  geom_smooth(aes(month_start_date, change_yoy, color = subsector),
+              method = "loess", se = FALSE, size = 0.5) +
+  facet_geo(~state_abbr, scales = "free_y") +
+  scale_y_continuous(labels = percent_format()) +
+  labs(x = "",
+       y = "% change year-over-year",
+       title = "Retail Sales",
+       subtitle = "How did state level COVID lockdowns affect retail sales?",
+       caption = tt_caption)
+  
+```
+
 # Save Image
 
 Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
