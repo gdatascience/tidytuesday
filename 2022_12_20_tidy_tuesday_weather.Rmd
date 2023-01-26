@@ -71,12 +71,35 @@ weather <- tt$weather_forecasts %>%
          city = str_to_title(city),
          city_state = paste0(city, ", ", state))
 
-weather %>%
+```
+
+
+```{r Map}
+library(ggmap)
+
+cities <- weather %>%
   distinct(city_raw, state, city_state) %>%
-  inner_join(tt$cities, by = c("city_raw" = "city", "state" = "state")) %>%
-  ggplot(aes(lon, lat)) +
-  geom_point() +
-  geom_text(aes(label = city_state), check_overlap = TRUE)
+  inner_join(tt$cities, by = c("city_raw" = "city", "state" = "state"))
+
+us <- c(left = min(cities$lon, na.rm = TRUE) - 5, bottom = min(cities$lat, na.rm = TRUE) - 5, 
+        right = max(cities$lon, na.rm = TRUE) + 15, top = max(cities$lat, na.rm = TRUE) + 2)
+
+us_map <- get_stamenmap(us, zoom = 4, maptype = "toner-lite")
+
+us_map %>%
+  ggmap() +
+  geom_point(data = cities, aes(lon, lat, color = avg_annual_precip),
+             size = 4) +
+  geom_text(data = cities, aes(lon, lat, label = city_state), 
+            check_overlap = TRUE, hjust = 0, vjust = 0, nudge_x = 1.5) +
+  scale_color_viridis_c() +
+  theme(legend.position = "top",
+        axis.text = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(x = "",
+       y = "",
+       color = "Avgerage Annual Precipitation (in inches)",
+       caption = tt_caption)
 
 ```
 

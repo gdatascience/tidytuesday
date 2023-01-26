@@ -1,0 +1,151 @@
+---
+title: "TidyTemplate"
+date: 2023-01-25
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption <- "Source: {alone} package by Dan Oehm   |  DataViz: Tony Galvan  |  Twitter: @GDataScience1  |  #TidyTuesday"
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-01-24")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+survivalists <- tt$survivalists
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+survivalists %>%
+  ggplot(aes(season, days_lasted, group = season, fill = factor(season))) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme(legend.position = "none") +
+  labs(x = "Season",
+       y = "# of days lasted",
+       title = "Alone",
+       caption = tt_caption)
+  
+```
+
+
+```{r Visualize2}
+
+p <- survivalists %>%
+  add_count(season, name = "season_survivalists") %>%
+  group_by(r=row_number()) %>%
+  mutate(day_number = list(0:days_lasted)) %>%
+  ungroup() %>%
+  select(-r) %>%
+  unnest(cols = c(day_number)) %>%
+  count(season, day_number, season_survivalists) %>%
+  mutate(pct_survival = n / season_survivalists) %>%
+  ggplot() +
+  geom_line(aes(day_number, pct_survival, color = factor(season))) +
+  facet_wrap(~paste0("Season ", season))
+
+p
+  
+```
+
+
+```{r Visualize2.5}
+
+p +
+  geom_line(data = survivalists %>%
+              add_count(name = "total_survivalists") %>%
+              group_by(r=row_number()) %>%
+              mutate(day_number = list(0:days_lasted)) %>%
+              ungroup() %>%
+              select(-r) %>%
+              unnest(cols = c(day_number)) %>%
+              count(day_number, total_survivalists) %>%
+              mutate(pct_survival = n / total_survivalists),
+            aes(day_number, pct_survival),
+            lty = 2) +
+  scale_y_continuous(labels = percent_format()) +
+  theme(legend.position = "none",
+        plot.title = element_text(size = 32, face = "bold"),
+        plot.subtitle = element_text(size = 16)) +
+  labs(x = "# of day lasted",
+       y = "% survived",
+       title = "Alone (TV Series)",
+       subtitle = "Survival Curves by Season (vs. Overall)",
+       caption = tt_caption)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_01_24_tidy_tuesday_alone.png",
+  device = "png")
+
+```
