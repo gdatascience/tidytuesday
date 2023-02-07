@@ -1,0 +1,247 @@
+---
+title: "TidyTemplate"
+date: 2023-01-30
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(lubridate)
+library(scales)
+
+theme_set(theme_light())
+
+tt_caption1 <- "Source: Movebank for Animal Tracking Data   |  DataViz: Tony Galvan  |  Twitter: @GDataScience1  |  #TidyTuesday"
+
+citation1 <- "Kays R, Dunn RR, Parsons AW, Mcdonald B, Perkins T, Powers S, Shell L,\nMcDonald JL, Cole H, Kikillus H, Woods L, Tindle H, Roetman P (2020)\nThe small home ranges and large local ecological impacts of pet cats. Animal Conservation. doi:10.1111/acv.12563"
+
+citation2 <- "McDonald JL, Cole H (2020) Data from:\nThe small home ranges and large local ecological impacts of pet cats [United Kingdom].\nMovebank Data Repository. doi:10.5441/001/1.pf315732"
+
+tt_caption <- paste0(tt_caption1, "\n\n", citation1, "\n\n", citation2)
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-01-31")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+cats_uk <- tt$cats_uk %>%
+  inner_join(tt$cats_uk_reference, by = "tag_id") %>%
+  mutate(hour_of_day = hour(timestamp),
+         hour_bins = case_when(
+           hour_of_day %in% c(6,7,8,9) ~ "morning",
+           hour_of_day %in% c(10,11,12,13) ~ "mid-day",
+           hour_of_day %in% c(14,15,16,17) ~ "afternoon",
+           TRUE ~ "night"
+         ),
+         date = as.Date(timestamp))
+
+uk_cats_reference <- tt$cats_uk %>%
+  group_by(tag_id) %>%
+  summarize(home_lat = median(location_lat),
+         home_long = median(location_long))
+
+```
+
+# EDA
+
+```{r}
+
+summary(cats_uk$date)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+cats_uk %>%
+  count(animal_id) %>%
+  top_n(10, wt = n) %>%
+  mutate(animal_id = fct_reorder(animal_id, n)) %>%
+  ggplot(aes(n, animal_id, fill = animal_id)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "# of movements",
+       y = "",
+       title = "Pet Cats UK",
+       subtitle = "Most active cats",
+       caption = tt_caption)
+  
+```
+
+Examine Gracie 2's movement
+
+```{r Gracie2}
+
+cats_uk %>%
+  filter(animal_id == "Gracie_2",
+         !algorithm_marked_outlier & !manually_marked_outlier) %>%
+  mutate(hour_bins = fct_relevel(hour_bins, "morning", "mid-day")) %>%
+  ggplot() +
+  geom_point(aes(location_long, location_lat, color = hour_bins), alpha = 0.25) +
+  geom_point(data = uk_cats_reference %>% filter(tag_id == "Gracie_2-Tag"), 
+             aes(home_long, home_lat), 
+             color = "red",
+             size = 2) +
+  scale_color_manual(values = c("yellow", "orange", "purple", "black")) +
+  facet_wrap(~date)
+
+```
+
+Heatmap
+
+```{r HeatMap}
+
+cats_uk %>%
+  filter(animal_id == "Gracie_2",
+         !algorithm_marked_outlier & !manually_marked_outlier) %>%
+  mutate(hour_bins = fct_relevel(hour_bins, "morning", "mid-day")) %>%
+  ggplot() +
+  geom_hex(aes(location_long, location_lat), bins = 30) +
+  geom_point(data = uk_cats_reference %>% filter(tag_id == "Gracie_2-Tag"), 
+             aes(home_long, home_lat), 
+             color = "red",
+             size = 2) +
+  facet_wrap(~hour_bins)
+
+```
+
+Stamen Map
+
+```{r distance}
+
+library(geosphere)
+
+cats_dist <- cats_uk %>%
+  filter(!algorithm_marked_outlier & !manually_marked_outlier) %>%
+  group_by(tag_id) %>%
+  arrange(timestamp) %>%
+  mutate(previous_long = lag(location_long),
+         previous_lat = lag(location_lat),
+         seconds_elapsed = int_length(interval(min(timestamp), timestamp))) %>%
+  ungroup() %>%
+  mutate(previous_long = if_else(is.na(previous_long), location_long, previous_long),
+         previous_lat = if_else(is.na(previous_lat), location_lat, previous_lat),
+         distance_moved = 1.1)
+
+for(i in 1:nrow(cats_dist)) {
+  cats_dist$distance_moved[i] <- distm(x = c(cats_dist$previous_long[i], cats_dist$previous_lat[i]),
+                                       y = c(cats_dist$location_long[i], cats_dist$location_lat[i]),
+                                       fun = distHaversine)[1]
+                                       
+}
+
+cats_dist <- cats_dist %>%
+  group_by(tag_id) %>%
+  arrange(timestamp) %>%
+  mutate(total_distance = cumsum(distance_moved)) %>%
+  ungroup()
+
+```
+
+
+```{r DistanceBar}
+
+cats_dist %>%
+  count(animal_id, wt = distance_moved, name = "total_distance") %>%
+  top_n(10, wt = total_distance) %>%
+  mutate(animal_id = fct_reorder(animal_id, total_distance)) %>%
+  ggplot(aes(total_distance, animal_id, fill = animal_id)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(labels = comma_format(scale = 0.001, suffix = " km")) +
+  labs(x = "Distance (in kilometers)",
+       y = "",
+       title = "Pet Cats UK",
+       subtitle = "Cats that traveled the most distance",
+       caption = tt_caption)
+
+```
+
+
+```{r StepPlot}
+
+cats_dist %>%
+  count(animal_id, wt = distance_moved) %>%
+  top_n(10, wt = n) %>%
+  select(-n) %>%
+  inner_join(cats_dist, by = "animal_id") %>%
+  add_count(animal_id, wt = distance_moved, name = "cat_total_distance") %>%
+  mutate(animal_id = fct_reorder(animal_id, -cat_total_distance)) %>%
+  ggplot(aes(seconds_elapsed, total_distance, color = animal_id)) +
+  geom_line() +
+  scale_y_continuous(labels = comma_format(scale = 0.001, suffix = " km")) +
+  scale_x_continuous(labels = comma_format(scale = 1/60/60/24),
+                     breaks = c(0, 259200, 518400, 777600)) +
+  labs(x = "# of days",
+       y = "Distance (in kilometers)",
+       color = "",
+       title = "Pet Cats UK",
+       subtitle = "Cats that traveled the most distance",
+       caption = tt_caption)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_01_31_tidy_tuesday_cats.png",
+  device = "png")
+
+```
