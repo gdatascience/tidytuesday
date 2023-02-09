@@ -186,7 +186,7 @@ stocks_table <- stocks_df %>%
                                        format = colFormat(prefix = "$", separators = TRUE, digits = 2)), 
               pct_change = colDef(name = "% CHANGE",
                                   format = colFormat(percent = TRUE, digits = 0),
-                                  style = color_scales(stocks_df, , colors = viridis::viridis(5)))
+                                  style = color_scales(stocks_df, colors = viridis::viridis(5)))
             ))  %>%
   add_title("Big Tech Stock Prices") %>% 
   add_subtitle("How have their stock prices changed since Meta went public on 5/18/2012?") %>% 
@@ -195,6 +195,31 @@ stocks_table <- stocks_df %>%
 stocks_table
 
 ```
+
+
+```{r HeatMap}
+
+stocks %>%
+  group_by(company_short) %>%
+  mutate(period_high = max(adj_close),
+         period_low = min(adj_close)) %>%
+  ungroup() %>%
+  mutate(normalized_value = (adj_close - period_low) / (period_high - period_low)) %>%
+  ggplot(aes(date, company_short, fill = normalized_value)) +
+  geom_tile() +
+  scale_fill_viridis_c(labels = percent_format()) +
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(x = "",
+       y = "",
+       fill = "% of high\n ",
+       title = "Big Tech Stock Prices: Since Meta IPO",
+       subtitle = "Heatmap of normalized adjusted close (since 5/18/2012)",
+       caption = tt_caption)
+
+```
+
 
 
 # Save Image
