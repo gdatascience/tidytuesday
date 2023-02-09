@@ -19,6 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(tidytuesdayR)
 library(scales)
+library(lubridate)
 
 theme_set(theme_light())
 
@@ -66,8 +67,59 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
-stocks <- tt$big_tech_companies %>%
-  inner_join(tt$big_tech_stock_prices, by = "stock_symbol") %>%
+library(quantmod)
+
+# stocks <- tt$big_tech_companies %>%
+#   inner_join(tt$big_tech_stock_prices, by = "stock_symbol") %>%
+#   mutate(company_short = str_remove(str_remove(str_remove(company, " Corporation"), " Inc."), ","),
+#          company_short = case_when(
+#            company_short == "International Business Machines" ~ "IBM",
+#            company_short == "Cisco Systems" ~ "Cisco",
+#            company_short == "Meta Platforms" ~ "Meta",
+#            TRUE ~ company_short
+#          ))
+
+stock_symbols <- tt$big_tech_companies %>%
+  distinct(stock_symbol) %>%
+  pull(stock_symbol)
+
+getSymbols(stock_symbols, src = 'yahoo')
+
+xts_to_df <- function(df){
+  name = deparse(substitute(df))
+  
+  output <- df %>%
+    fortify.zoo() %>% 
+    as_tibble() %>%
+    mutate(stock_symbol = name) %>%
+    select(stock_symbol,
+           date = 1,
+           open = 2,
+           high = 3,
+           low = 4,
+           close = 5,
+           adj_close = 7,
+           volume = 6) %>%
+    filter(date >= ymd("2012-05-18"))
+  
+  return(output)
+}
+
+stocks <- xts_to_df(AAPL) %>%  
+  bind_rows(xts_to_df(ADBE)) %>%  
+  bind_rows(xts_to_df(AMZN)) %>%  
+  bind_rows(xts_to_df(CRM)) %>%  
+  bind_rows(xts_to_df(CSCO)) %>%  
+  bind_rows(xts_to_df(GOOGL)) %>%  
+  bind_rows(xts_to_df(IBM)) %>%  
+  bind_rows(xts_to_df(INTC)) %>%  
+  bind_rows(xts_to_df(META)) %>%  
+  bind_rows(xts_to_df(MSFT)) %>%  
+  bind_rows(xts_to_df(NFLX)) %>%  
+  bind_rows(xts_to_df(NVDA)) %>%  
+  bind_rows(xts_to_df(ORCL)) %>%  
+  bind_rows(xts_to_df(TSLA)) %>%
+  inner_join(tt$big_tech_companies, by = "stock_symbol") %>%
   mutate(company_short = str_remove(str_remove(str_remove(company, " Corporation"), " Inc."), ","),
          company_short = case_when(
            company_short == "International Business Machines" ~ "IBM",
@@ -88,7 +140,7 @@ Using your processed dataset, create your unique visualization.
 stocks %>%
   ggplot(aes(date, adj_close)) +
   geom_point(color = "gray", alpha = 0.25, size = 0.5) +
-  geom_smooth(aes(color = company_short), method = "loess", se = FALSE, lty = 2, size = 2) +
+  geom_smooth(aes(color = company_short), method = "loess", se = FALSE, lty = 1, size = 2) +
   facet_wrap(~company_short, scales = "free_y") +
   scale_y_continuous(labels = dollar_format()) +
   theme(legend.position = "none") +
@@ -98,6 +150,51 @@ stocks %>%
        caption = tt_caption)
   
 ```
+
+
+```{r reactable}
+
+library(reactable)
+library(reactablefmtr)
+
+stocks_df <- stocks %>%
+  group_by(stock_symbol) %>%
+  summarize(first_adj_close = dplyr::first(adj_close),
+            last_adj_close = dplyr::last(adj_close)) %>%
+  ungroup() %>%
+  inner_join(stocks %>% distinct(stock_symbol, company_short), by = "stock_symbol") %>%
+  mutate(pct_change = (last_adj_close - first_adj_close) / first_adj_close,
+         logo = paste0("https://raw.githubusercontent.com/tashapiro/TidyTuesday/master/2023/W6/logos/",stock_symbol,".png")) %>%
+  select(logo, company_short, stock_symbol, first_adj_close, last_adj_close, pct_change) %>%
+  arrange(desc(pct_change)) 
+
+stocks_table <- stocks_df %>%
+  reactable(defaultPageSize = 14,
+            theme = fivethirtyeight(),
+            columns = list(
+              logo = colDef(
+                name = "",
+                maxWidth = 70,
+                align = "center",
+                cell = embed_img(height = "25", width = "25")
+    ),
+              company_short = colDef(name = "COMPANY"), 
+              stock_symbol = colDef(name = "STOCK SYMBOL"), 
+              first_adj_close = colDef(name = "ADJUSTED CLOSE: 5/18/2012", 
+                                       format = colFormat(prefix = "$", separators = TRUE, digits = 2)), 
+              last_adj_close = colDef(name = "ADJUSTED CLOSE: 2/7/2023", 
+                                       format = colFormat(prefix = "$", separators = TRUE, digits = 2)), 
+              pct_change = colDef(format = colFormat(percent = TRUE, digits = 0),
+                                  style = color_scales(stocks_df, , colors = viridis::viridis(5)))
+            ))  %>%
+  add_title("Big Tech Stock Prices") %>% 
+  add_subtitle("How have their stock prices changed since Meta went public on 5/18/2012?") %>% 
+  add_source(tt_caption)
+
+stocks_table
+
+```
+
 
 # Save Image
 
@@ -109,5 +206,7 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 ggsave(
   filename = "2023_02_07_tidy_tuesday_stocks.png",
   device = "png")
+
+save_reactable(stocks_table, "2023_02_07_tidy_tuesday_stocks2.png")
 
 ```
