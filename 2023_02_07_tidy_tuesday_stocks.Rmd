@@ -184,7 +184,8 @@ stocks_table <- stocks_df %>%
                                        format = colFormat(prefix = "$", separators = TRUE, digits = 2)), 
               last_adj_close = colDef(name = "ADJUSTED CLOSE: 2/7/2023", 
                                        format = colFormat(prefix = "$", separators = TRUE, digits = 2)), 
-              pct_change = colDef(format = colFormat(percent = TRUE, digits = 0),
+              pct_change = colDef(name = "% CHANGE",
+                                  format = colFormat(percent = TRUE, digits = 0),
                                   style = color_scales(stocks_df, , colors = viridis::viridis(5)))
             ))  %>%
   add_title("Big Tech Stock Prices") %>% 
