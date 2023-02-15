@@ -199,21 +199,28 @@ stocks_table
 
 ```{r HeatMap}
 
+library(bdscale)
+
 stocks %>%
   group_by(company_short) %>%
   mutate(period_high = max(adj_close),
          period_low = min(adj_close)) %>%
   ungroup() %>%
-  mutate(normalized_value = (adj_close - period_low) / (period_high - period_low)) %>%
+  mutate(normalized_value = (adj_close - period_low) / (period_high - period_low),
+         company_short = fct_reorder(company_short, -normalized_value)) %>%
   ggplot(aes(date, company_short, fill = normalized_value)) +
-  geom_tile() +
+  geom_raster() +
   scale_fill_viridis_c(labels = percent_format()) +
+  scale_x_bd(business.dates = unique(stocks$date), 
+             max.major.breaks = 12,
+             labels = date_format("%Y"), 
+             expand = c(0.01, 0)) +
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
-        axis.ticks = element_blank()) +
-  labs(x = "",
-       y = "",
-       fill = "% of high\n ",
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title.position = "plot") +
+  labs(fill = "% of high\n ",
        title = "Big Tech Stock Prices: Since Meta IPO",
        subtitle = "Heatmap of normalized adjusted close (since 5/18/2012)",
        caption = tt_caption)
