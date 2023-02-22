@@ -75,7 +75,9 @@ actors <- age_gaps %>%
     age = actor_1_age,
     age_difference,
     movie_name,
-    release_year
+    release_year,
+    love_interest = actor_2_name,
+    love_interest_age = actor_2_age
   ) %>%
   bind_rows(
     age_gaps %>%
@@ -86,7 +88,9 @@ actors <- age_gaps %>%
         age = actor_2_age,
         age_difference = -age_difference,
         movie_name,
-        release_year
+        release_year,
+        love_interest = actor_1_name,
+        love_interest_age = actor_1_age
       )
   ) %>%
   mutate(release_decade = 10 * (release_year %/% 10))
@@ -119,7 +123,9 @@ p1 <- actors %>%
   ggplot(aes(age, age_difference, color = gender)) +
   geom_point_interactive(
     aes(
-      tooltip = glue("Actor: {actor_name}\nMovie: {movie_name} ({release_year})"), 
+      tooltip = glue("Actor: {actor_name} ({age} years old)
+                     Movie: {movie_name} ({release_year})
+                     Love Interest: {love_interest} ({love_interest_age} years old)"), 
       data_id = actor_name),
     alpha = 0.15) +
   geom_smooth(method = "loess", se = FALSE) +
@@ -149,19 +155,29 @@ girafe(ggobj = p1,
 
 p2 <- actors %>%
   mutate(gender = fct_rev(gender),
-         actor_name = str_remove_all(actor_name, "'")) %>%
+         actor_name = str_remove_all(actor_name, "'"),
+         release_period = case_when(
+           release_decade <= 1980 ~ "Before 1990",
+           release_decade == 1990 ~ "1990's",
+           release_decade == 2000 ~ "2000's",
+           TRUE ~ "After 2010"
+         ),
+         release_period = fct_relevel(release_period, "Before 1990")) %>%
   ggplot(aes(age, age_difference, color = gender)) +
   geom_point_interactive(
     aes(
-      tooltip = glue("Actor: {actor_name}\nMovie: {movie_name} ({release_year})"), 
+      tooltip = glue("Actor: {actor_name} ({age} years old)
+                     Movie: {movie_name} ({release_year})
+                     Love Interest: {love_interest} ({love_interest_age} years old)"), 
       data_id = actor_name),
     alpha = 0.15) +
   geom_smooth(method = "loess", se = FALSE) +
   geom_hline(yintercept = 0,
              lty = 2,
-             size = 2) +
+             linewidth = 1.5) +
   scale_color_manual(values = c("#F15BB5", "#00BBF9")) +
-  facet_wrap( ~ release_decade) +
+  facet_wrap( ~ release_period) +
+  theme(plot.caption = element_text(size = 6)) +
   labs(
     x = "Age",
     y = "Age difference",
@@ -172,11 +188,33 @@ p2 <- actors %>%
 
 girafe(ggobj = p2,
        options = list(
-         opts_tooltip(use_fill = TRUE)
+         opts_tooltip(use_fill = TRUE),
+         opts_sizing(width = 0.65)
          )
        )
   
 ```
+
+
+```{r Visualize3}
+
+age_gaps %>%
+  mutate(release_decade = 10 * (release_year %/% 10),
+         release_period = case_when(
+           release_decade <= 1980 ~ "Before 1990",
+           release_decade == 1990 ~ "1990's",
+           release_decade == 2000 ~ "2000's",
+           TRUE ~ "After 2010"
+         ),
+         release_period = fct_relevel(release_period, "Before 1990")) %>%
+  ggplot(aes(actor_1_age, actor_2_age)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, lty = 2, linewidth = 1.5, color = "red") +
+  geom_smooth(method = "loess", se = FALSE) +
+  facet_wrap(~release_period)
+
+```
+
 
 # Save Image
 
