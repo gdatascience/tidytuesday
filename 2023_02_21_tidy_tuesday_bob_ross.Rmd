@@ -160,7 +160,7 @@ correlations %>%
              by = "color") %>%
   mutate(item1 = fct_reorder(item1, -correlation),
          item2 = reorder_within(item2, by = correlation, within = item1)) %>%
-  ggplot(aes(correlation, item2, fill = I(color_hex))) +
+  ggplot(aes(correlation, item2, fill = I(color_hex), alpha = if_else(correlation <= 0, 0.5, 1))) +
   geom_col(show.legend = FALSE) +
   scale_y_reordered() +
   facet_wrap(~item1, scales = "free_y") +
