@@ -1,0 +1,151 @@
+---
+title: "S&P500"
+author: "Tony Galvan"
+date: '2023-02-25'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(quantmod)
+
+theme_set(theme_light())
+
+caption_str <- "Source: Yahoo Finance  |  Analysis: Tony Galvan (@GDataScience1)"
+
+```
+
+## S&P 500
+
+```{r LoadData}
+
+sp500 <- new.env()
+
+getSymbols("^GSPC", env = sp500, src = "yahoo", from = as.Date("2022-07-29"), to = as.Date("2023-02-24"), )
+
+GSPC <- sp500$GSPC
+
+sp500_df <- GSPC %>%
+    fortify.zoo() %>% 
+    as_tibble() %>%
+    select(date = 1,
+           open = 2,
+           high = 3,
+           low = 4,
+           close = 5,
+           adj_close = 7,
+           volume = 6)
+
+glimpse(sp500_df)
+
+```
+
+### Wrangle Data
+Get week open, close, and change
+
+```{r}
+
+weekly_sp500 <- sp500_df %>%
+  filter(date != min(date)) %>%
+  arrange(date) %>%
+  mutate(week = floor_date(date, unit = "week") + days(7)) %>%
+  group_by(week) %>%
+  summarize(prev_week_open = first(open),
+            prev_week_close = last(close)) %>%
+  ungroup() %>%
+  mutate(prev_week_change = (prev_week_close - prev_week_open) / prev_week_open)
+
+glimpse(weekly_sp500)
+
+adj_weekly_sp500 <- sp500_df %>%
+  arrange(date) %>%
+  mutate(week = floor_date(date, unit = "week") + days(7)) %>%
+  group_by(week) %>%
+  filter(date == max(date)) %>%
+  ungroup() %>%
+  mutate(prev_adj_open = lag(adj_close)) %>%
+  filter(!is.na(prev_adj_open)) %>%
+  transmute(week, prev_adj_close = adj_close, prev_adj_open) %>%
+  mutate(prev_week_change = (prev_adj_close - prev_adj_open) / prev_adj_open)
+
+glimpse(adj_weekly_sp500)
+
+```
+
+### Visualize
+
+```{r}
+
+sp500_df %>%
+  ggplot(aes(date, adj_close)) +
+  geom_line() +
+  geom_smooth()
+
+```
+
+
+```{r}
+
+weekly_sp500 %>%
+  ggplot(aes(week, prev_week_change)) +
+  geom_line() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(x = "",
+       y = "% change (previous week)",
+       title = "S&P 500",
+       subtitle = "Using Monday open & Friday close prices",
+       caption = caption_str)
+
+adj_weekly_sp500 %>%
+  ggplot(aes(week, prev_week_change)) +
+  geom_line() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(x = "",
+       y = "% change (previous week)",
+       title = "S&P 500",
+       subtitle = "Using Friday adjusted close prices",
+       caption = caption_str)
+
+```
+
+```{r}
+
+weekly_sp500 %>%
+  ggplot(aes(x = week)) +
+  geom_errorbar(aes(
+    ymin = prev_week_open,
+    ymax = prev_week_close,
+    color = if_else(prev_week_change >= 0, "Increase", "Decrease")
+  )) +
+  labs(
+    x = "",
+    y = "Index",
+    color = "",
+    title = "S&P 500",
+    subtitle = "Using Monday open & Friday close prices",
+    caption = caption_str
+  )
+
+adj_weekly_sp500 %>%
+  ggplot(aes(x = week)) +
+  geom_errorbar(aes(
+    ymin = prev_adj_open,
+    ymax = prev_adj_close,
+    color = if_else(prev_week_change >= 0, "Increase", "Decrease")
+  )) +
+  labs(
+    x = "",
+    y = "Index",
+    color = "",
+    title = "S&P 500",
+    subtitle = "Using Friday adjusted close prices",
+    caption = caption_str
+  )
+
+```
+
