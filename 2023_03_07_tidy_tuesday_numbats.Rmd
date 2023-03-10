@@ -27,7 +27,7 @@ font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-
 font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
 showtext_auto()
 
-tt_caption <- "#TidyTuesday<span style='color:white;'>..</span><span style='font-family:fa-solid;color:#000000;'>&#xf0ce;</span><span style='color:white;'>.</span><span style='color:#000000;'>Atlas of Living Australia</span><span style='color:white;'>..</span><span style='font-family:fa-brands;color:#000000;'>&#xf099;</span><span style='color:white;'>.</span><span style='color:#000000;'>@GDataScience1</span><span style='color:white;'>..</span><span style='font-family:fa-brands;color:#000000;'>&#xf09b;</span><span style='color:white;'>.</span><span style='color:#000000;'>GDataScience</span><span style='color:white;'>..</span>"
+tt_caption <- "DataViz: Tony Galvan #TidyTuesday<span style='color:white;'>..</span><span style='font-family:fa-solid;color:#000000;'>&#xf0ce;</span><span style='color:white;'>.</span><span style='color:#000000;'>Atlas of Living Australia</span><span style='color:white;'>..</span><span style='font-family:fa-brands;color:#000000;'>&#xf099;</span><span style='color:white;'>.</span><span style='color:#000000;'>@GDataScience1</span><span style='color:white;'>..</span><span style='font-family:fa-brands;color:#000000;'>&#xf09b;</span><span style='color:white;'>.</span><span style='color:#000000;'>GDataScience</span><span style='color:white;'>..</span>"
 
 ```
 
@@ -81,24 +81,24 @@ numbats <- tt$numbats %>%
 
 Using your processed dataset, create your unique visualization.
 
-```{r Visualize1}
+```{r LinePlot}
 
 numbats %>%
   filter(!is.na(year)) %>%
   mutate(decade = 10 * (year %/% 10)) %>%
   count(decade) %>%
   ggplot(aes(decade, n)) +
-  geom_line(color = "navy", size = 2) +
+  geom_line(color = "navy", linewidth = 2) +
   theme(plot.caption = element_textbox_simple()) +
   labs(x = "Decade",
        y = "# of observations",
-       title = "Nombat Observations",
+       title = "Numbat Observations",
        subtitle = "By Decade",
        caption = tt_caption)
 
 ```
 
-```{r}
+```{r MonthBarPlot}
 
 numbats %>%
   filter(!is.na(month)) %>%
@@ -111,21 +111,149 @@ numbats %>%
   theme(plot.caption = element_textbox_simple()) +
   labs(x = "Month",
        y = "# of observations",
-       title = "Nombat Observations",
+       title = "Numbat Observations",
        subtitle = "By Month",
        caption = tt_caption)
 
 ```
 
 
+```{r ResourceBarPlot}
+
+numbats %>%
+  mutate(data_resource_name = fct_lump(data_resource_name, 8)) %>%
+  count(data_resource_name) %>%
+  mutate(data_resource_name = fct_reorder(data_resource_name, n)) %>%
+  ggplot(aes(n, data_resource_name, fill = data_resource_name)) +
+  geom_col(show.legend = FALSE) +
+  theme(plot.caption = element_textbox_simple(),
+        plot.caption.position = "plot") +
+  labs(x = "# of observations",
+       y = "",
+       title = "Numbat Observations",
+       subtitle = "By Resource",
+       caption = tt_caption)
+
+```
+
 
 ```{r map}
 
+library(ozmaps)
+library(ggthemes)
+
+oz_map <- ozmap_data("states")
+
 numbats %>%
-  ggplot(aes(decimal_latitude, decimal_longitude, color = dryandra)) +
-  geom_point()
+  mutate(data_resource_name = fct_lump(data_resource_name, 8)) %>%
+  count(decimal_longitude, decimal_latitude, data_resource_name) %>%
+  mutate(data_resource_name = fct_reorder(data_resource_name, n)) %>%
+  ggplot() +
+  geom_sf(data = oz_map) +
+  geom_point(aes(decimal_longitude, decimal_latitude, color = data_resource_name, size = n),
+             alpha = 0.5, show.legend = FALSE) +
+  # facet_wrap( ~ data_resource_name) +
+  coord_sf() +
+  theme_map() +
+  theme(plot.caption = element_textbox_simple(),
+        plot.caption.position = "plot") +
+  labs(x = "",
+       y = "",
+       title = "Numbat Observations",
+       subtitle = "By Resource",
+       caption = tt_caption)
   
 ```
+
+
+```{r bbox}
+
+library(sf)
+
+oz_states <- oz_map %>%
+  distinct(NAME) %>%
+  pull(NAME)
+
+get_bbox <- function(df, state) {
+  df %>%
+    filter(NAME == state) %>%
+    st_bbox() %>%
+    tibble() %>%
+    rename(value = 1) %>%
+    transmute(id = row_number(),
+              value) %>%
+    pivot_wider(
+      names_from = id,
+      values_from = value,
+      names_prefix = "bbox_"
+    ) %>%
+    transmute(
+      xmin = as.numeric(bbox_1),
+      ymin = as.numeric(bbox_2),
+      xmax = as.numeric(bbox_3),
+      ymax = as.numeric( bbox_4)
+    ) %>%
+    mutate(state = state)
+}
+
+bbox <- get_bbox(oz_map, oz_states[1]) %>%
+  bind_rows(get_bbox(oz_map, oz_states[2])) %>%
+  bind_rows(get_bbox(oz_map, oz_states[3])) %>%
+  bind_rows(get_bbox(oz_map, oz_states[4])) %>%
+  bind_rows(get_bbox(oz_map, oz_states[5])) %>%
+  bind_rows(get_bbox(oz_map, oz_states[6])) %>%
+  bind_rows(get_bbox(oz_map, oz_states[7])) %>%
+  bind_rows(get_bbox(oz_map, oz_states[8])) %>%
+  bind_rows(get_bbox(oz_map, oz_states[9]))
+
+numbat_states <- numbats %>%
+  filter(!is.na(decimal_longitude),
+         !is.na(decimal_latitude)) %>%
+  left_join(bbox, 
+            by = join_by(decimal_longitude >= xmin,
+                         decimal_longitude <= xmax,
+                         decimal_latitude >= ymin,
+                         decimal_latitude <= ymax)
+            ) 
+
+numbat_states %>%
+  count(state) %>%
+  mutate(state = fct_reorder(state, n)) %>%
+  ggplot(aes(n, state, fill = state)) +
+  geom_col(show.legend = FALSE) +
+  theme(plot.caption = element_textbox_simple(),
+        plot.caption.position = "plot") +
+  labs(x = "# of observations",
+       y = "",
+       title = "Numbat Observations",
+       subtitle = "By State",
+       caption = tt_caption)
+
+```
+
+
+```{r StateMap}
+
+library(glue)
+
+oz_map %>%
+  left_join(numbat_states %>% count(state), by = c("NAME" = "state")) %>%
+  ggplot() +
+  geom_sf(aes(fill = n)) +
+  geom_sf_text(aes(label = glue("{NAME}
+                   {n}")), size = 3) +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red") +
+  theme_map() +
+  theme(plot.caption = element_textbox_simple(),
+        plot.caption.position = "plot") +
+  labs(fill = "# of observations",
+       title = "Numbat Observations",
+       subtitle = "By State",
+       caption = tt_caption)
+
+```
+
+
 
 # Save Image
 
