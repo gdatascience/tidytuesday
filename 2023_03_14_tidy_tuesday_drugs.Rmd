@@ -1,0 +1,192 @@
+---
+title: "TidyTemplate"
+date: 2023-03-15
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(ggtext)
+library(showtext)
+
+theme_set(theme_light())
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+tt_source <- "European Medicines Agency"
+
+# tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:white;'>..</span><span style='font-family:fa-solid;color:#000000;'>&#xf0ce;</span><span style='color:white;'>.</span><span style='color:#000000;'>", tt_source, "</span><span style='color:white;'>..</span><span style='font-family:fa-brands;color:#000000;'>&#xf099;</span><span style='color:white;'>.</span><span style='color:#000000;'>@GDataScience1</span><span style='color:white;'>..</span><span style='font-family:fa-brands;color:#000000;'>&#xf09b;</span><span style='color:white;'>.</span><span style='color:#000000;'>GDataScience</span><span style='color:white;'>..</span>")
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:black;'>..</span><span style='font-family:fa-solid;color:white;'>&#xf0ce;</span><span style='color:black;'>.</span><span style='color:white;'>", tt_source, "</span><span style='color:black;'>..</span><span style='font-family:fa-brands;color:white;'>&#xf099;</span><span style='color:black;'>.</span><span style='color:white;'>@GDataScience1</span><span style='color:black;'>..</span><span style='font-family:fa-brands;color:white;'>&#xf09b;</span><span style='color:black;'>.</span><span style='color:white;'>GDataScience</span><span style='color:black;'>..</span>")
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-03-14")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+drugs <- tt$drugs %>%
+  mutate(first_published = as.Date(first_published),
+         revision_date = as.Date(revision_date))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize1}
+
+drug_years <- drugs %>%
+  transmute(
+    medicine_name, 
+    product_number,
+    market = year(marketing_authorisation_date),
+    published = year(first_published),
+    refusal = year(date_of_refusal_of_marketing_authorisation)
+    ) %>%
+  pivot_longer(cols = c(3:5), names_to = "type", values_to = "year") %>%
+  filter(!is.na(year)) %>%
+  count(year, type) %>%
+  mutate(type = case_when(type == "refusal" ~ "Marketing Refused",
+                          type == "market" ~ "Marketing Authorized",
+                          TRUE ~ "First Published"),
+         type = fct_reorder(type, n, .fun = max))
+
+drug_years %>%
+  ggplot(aes(year, n, fill = type)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values = c("#DB162F", "#42D9C8", "#798086")) +
+  theme(plot.caption = element_textbox_simple(color = "white"),
+        plot.caption.position = "plot",
+        legend.position = "top",
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "white"),
+        axis.title = element_text(color = "white"),
+        legend.text = element_text(color = "white"),
+        plot.title = element_text(color = "white", face = "bold", size = 32),
+        plot.subtitle = element_text(color = "white", face = "bold", size = 16),
+        legend.background = element_rect(fill = "gray20"),
+        plot.background = element_rect(fill = "gray20"),
+        panel.background = element_rect(fill = "gray20")) +
+  labs(x = "",
+       y = "% of drugs",
+       fill = "",
+       title = "European Drug Development",
+       subtitle = "1995 - 2023",
+       caption = tt_caption)
+  
+```
+
+
+```{r Visualize2}
+
+drug_areas <- drugs %>%
+  separate_longer_delim(therapeutic_area, delim = ";  ") %>%
+  filter(!is.na(therapeutic_area)) %>%
+  mutate(year_to_market = year(marketing_authorisation_date)) %>%
+  filter(!is.na(year_to_market))
+
+drug_areas %>%
+  mutate(therapeutic_area = fct_lump(therapeutic_area, 8)) %>%
+  count(year_to_market, therapeutic_area) %>%
+  ggplot(aes(year_to_market, n, color = therapeutic_area)) +
+  geom_line(show.legend = FALSE) +
+  facet_wrap(~therapeutic_area, scales = "free_y")
+
+drug_areas %>%
+  filter(str_detect(therapeutic_area, "COVID")) %>%
+  count(year_to_market) %>%
+  ggplot(aes(year_to_market, n, fill = factor(year_to_market))) +
+  geom_col() +
+  theme(plot.caption = element_textbox_simple(color = "white"),
+        plot.caption.position = "plot",
+        legend.position = "none",
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_text(color = "white"),
+        axis.title = element_text(color = "white"),
+        legend.text = element_text(color = "white"),
+        plot.title = element_text(color = "white", face = "bold", size = 28),
+        plot.subtitle = element_text(color = "white", face = "bold", size = 16),
+        legend.background = element_rect(fill = "gray20"),
+        plot.background = element_rect(fill = "gray20"),
+        panel.background = element_rect(fill = "gray20")) +
+  labs(x = "",
+       y = "# of drugs",
+       fill = "",
+       title = "European COVID-19 Drug Development",
+       subtitle = "2 drugs for the treatment of COVID-19 went to market before 2020",
+       caption = tt_caption)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_03_14_tidy_tuesday_drugs.png",
+  device = "png")
+
+```
