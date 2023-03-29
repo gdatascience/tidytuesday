@@ -1,0 +1,123 @@
+---
+title: "TidyTemplate"
+date: 2023-03-28
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(ggtext)
+library(showtext)
+
+font_add_google("Roboto", "Roboto")
+
+theme_set(theme_light()
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+tt_source <- "IANA tz database"
+bg_color <- "white"
+txt_color <- "black"
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf099;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-03-28")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+transitions <- tt$transitions
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+transitions %>%
+  count(dst) %>%
+  ggplot(aes(n, dst, fill = dst)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("#C2C2C2", "#053C5E")) +
+  theme(plot.caption = element_textbox_simple(size = 20),
+        plot.title = element_text(size = 56, family = "Roboto", face = "bold"),
+        plot.subtitle = element_text(size = 48, family = "Roboto"),
+        axis.text = element_text(color = txt_color, size = 28),
+        axis.title = element_text(color = txt_color, size = 32)) +
+  labs(x = "# of time zones",
+       y = "",
+       title = "Time Zones",
+       subtitle = "How many activate daylight savings time?",
+       caption = tt_caption)
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_03_28_tidy_tuesday_timezones.png",
+  device = "png", 
+  width = 6, 
+  height = 6)
+
+```
