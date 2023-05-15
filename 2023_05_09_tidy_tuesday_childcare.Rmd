@@ -141,6 +141,7 @@ childcare_long |>
     aes(study_year, price, color = county_name, label = label),
     size = 14,
     fontface = "bold",
+    family = tt_family,
     hjust = 0,
     nudge_x = 0.1
   ) +
