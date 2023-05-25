@@ -1,0 +1,271 @@
+---
+title: "TidyTemplate"
+date: 2023-05-18
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(camcorder)
+library(ggtext)
+library(showtext)
+
+# start recording
+gg_record(
+  dir = "~/Downloads/camcorder/2023_05_16_tidy_tuesday_tornados", # where to save the recording
+  device = "png", # device to use to save images
+  width = 6, # width of saved image
+  height = 6, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+tt_family <- "anton"
+font_add_google("Anton", tt_family)
+
+theme_set(theme_light())
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+tt_source <- "NOAA's National Weather Service"
+bg_color <- "#3E758C"
+txt_color <- "#F1FDFD"
+violet <- "#4D243D"
+wheat <- "#ECD4A8"
+light_violet <- "#7B5E7B"
+licorice <- "#1E000E"
+rose <- "#986C6A"
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf099;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-05-16")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+tornados <- tt$tornados |> 
+  mutate(
+    decade = 10 * (yr %/% 10),
+    decade_label = fct_rev(paste0(decade, "'s")),
+    month = month(date, label = TRUE, abbr = FALSE)
+         )
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+tornados |> 
+  ggplot(aes(len)) +
+  geom_histogram(fill = "gray65") +
+  scale_x_log10(labels = comma_format()) +
+  # scale_y_log10(labels = comma_format()) +
+  scale_y_continuous(
+    trans  = compose_trans("log10", "reverse"),
+    labels = comma_format()
+  ) +
+  facet_wrap(~decade_label, scales = "free_y", ncol = 2) +
+  theme(
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = bg_color),
+    panel.grid = element_blank(),
+    plot.background = element_rect(fill = bg_color),
+    plot.caption.position = "plot",
+    plot.caption = element_textbox_simple(color = txt_color, size = 24, family = tt_family),
+    plot.title = element_text(color = txt_color, size = 56, face = "bold", family = tt_family),
+    plot.subtitle = element_textbox_simple(color = txt_color, size = 36, family = tt_family),
+    axis.text = element_text(color = txt_color, size = 24, family = tt_family),
+    axis.title = element_text(color = txt_color, size = 36, family = tt_family),
+    strip.background = element_rect(fill = bg_color),
+    strip.text = element_text(color = txt_color, size = 36, family = tt_family)
+  ) +
+  labs(x = "Length (in miles)",
+       y = "# of tornados",
+       title = "Tornados",
+       subtitle = "Did length measurement technique change after the 1990's?",
+       caption = tt_caption)
+  
+```
+
+
+```{r Visualize2}
+
+tornados |> 
+  ggplot(aes(len)) +
+  geom_histogram(fill = "gray65") +
+  scale_x_log10(labels = comma_format()) +
+  # scale_y_log10(labels = comma_format()) +
+  scale_y_continuous(
+    trans  = compose_trans("log10", "reverse"),
+    labels = comma_format()
+  ) +
+  facet_wrap(~month, scales = "free_y", ncol = 2) +
+  theme(
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = bg_color),
+    panel.grid = element_blank(),
+    plot.background = element_rect(fill = bg_color),
+    plot.caption.position = "plot",
+    plot.caption = element_textbox_simple(color = txt_color, size = 24, family = tt_family),
+    plot.title = element_text(color = txt_color, size = 56, face = "bold", family = tt_family),
+    plot.subtitle = element_textbox_simple(color = txt_color, size = 36, family = tt_family),
+    axis.text = element_text(color = txt_color, size = 24, family = tt_family),
+    axis.title = element_text(color = txt_color, size = 36, family = tt_family),
+    strip.background = element_rect(fill = bg_color),
+    strip.text = element_text(color = txt_color, size = 36, family = tt_family)
+  ) +
+  labs(x = "Length (in miles)",
+       y = "# of tornados",
+       title = "Tornados",
+       subtitle = "Are tornados shorter in warmer months?",
+       caption = tt_caption)
+  
+```
+
+
+```{r box_decades}
+
+tornados |> 
+  ggplot(aes(decade, len, group = decade)) +
+  geom_violin(fill = "gray65", scale = "width") +
+  scale_y_log10(labels = comma_format()) +
+  # scale_y_continuous(
+  #   trans  = compose_trans("log10", "reverse"),
+  #   labels = comma_format()
+  # ) +
+  scale_x_continuous(breaks = c(1950, 1960, 1970, 1980, 1990, 2000, 2010, 2022), labels = c("1950's", "1960's", "1970's", "1980's", "1990's", "2000's", "2010's", "2020's")) +
+  theme(
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = bg_color),
+    panel.grid = element_blank(),
+    plot.background = element_rect(fill = bg_color),
+    plot.caption.position = "plot",
+    plot.caption = element_textbox_simple(color = txt_color, size = 24, family = tt_family),
+    plot.title = element_text(color = txt_color, size = 56, face = "bold", family = tt_family),
+    plot.subtitle = element_textbox_simple(color = txt_color, size = 36, family = tt_family),
+    axis.text = element_text(color = txt_color, size = 24, family = tt_family),
+    axis.title = element_text(color = txt_color, size = 36, family = tt_family),
+    strip.background = element_rect(fill = bg_color),
+    strip.text = element_text(color = txt_color, size = 36, family = tt_family)
+  ) +
+  labs(x = "",
+       y = "Length (in miles)",
+       title = "Tornados",
+       subtitle = "Did length measurement technique change after the 1990's?",
+       caption = tt_caption)
+
+```
+
+
+```{r box_months}
+
+tornados |> 
+  ggplot(aes(month, len, group = month)) +
+  # geom_boxplot(fill = "gray65") +
+  geom_violin(fill = "gray65", scale = "width") +
+  scale_y_log10(labels = comma_format()) +
+  theme(
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = bg_color),
+    panel.grid = element_blank(),
+    plot.background = element_rect(fill = bg_color),
+    plot.caption.position = "plot",
+    plot.caption = element_textbox_simple(color = txt_color, size = 24, family = tt_family),
+    plot.title = element_text(color = txt_color, size = 56, face = "bold", family = tt_family),
+    plot.subtitle = element_textbox_simple(color = txt_color, size = 36, family = tt_family),
+    axis.text.y = element_text(color = txt_color, size = 24, family = tt_family),
+    axis.text.x = element_text(color = txt_color, size = 24, family = tt_family, angle = -90),
+    axis.title = element_text(color = txt_color, size = 36, family = tt_family),
+    strip.background = element_rect(fill = bg_color),
+    strip.text = element_text(color = txt_color, size = 36, family = tt_family)
+  ) +
+  labs(x = "",
+       y = "Length (in miles)",
+       title = "Tornados",
+       subtitle = "Are tornados shorter in warmer months?",
+       caption = tt_caption)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_05_16_tidy_tuesday_tornados.png",
+  device = "png")
+
+gg_stop_recording()
+
+gg_playback(
+  name = "2023_05_16_tidy_tuesday_tornados.gif",
+  first_image_duration = 4,
+  last_image_duration = 20,
+  frame_duration = .25
+)
+
+```

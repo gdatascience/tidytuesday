@@ -1,0 +1,328 @@
+---
+title: "TidyTemplate"
+date: 2023-05-23
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(camcorder)
+library(ggtext)
+library(showtext)
+
+# start recording
+gg_record(
+  dir = "~/Downloads/camcorder/2023_05_23_tidy_tuesday_squirrels", # where to save the recording
+  device = "png", # device to use to save images
+  width = 6, # width of saved image
+  height = 6, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+tt_family <- "avenir"
+font_add(family = tt_family, regular = "/System/Library/Fonts/Avenir Next.ttc")
+
+theme_set(theme_light())
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+tt_source <- "Squirrel Census"
+bg_color <- "white"
+txt_color <- "#363F41"
+green <- "#74c947"
+purple <- "#9471F6"
+yellow <- "#FFD940"
+blue <- "#1977CF"
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf099;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-05-23")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+squirrels <- tt$squirrel_data |> 
+  janitor::clean_names()
+
+squirrel_activities <- squirrels |> 
+  select(x, y, running, climbing, eating, foraging) |>
+  pivot_longer(cols = c(ends_with("ing")), names_to = "activity") |> 
+  filter(value) |> 
+  select(-value) |> 
+  mutate(activity = str_to_title(activity))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r StamenMap}
+
+library(ggmap)
+
+height <- max(squirrels$y) - min(squirrels$y)
+width <- max(squirrels$x) - min(squirrels$x)
+cp_borders <- c(bottom  = min(squirrels$y)  - 0.1 * height, 
+                 top     = max(squirrels$y)  + 0.1 * height,
+                 left    = min(squirrels$x) - 0.4 * width,
+                 right   = max(squirrels$x) + 0.4 * width)
+
+map <- get_stamenmap(cp_borders, zoom = 14, maptype = "terrain") # "toner-lite")
+
+p <- ggmap(map)
+
+p
+
+```
+
+
+```{r Visualize}
+
+library(ggthemes)
+
+p2 <- p +
+  geom_point(
+    data = squirrels,
+    aes(x, y), 
+    color = purple,
+    size = 0.5,
+    alpha = 0.5
+    ) +
+  theme_map() +
+  theme(
+    plot.title = element_text(color = txt_color, size = 56, face = "bold", family = tt_family),
+    plot.caption = element_textbox_simple(color = txt_color, size = 24, family = tt_family)
+    ) +
+  labs(
+    x = "",
+    y = "",
+    title = "Squirrels of Central Park",
+    caption = tt_caption
+  )
+
+p2
+  
+```
+
+
+```{r FacettedMap}
+
+p3 <- p +
+  geom_point(
+    data = squirrel_activities,
+    aes(x, y), 
+    color = purple,
+    size = 0.1,
+    alpha = 0.5
+    ) +
+  facet_wrap(~activity) +
+  theme_map() +
+  theme(
+    panel.background = element_rect(fill = bg_color, color = bg_color),
+    panel.border = element_blank(),
+    plot.background = element_rect(fill = bg_color, color = bg_color),
+    strip.background = element_rect(fill = bg_color, color = bg_color),
+    plot.title = element_text(color = txt_color, size = 56, face = "bold", family = tt_family),
+    plot.caption = element_textbox_simple(color = txt_color, size = 24, family = tt_family),
+    strip.text = element_text(color = green, size = 36, family = tt_family)
+    ) +
+  labs(
+    x = "",
+    y = "",
+    title = "Squirrels of Central Park",
+    caption = tt_caption
+  )
+
+p3
+
+```
+
+
+```{r CroppedMaps}
+
+library(magick)
+library(ggimage)
+
+p_forage <- p +
+  geom_point(
+    data = squirrel_activities |> filter(activity == "Foraging"),
+    aes(x, y), 
+    color = purple,
+    size = 0.75,
+    alpha = 0.5
+    ) +
+  theme_map() +
+  theme(
+    panel.background = element_rect(fill = bg_color, color = bg_color),
+    panel.border = element_blank(),
+    plot.background = element_rect(fill = bg_color, color = bg_color)
+    )
+  
+p_forage
+
+p_eat <- p +
+  geom_point(
+    data = squirrel_activities |> filter(activity == "Eating"),
+    aes(x, y), 
+    color = purple,
+    size = 0.75,
+    alpha = 0.5
+    ) +
+  theme_map() +
+  theme(
+    panel.background = element_rect(fill = bg_color, color = bg_color),
+    panel.border = element_blank(),
+    plot.background = element_rect(fill = bg_color, color = bg_color)
+    )
+
+p_eat
+
+ggsave(
+  plot = p_forage,
+  filename = "2023_05_23_tidy_tuesday_squirrels_forage.png",
+  device = "png")
+
+ggsave(
+  plot = p_eat,
+  filename = "2023_05_23_tidy_tuesday_squirrels_eat.png",
+  device = "png")
+
+image_read("2023_05_23_tidy_tuesday_squirrels_forage.png") |> 
+  image_rotate(61) |> 
+  image_crop("1940x640+75+750") |> 
+  image_write("2023_05_23_tidy_tuesday_squirrels_forage2.png")
+
+image_read("2023_05_23_tidy_tuesday_squirrels_eat.png") |> 
+  image_rotate(61) |> 
+  image_crop("1940x640+75+750") |> 
+  image_write("2023_05_23_tidy_tuesday_squirrels_eat2.png")
+
+# print(img_eat)
+
+ggplot() +
+  geom_image(
+    aes(
+      x = 1940/2, 
+      y = 1350, 
+      image = "2023_05_23_tidy_tuesday_squirrels_forage2.png"
+    ),
+    size = 1
+  ) +
+  geom_image(
+    aes(
+      x = 1940/2, 
+      y = 275, 
+      image = "2023_05_23_tidy_tuesday_squirrels_eat2.png"
+    ),
+    size = 1
+  ) +
+  geom_text(
+    aes(x = 1940/2, y = 1875, label = "Foraging"),
+    size = 32,
+    color = green,
+    family = tt_family
+  ) +
+  geom_text(
+    aes(x = 1940/2, y = 800, label = "Eating"),
+    size = 32,
+    color = green,
+    family = tt_family
+  ) +
+  expand_limits(x = c(0, 1940), y = c(0, 1940)) +
+  theme(
+    panel.background = element_rect(fill = bg_color, color = bg_color),
+    panel.border = element_blank(),
+    plot.background = element_rect(fill = bg_color, color = bg_color),
+    panel.grid = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    plot.title = element_text(color = purple, size = 110, face = "bold", family = tt_family),
+    plot.subtitle = element_text(color = txt_color, size = 86, family = tt_family),
+    plot.caption = element_textbox_simple(color = txt_color, size = 24, family = tt_family)
+  ) +
+  labs(
+    title = "Squirrels of Central Park",
+    caption = tt_caption,
+    subtitle = "Where do they forage and eat?"
+  )
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_05_23_tidy_tuesday_squirrels.png",
+  device = "png")
+
+gg_stop_recording()
+
+gg_playback(
+  name = "2023_05_23_tidy_tuesday_squirrels.gif",
+  first_image_duration = 4,
+  last_image_duration = 20,
+  frame_duration = .25
+)
+
+```
