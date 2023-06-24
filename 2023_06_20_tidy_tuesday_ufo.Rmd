@@ -185,6 +185,51 @@ ufo |>
 ```
 
 
+```{r HexMap}
+
+# State Hex Shapefiles downloaded from - https://team.carto.com/u/andrew/tables/andrew.us_states_hexgrid/public/map
+
+sf::st_read("~/Downloads/us_states_hexgrid/us_states_hexgrid.shp") |>
+  left_join(ufo |>
+      filter(
+        country == "USA",
+        country_code == "US"
+      ) |>
+      count(state, name = "sightings"),
+    by = c("iso3166_2" = "state")
+  ) |>
+  ggplot() +
+  geom_sf(aes(fill = sightings)) +
+  coord_sf(datum=sf::st_crs(27700)) + #crs="+proj=eck4"
+  scale_fill_gradient(
+    low = cream, high = txt_color, trans = "log",
+    breaks = c(500, 3000, 20000)
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.background = element_rect(fill = bg_color),
+    legend.title = element_text(color = txt_color, size = 32, family = tt_family),
+    legend.text = element_text(color = txt_color, size = 24, family = tt_family),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = bg_color),
+    panel.grid = element_blank(),
+    plot.background = element_rect(fill = bg_color),
+    plot.caption.position = "plot",
+    plot.title = element_text(color = txt_color, size = 95, face = "bold", family = tt_family),
+    plot.subtitle = element_textbox_simple(color = txt_color, size = 68, family = tt_family, lineheight = 0.1),
+    plot.caption = element_textbox_simple(color = txt_color, size = 24, family = tt_family),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  labs(
+    title = "UFO Sightings: USA 1998 - 2023",
+    subtitle = paste0("The only states w/ less than 1,000 sightings:<br><span style='color:", cream, ";'>North Dakota, Hawaii, Wyoming,<br>South Dakota, & Alaska</span>"),
+    fill = "# of sightings",
+    caption = tt_caption
+  )
+```
+
+
 # Save Image
 
 Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
