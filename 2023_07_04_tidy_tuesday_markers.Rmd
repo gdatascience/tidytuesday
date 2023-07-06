@@ -1,0 +1,217 @@
+---
+title: "TidyTemplate"
+date: 2023-07-06
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(camcorder)
+library(ggtext)
+library(showtext)
+
+# start recording
+gg_record(
+  dir = "~/Downloads/camcorder/2023_07_04_tidy_tuesday_markers", # where to save the recording
+  device = "png", # device to use to save images
+  width = 6, # width of saved image
+  height = 6, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+tt_family <- "roboto"
+font_add_google("Roboto Slab", tt_family)
+
+theme_set(theme_light())
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+tt_source <- "Historical Marker Database"
+bg_color <- "#E5E5E5"
+txt_color <- "#242F40"
+red <- "#E63946"  
+blue <- "#357DED"
+gold <- "#CCA43B"
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf099;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-07-04")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+markers <- tt$historical_markers
+
+ca_markers <- read_csv("~/Downloads/HMdb-Entries-in-California-20230706.csv") |> 
+  janitor::clean_names() |> 
+  rename(lat = latitude_minus_s,
+         lon = longitude_minus_w)
+
+near_me <- ca_markers |> 
+  filter(city_or_town == "Temecula") |> 
+  summarize(
+    min_lat = min(lat),
+    max_lat = max(lat),
+    min_lon = min(lon),
+    max_lon = max(lon)
+  ) |> 
+  mutate(
+    lat_range = max_lat - min_lat,
+    lon_range = max_lon - min_lon,
+    top_lat = max_lat + (lat_range*3),
+    bot_lat = min_lat - (lat_range*3),
+    rit_lon = max_lon + (lon_range*1.5),
+    lft_lon = min_lon - (lon_range*1.5)
+  )
+
+markers_near_me <- ca_markers |> 
+  filter(
+    lat <= near_me$top_lat[1],
+    lat >= near_me$bot_lat[1],
+    lon <= near_me$rit_lon[1],
+    lon >= near_me$lft_lon[1]
+  )
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+library(ggmap)
+library(ggrepel)
+
+height <- max(markers_near_me$lat) - min(markers_near_me$lat)
+width <- max(markers_near_me$lon) - min(markers_near_me$lon)
+map_borders <- c(bottom  = min(markers_near_me$lat)  - 0.2 * height, 
+                 top     = max(markers_near_me$lat)  + 0.2 * height,
+                 left    = min(markers_near_me$lon) - 0.1 * width,
+                 right   = max(markers_near_me$lon) + 0.1 * width)
+
+map <- get_stamenmap(
+  map_borders, 
+  zoom = 11, 
+  maptype = "terrain"
+)
+
+ggmap(map) +
+  geom_point(
+    data = markers_near_me,
+    aes(lon, lat),
+    color = txt_color,
+    size = 3
+  ) +
+  geom_point(
+    data = markers_near_me,
+    aes(lon, lat),
+    color = red,
+    size = 2
+  ) +
+  geom_text_repel(
+    data = markers_near_me,
+    aes(lon, lat, label = title),
+    color = txt_color,
+    family = tt_family,
+    fontface = "bold",
+    # check_overlap = TRUE,
+    # hjust = 0,
+    # nudge_x = 0.01,
+    size = 12
+  ) +
+  theme(
+    plot.title = element_textbox_simple(color = blue, size = 132, face = "bold", family = tt_family),
+    plot.subtitle = element_textbox_simple(color = gold, size = 96, family = tt_family),
+    plot.caption = element_textbox_simple(color = txt_color, size = 24, family = tt_family),
+    panel.background = element_rect(fill = bg_color),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.border = element_blank()
+  ) +
+  labs(
+    title = "Historical Markers",
+    subtitle = "Near Temecula, California",
+    caption = tt_caption,
+    x = NULL,
+    y = NULL
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_07_04_tidy_tuesday_markers.png",
+  device = "png")
+
+gg_stop_recording()
+
+gg_playback(
+  name = "2023_07_04_tidy_tuesday_markers.gif",
+  first_image_duration = 4,
+  last_image_duration = 20,
+  frame_duration = .25
+)
+
+```

@@ -1,0 +1,219 @@
+---
+title: "TidyTemplate"
+date: 2023-06-26
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(camcorder)
+library(ggtext)
+library(showtext)
+
+# start recording
+gg_record(
+  dir = "~/Downloads/camcorder/2023_06_27_tidy_tuesday_places", # where to save the recording
+  device = "png", # device to use to save images
+  width = 6, # width of saved image
+  height = 6, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+tt_family <- "roboto"
+font_add_google("Roboto Slab", tt_family)
+
+theme_set(theme_light())
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+tt_source <- "Historical Marker Database"
+bg_color <- "#E5E5E5"
+txt_color <- "#242F40"
+red <- "#E63946"  
+blue <- "#357DED"
+gold <- "#CCA43B"
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf099;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-06-27")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+places <- tt$us_place_names |> 
+  left_join(tt$us_place_history, by = "feature_id") |>
+  filter(prim_long_dec < 0)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+library(ggmap)
+
+map_places <- places |> 
+  filter(
+    !state_name %in% c("Alaska", "Hawaii", "Puerto Rico", "United States Virgin Islands"),
+    str_detect(feature_name, pattern = "San ") |
+      str_detect(feature_name, pattern = "Saint ") |
+      str_detect(feature_name, pattern = "St. ") |
+      str_detect(feature_name, pattern = "Santa "),
+    !is.na(prim_lat_dec),
+    !is.na(prim_long_dec)
+  )
+
+height <- max(map_places$prim_lat_dec) - min(map_places$prim_lat_dec)
+width <- max(map_places$prim_long_dec) - min(map_places$prim_long_dec)
+map_borders <- c(bottom  = min(map_places$prim_lat_dec)  - 0.1 * height, 
+                 top     = max(map_places$prim_lat_dec)  + 0.1 * height,
+                 left    = min(map_places$prim_long_dec) - 0.1 * width,
+                 right   = max(map_places$prim_long_dec) + 0.3 * width)
+
+map <- get_stamenmap(
+  map_borders, 
+  zoom = 3, 
+  maptype = "watercolor"
+)
+
+p_map <- ggmap(map) +
+  geom_point(
+    data = map_places,
+    aes(prim_long_dec, prim_lat_dec),
+    color = red
+  ) +
+  geom_text(
+    data = map_places,
+    aes(prim_long_dec, prim_lat_dec, label = feature_name),
+    color = txt_color, 
+    family = tt_family,
+    fontface = "bold",
+    check_overlap = TRUE,
+    size = 10,
+    hjust = 0,
+    nudge_x = 1
+  ) +
+  theme(
+    panel.background = element_rect(fill = bg_color),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.border = element_blank())
+
+p_bars <- map_places |>
+  mutate(
+    saint = feature_name,
+    saint = str_remove(saint, "Saint "),
+    saint = str_remove(saint, "Santa "),
+    saint = str_remove(saint, "San "),
+    saint = str_remove(saint, "St. ")
+  ) |>
+  count(saint, sort = TRUE) |>
+  top_n(10, wt = n) |>
+  mutate(n = -n,
+         saint = fct_reorder(saint, n)) |> 
+  ggplot(aes(saint, n)) +
+  geom_col(fill = red) +
+  geom_text(
+    aes(y = 0, label = paste(saint, ": ", n, " places")),
+    color = txt_color,
+    fontface = "bold",
+    family = tt_family,
+    size = 18,
+    hjust = 0,
+    nudge_y = -0.5,
+    angle = 270
+  )
+
+library(patchwork)
+
+p_map / p_bars +
+  theme(
+    plot.title = element_textbox_simple(color = blue, size = 150, face = "bold", family = tt_family),
+    plot.subtitle = element_textbox_simple(color = gold, size = 48, family = tt_family),
+    plot.caption = element_textbox_simple(color = txt_color, size = 24, family = tt_family)
+  ) +
+  plot_annotation(
+    ,
+    caption = tt_caption
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_06_27_tidy_tuesday_places.png",
+  device = "png")
+
+gg_stop_recording()
+
+gg_playback(
+  name = "2023_06_27_tidy_tuesday_places.gif",
+  first_image_duration = 4,
+  last_image_duration = 20,
+  frame_duration = .25
+)
+
+```
