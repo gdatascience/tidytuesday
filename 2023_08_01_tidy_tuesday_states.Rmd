@@ -1,0 +1,298 @@
+---
+title: "TidyTemplate"
+date: 2023-07-31
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(camcorder)
+library(ggtext)
+library(showtext)
+
+# start recording
+gg_record(
+  dir = "~/Downloads/camcorder/2023_08_01_tidy_tuesday_states", # where to save the recording
+  device = "png", # device to use to save images
+  width = 6, # width of saved image
+  height = 6, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+# Font selected from http://fonts.google.com
+tt_family <- "poppins"
+font_add_google("Poppins", tt_family)
+
+theme_set(theme_light(base_size = 32))
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+# Colors selected using https://coolors.co/
+tt_source <- "Wikipedia"
+bg_color <- "#006E90"
+txt_color <- "#ADCAD6"
+orange <- "#F18F01"  
+blue <- "#41BBD9"
+green <- "#99C24D"
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf099;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+
+tt_theme <- function() {
+  theme(
+    panel.grid = element_blank(),
+    axis.ticks = element_blank(),
+    panel.border = element_blank(),
+    plot.background = element_rect(fill = bg_color),
+    panel.background = element_rect(fill = bg_color),
+    legend.background = element_rect(fill = bg_color),
+    legend.key = element_rect(fill = bg_color),
+    strip.background = element_rect(fill = bg_color), 
+    plot.title = element_textbox_simple(
+      family = tt_family, 
+      color = txt_color,
+      face = "bold",
+      size = 96
+    ),
+    plot.title.position = "plot",
+    plot.subtitle = element_textbox_simple(
+      family = tt_family, 
+      color = txt_color,
+      size = 58,
+      margin = margin(t = 5, r = 0, b = 2, l = 0)
+    ),
+    plot.caption = element_textbox_simple(
+      family = tt_family, 
+      color = txt_color,
+      size = 28,
+      margin = margin(t = 5, r = 0, b = 0, l = 0)
+    ),
+    plot.caption.position = "plot",
+    strip.text = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 26, lineheight = 0.3,
+      margin = margin(t = 0, r = 0, b = 0, l = 0)
+    ),
+    legend.text = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 26
+    ),
+    legend.title = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 26
+    ),
+    axis.title = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 26
+    ),
+    axis.text = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 26
+    ),
+  )
+}
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-08-01")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+states <- tt$states
+
+tuition <- openxlsx::read.xlsx("https://github.com/rfordatascience/tidytuesday/raw/master/data/2018/2018-04-02/us_avg_tuition.xlsx") |> 
+  mutate(tuition_change = (`2015-16` - `2004-05`) / `2004-05`) |> 
+  pivot_longer(
+    cols = c(-State),
+    names_to = "year",
+    values_to = "avg_tuition"
+  ) |> 
+  rename(state = State) |> 
+  left_join(states, by = "state")
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+tuition |> 
+  filter(year != "tuition_change") |> 
+  mutate(state = fct_reorder(state, avg_tuition)) |> 
+  ggplot(aes(avg_tuition, state)) +
+  geom_col() +
+  facet_wrap(~year)
+  
+```
+
+```{r Visualize2}
+
+tuition |> 
+  filter(year == "tuition_change") |> 
+  mutate(state = fct_reorder(state, avg_tuition)) |> 
+  ggplot(aes(avg_tuition, state)) +
+  geom_col() +
+  scale_x_continuous(labels = percent_format())
+  
+```
+
+```{r Visualize3}
+
+tuition |> 
+  filter(year == "tuition_change") |>
+  ggplot(aes(population_2020, avg_tuition)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_x_log10()
+  
+```
+
+```{r Visualize4}
+
+tuition |> 
+  filter(year == "tuition_change") |>
+  ggplot(aes(total_area_mi2, avg_tuition)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_x_log10()
+  
+```
+
+```{r Visualize5}
+
+tuition |> 
+  filter(year == "tuition_change") |>
+  ggplot(aes(population_2020, n_representatives)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  # scale_y_continuous(labels = percent_format()) +
+  scale_x_continuous(labels = comma_format())
+  
+```
+
+
+```{r}
+
+rep_mod <- lm(n_representatives ~ population_2020, data = states)
+
+summary(rep_mod)
+
+```
+
+```{r}
+
+gg_resize_film(
+  width = 6, # width of saved image
+  height = 10, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+states$pred_reps <- predict(rep_mod, newdata = states)
+
+states |> 
+  mutate(
+    pct_diff = (n_representatives - pred_reps) / n_representatives,
+    state = paste0(state, " (", n_representatives, ")"),
+    state = fct_reorder(state, pct_diff),
+    over_represented = pct_diff > 0
+  ) |> 
+  ggplot(aes(pct_diff, state, fill = over_represented)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(labels = percent_format()) +
+  scale_fill_manual(values = c(orange, blue)) +
+  labs(
+    title = "US State Representatives",
+    subtitle = paste0("Which states are <b><span style='color:", blue, ";'>over</span></b>/<b><span style='color:", orange, ";'>under</span></b> represented?"),
+    caption = tt_caption,
+    x = "% over/under represented (based on 2020 population)",
+    y = NULL
+  ) +
+  tt_theme()
+
+```
+
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_08_01_tidy_tuesday_states.png",
+  device = "png")
+
+gg_stop_recording()
+
+gg_playback(
+  name = "2023_08_01_tidy_tuesday_states.gif",
+  first_image_duration = 4,
+  last_image_duration = 20,
+  frame_duration = .25
+)
+
+```
