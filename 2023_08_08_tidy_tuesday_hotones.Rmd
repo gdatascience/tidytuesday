@@ -100,9 +100,14 @@ episodes <- tt$episodes
 
 seasons <- tt$seasons
 
-super_hot <- median(tt$sauces$scoville)
+sauces_raw <- tt$sauces |>
+  group_by(sauce_name) |>
+  summarize(scoville = max(scoville)) |>
+  ungroup()
 
-sauces <- tt$sauces |>
+super_hot <- quantile(sauces_raw$scoville, 0.5)
+
+sauces <- sauces_raw |>
   mutate(super_hot = if_else(scoville > super_hot, "yes", "no"))
 
 ```
@@ -144,11 +149,11 @@ Prepare the data for modeling
 
 ```{r Preprocessing}
 
-sauce_rec <- recipe(super_hot ~ sauce_name, data = sauce_train) %>%
-  step_tokenize(sauce_name) %>%
-  step_stopwords(sauce_name) %>%
-  step_tokenfilter(sauce_name, max_tokens = 200) %>%
-  step_tfidf(sauce_name) %>%
+sauce_rec <- recipe(super_hot ~ sauce_name, data = sauce_train) |>
+  step_tokenize(sauce_name) |>
+  step_stopwords(sauce_name) |>
+  step_tokenfilter(sauce_name, max_tokens = 100) |>
+  step_tfidf(sauce_name) |>
   step_normalize(all_predictors())
 
 sauce_prep <- prep(sauce_rec)
@@ -163,11 +168,11 @@ Set up the model specification for lasso regression with penalty = tune() since 
 
 ```{r Specify}
 
-lasso_spec <- logistic_reg(penalty = tune(), mixture = 1) %>%
+lasso_spec <- logistic_reg(penalty = tune(), mixture = 1) |>
   set_engine("glmnet")
 
-lasso_wf <- workflow() %>%
-  add_recipe(sauce_rec) %>%
+lasso_wf <- workflow() |>
+  add_recipe(sauce_rec) |>
   add_model(lasso_spec)
 
 lasso_wf
@@ -196,8 +201,8 @@ lasso_grid <- tune_grid(
   metrics = metric_set(roc_auc, ppv, npv)
 )
 
-lasso_grid %>%
-  collect_metrics() %>%
+lasso_grid |>
+  collect_metrics() |>
   ggplot(aes(penalty, mean, color = .metric)) +
   geom_line(size = 1.5, show.legend = FALSE) +
   facet_wrap(~.metric) +
@@ -211,7 +216,7 @@ Choose a final model based on AUC
 
 ```{r FinalModel}
 
-best_auc <- lasso_grid %>%
+best_auc <- lasso_grid |>
   select_best("roc_auc")
 
 final_lasso <- finalize_workflow(lasso_wf, best_auc)
@@ -292,26 +297,26 @@ tt_theme <- function() {
 
 library(vip)
 
-final_lasso %>%
-  fit(sauce_train) %>%
-  extract_fit_parsnip() %>%
-  vi(lambda = best_auc$penalty) %>%
-  group_by(Sign) %>%
-  top_n(7, wt = abs(Importance)) %>%
-  ungroup() %>%
+final_lasso |>
+  fit(sauce_train) |>
+  extract_fit_parsnip() |>
+  vi(lambda = best_auc$penalty) |>
+  group_by(Sign) |>
+  top_n(7, wt = abs(Importance)) |>
+  ungroup() |>
   mutate(
     Importance = abs(Importance),
     Variable = str_remove(Variable, "tfidf_sauce_name_"),
     Variable = fct_reorder(Variable, Importance)
-  ) %>%
+  ) |>
   ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~if_else(Sign == "POS", "Super Hot", "Hot"), 
-             scales = "free_y") +
+             scales = "free") +
   scale_fill_manual(values = c(yellow, red)) +
   tt_theme() +
   labs(
-    x = "Importance of word (based on a Lasso Regression model with a ROC AUC of 0.713)",
+    x = "Importance of word (based on a Lasso Regression model with a ROC AUC of 0.77)",
     y = NULL,
     title = "HOT ONES: Sauce Names",
     subtitle = paste0("Which words indicate the sauce is <b><span style='color:", yellow, ";'>HOT</span></b> vs <b><span style='color:", red, ";'>SUPER HOT</span></b>?"),
@@ -328,7 +333,7 @@ Fit the model one last time on the training data and evaluate it on the testing 
 
 sauce_final <- last_fit(final_lasso, sauce_split)
 
-sauce_final %>%
+sauce_final |>
   collect_metrics()
 
 ```
@@ -339,8 +344,8 @@ Compare our predictions against the truth
 
 ```{r ConfMat}
 
-sauce_final %>%
-  collect_predictions() %>%
+sauce_final |>
+  collect_predictions() |>
   conf_mat(super_hot, .pred_class)
 
 ```
@@ -363,7 +368,7 @@ gg_playback(
   name = "2023_08_08_tidy_tuesday_hotones.gif",
   first_image_duration = 4,
   last_image_duration = 20,
-  frame_duration = .25
+  frame_duration = 0.5
 )
 
 ```
