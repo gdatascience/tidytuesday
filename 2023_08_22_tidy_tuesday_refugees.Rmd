@@ -1,0 +1,441 @@
+---
+title: "TidyTemplate"
+date: 2023-08-22
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(camcorder)
+library(ggtext)
+library(showtext)
+library(tidytext)
+
+# Font selected from http://fonts.google.com
+tt_family <- "archivo"
+font_add_google("Archivo Black", tt_family)
+
+theme_set(theme_light(base_size = 32))
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+# Colors selected using https://coolors.co/
+tt_source <- "UNHCR Refugee Data Finder"
+bg_color <- "#FFFFFF"
+txt_color <- "#000000"
+dark_blue <- "#18375F"
+blue <- "#0271BC"
+light_blue <- "#8EBEFF"
+aqua <- "#00B398"
+red <- "#EF4A61"
+
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf099;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-08-22")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+refugees <- refugees::population |>
+  summarize(
+    total_refugees = sum(refugees, na.rm = TRUE),
+    total_asylum_seekers = sum(asylum_seekers, na.rm = TRUE),
+    total_oip = sum(oip, na.rm = TRUE),
+    .by = year
+  ) |>
+  left_join(
+    refugees::idmc |>
+      summarize(
+        total_idmc = sum(total, na.rm = TRUE),
+        .by = year
+      ),
+    by = "year"
+  ) |>
+  left_join(
+    refugees::unrwa |>
+      summarize(
+        total_unrwa = sum(total, na.rm = TRUE),
+        .by = year
+      ),
+    by = "year"
+  ) |> 
+  mutate(
+    total_idmc = coalesce(total_idmc, 0),
+    total_unrwa = coalesce(total_unrwa, 0)
+  ) |>
+  pivot_longer(
+    cols = -year,
+    names_to = "population_type",
+    values_to = "total_people"
+  ) |> 
+  filter(total_people > 0) |>
+  mutate(
+    population_type = case_when(
+      population_type == "total_refugees" ~ "Refugees (under UNHCR's mandate)",
+      population_type == "total_idmc" ~ "Internally Displaced People",
+      population_type == "total_oip" ~ "Other people in need of international protection",
+      population_type == "total_unrwa" ~ "Palestine refugees (under UNRWA's mandate)",
+      TRUE ~ "Asylum-seekers"
+    ),
+    population_type = fct_relevel(
+      population_type, 
+      "Other people in need of international protection",
+      "Asylum-seekers",
+      "Internally Displaced People",
+      "Palestine refugees (under UNRWA's mandate)"
+    )
+  )
+
+```
+
+
+# Start recording
+
+Use the {camcorder} package to record all plots that are output to the console
+
+```{r camcorder}
+
+# start recording
+gg_record(
+  dir = "~/Downloads/camcorder/2023_08_22_tidy_tuesday_refugees", # where to save the recording
+  device = "png", # device to use to save images
+  width = 6, # width of saved image
+  height = 6, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+```
+
+# Theme
+
+Set up a custom data visualization theme
+
+```{r VizTheme}
+
+tt_theme <- function() {
+  theme(
+    panel.grid = element_blank(),
+    axis.ticks = element_blank(),
+    panel.border = element_blank(),
+    plot.background = element_rect(fill = bg_color),
+    panel.background = element_rect(fill = bg_color),
+    legend.background = element_blank(),
+    legend.key = element_rect(fill = bg_color),
+    strip.background = element_rect(fill = bg_color), 
+    plot.title = element_textbox_simple(
+      family = tt_family, 
+      color = txt_color,
+      face = "bold",
+      size = 72,
+      margin = margin(t = 0, r = 0, b = 0, l = 0)
+    ),
+    plot.title.position = "plot",
+    plot.subtitle = element_textbox_simple(
+      family = tt_family, 
+      color = txt_color,
+      size = 50,
+      lineheight = 0.3,
+      margin = margin(t = 0, r = 0, b = 4, l = 0)
+    ),
+    plot.caption = element_textbox_simple(
+      family = tt_family, 
+      color = txt_color,
+      size = 20,
+      margin = margin(t = 10, r = 0, b = 0, l = 0)
+    ),
+    plot.caption.position = "plot",
+    strip.text = element_text(
+      family = tt_family,
+      color = txt_color,
+      face = "bold",
+      size = 36, 
+      lineheight = 0.3,
+      margin = margin(t = 0, r = 0, b = 0, l = 0)
+    ),
+    legend.position = c(-0.05, 1.1),
+    legend.justification = c(0, 1.1),
+    legend.direction = "vertical",
+    legend.text = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 32
+    ),
+    legend.title = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 32
+    ),
+    axis.title = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 32
+    ),
+    axis.text = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 32
+    ),
+  )
+}
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+refugees |>
+  ggplot(aes(year, total_people, fill = population_type)) +
+  geom_col(position = "stack") +
+  scale_y_continuous(
+    labels = comma_format(
+      scale = 1/1000000,
+      suffix = "M"
+    )
+  ) +
+  scale_fill_manual(
+    values = c(
+      aqua, 
+      red, 
+      light_blue,
+      dark_blue,
+      blue
+    )
+  ) +
+  tt_theme() +
+  guides(
+    fill = guide_legend(
+      reverse = TRUE
+    )
+  ) +
+  labs(
+    x = NULL,
+    y = "# of people",
+    fill = NULL,
+    title = "FORCIBLY DISPLACED PEOPLE",
+    subtitle = "Over 100M people forcibly displaced in 2022",
+    caption = tt_caption
+  )
+  
+```
+
+# Backcasting
+
+```{r}
+
+idp <- refugees |>
+  filter(population_type == "Internally Displaced People") |>
+  select(-population_type) 
+
+idp_rev <- idp |>
+  mutate(
+    rev_year = rev(year),
+    ds = ymd(paste0(as.character(rev_year), "-12-31"))
+  ) |>
+  transmute(
+    ds,
+    y = total_people
+  )
+
+idp |>
+  ggplot(aes(year, total_people)) +
+  geom_line(
+    color = blue,
+    linewidth = 1.5
+  ) +
+  theme_light()
+
+library(prophet)
+
+fit_idp_backcast <- prophet(idp_rev)
+
+past_idp <- make_future_dataframe(fit_idp_backcast, periods = 38, freq = 'year')
+
+backcast_idp <- predict(fit_idp_backcast, past_idp)
+
+idp_backcast <- idp_rev |>
+  full_join(backcast_idp, by = "ds") |>
+  arrange(ds) |> 
+  transmute(
+    id = row_number(),
+    year = 2022 - id + 1,
+    total_people = coalesce(y, yhat),
+    low_people = if_else(yhat_lower <= 0, 0, yhat_lower),
+    upr_people = if_else(yhat_upper <= 0, 0, yhat_upper),
+    color = if_else(is.na(y), "Backcast", "Actual")
+  )
+
+idp_backcast |>
+  ggplot(aes(year, total_people, color = color)) +
+  geom_ribbon(
+    data = idp_backcast |> filter(color == "Backcast"),
+    aes(
+      x = year,
+      ymin = low_people,
+      ymax = upr_people
+    ),
+    color = NA,
+    fill = "gray75",
+    alpha = 0.8
+  ) +
+  geom_line(linewidth = 1.5) +
+  scale_color_manual(values = c(blue, red)) +
+  scale_y_continuous(
+    labels = comma_format(
+      scale = 1/1000000,
+      suffix = "M"
+    )
+  ) +
+  tt_theme() +
+  theme(legend.position = "top",
+        legend.direction = "horizontal") +
+  labs(
+    x = NULL,
+    y = "# of people",
+    color = "",
+    title = "Backcasting in R",
+    subtitle = "Using the {prophet} package",
+    caption = "Source: UNHCR Refugee Data Finder"
+  )
+
+```
+
+# Add Backcast to original plot
+
+```{r}
+
+refugees |>
+  bind_rows(
+    idp_backcast |>
+      filter(color == "Backcast") |>
+      transmute(
+        year,
+        population_type = "Internally Displaced People (Backcast)",
+        total_people
+      )
+  ) |>
+  mutate(
+    population_type = fct_relevel(
+      population_type, 
+      "Other people in need of international protection",
+      "Asylum-seekers",
+      "Internally Displaced People (Backcast)",
+      "Internally Displaced People",
+      "Palestine refugees (under UNRWA's mandate)"
+    )
+  ) |>
+  ggplot(aes(year, total_people, fill = population_type)) +
+  geom_col(position = "stack") +
+  scale_y_continuous(
+    labels = comma_format(
+      scale = 1/1000000,
+      suffix = "M"
+    )
+  ) +
+  scale_fill_manual(
+    values = c(
+      aqua, 
+      red, 
+      "gray",
+      light_blue,
+      dark_blue,
+      blue
+    )
+  ) +
+  tt_theme() +
+  guides(
+    fill = guide_legend(
+      reverse = TRUE
+    )
+  ) +
+  labs(
+    x = NULL,
+    y = "# of people",
+    fill = NULL,
+    title = "FORCIBLY DISPLACED PEOPLE",
+    subtitle = "Over 100M people forcibly displaced in 2022",
+    caption = tt_caption
+  )
+
+```
+
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_08_22_tidy_tuesday_refugees.png",
+  device = "png")
+
+gg_stop_recording()
+
+gg_playback(
+  name = "2023_08_22_tidy_tuesday_refugees.gif",
+  first_image_duration = 4,
+  last_image_duration = 20,
+  frame_duration = 0.5
+)
+
+```
