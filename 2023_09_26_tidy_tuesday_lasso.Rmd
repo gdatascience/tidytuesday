@@ -204,6 +204,72 @@ lasso |>
   
 ```
 
+# Tables
+
+Try out the `gt_plt_summary()` function from the {gtExtras} package as seen in this Tweet - https://x.com/rappa753/status/1695106452485263672?s=20
+
+```{r gtPltSummary}
+
+library(gt)
+library(gtExtras)
+
+lasso |>
+  gt_plt_summary()
+
+```
+
+Make an interactive GT table as seen in this Tweet - https://x.com/rappa753/status/1697610322818015556?s=20
+
+```{r}
+
+lasso |>
+  transmute(
+    season = paste0("Season ", season), 
+    episode = paste0("Episode ", episode),
+    total_f_bombs = f_count_total,
+    imdb_rating
+  ) |>
+  gt() |>
+  cols_label(
+    season = "Season #",
+    episode = "Eposide #",
+    total_f_bombs = "Total F*bombs",
+    imdb_rating = "IMDB Rating"
+  ) |>
+  tab_header(
+    title = md("**Ted Lasso**"),
+    subtitle = "F*bomb Interactive {gt} Table"
+  ) |>
+  tab_source_note(
+    source_note = "DataViz: Tony Galvan  |  #TidyTuesday  |  Source: {richmondway} R package"
+  ) |>
+  # gt_theme_538() |> Themes don't work interactively :(
+  gt_plt_bar(
+    column = total_f_bombs,
+    color = bg_color,
+    scale_type = "number",
+    width = 35
+  ) |>
+  gt_plt_bar_pct(
+    column = imdb_rating, 
+    fill = brown,
+    background = tan
+  ) |>
+  opt_interactive(
+    use_search = TRUE,
+    use_filters = TRUE,
+    use_compact_mode = TRUE,
+    page_size_default = 8
+  ) |>
+  tab_options(
+    table.width = "550px",
+    container.width = "550px"
+  )
+
+```
+
+
+
 # Save Image
 
 Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
