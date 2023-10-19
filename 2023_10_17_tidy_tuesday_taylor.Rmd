@@ -1,0 +1,344 @@
+---
+title: "TidyTemplate"
+date: 2023-10-17
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event! Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data. While the dataset will be "tamed", it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format. The goal of TidyTuesday is to apply your R skills, get feedback, explore other's work, and connect with the greater #RStats community! As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-10-17")
+
+```
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset. This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt |> 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+taylor <- tt$taylor_album_songs |>
+  mutate(year = year(track_release)) |>
+  select(track_name, album_name, duration_ms, year, danceability:tempo) |>
+  na.omit() |>
+  filter(duration_ms < 600000)
+
+# library(DataExplorer)
+# create_report(taylor)
+
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+taylor |>
+  ggplot(aes(duration_ms)) +
+  geom_histogram() +
+  scale_x_continuous(
+    labels = scales::comma_format(
+      scale = 1/60000,
+      suffix = " minutes"
+    )
+  ) +
+  labs(
+    x = "Duration"
+  )
+  
+```
+
+# Principal component analysis
+
+Let's implement PCA using the {tidymodels} "meta" package! To do that, we will mainly use the {recipes} package that we usually use for feature engineering. First, we pass the data and a formula into the `recipe()` function. Next, we use the `update_roll()` function to indicate that the track and album names will not be used in the modeling. Then, after normalizing (center and scale) all of the predictors, we use the `step_pca()` function to extract the components. Finally, we call the `prep()` function so that everything in the recipe is evaluated.
+
+```{r PCA}
+
+library(tidymodels)
+
+taylor_rec <- recipe(duration_ms ~ ., data = taylor) |>
+  update_role(track_name, album_name, new_role = "id") |>
+  step_normalize(all_predictors()) |>
+  step_pca(all_predictors())
+
+taylor_prep <- prep(taylor_rec)
+
+taylor_prep
+
+```
+
+Now, let's explore the components that were extracted during the PCA. We can use the `tidy()` function to clean up the results of the `step_pca()` recipe step, so that we can visualize the components.
+
+```{r PCAPlot}
+
+tidied_pca <- tidy(taylor_prep, 2)
+
+tidied_pca |>
+  mutate(component = fct_inorder(component)) |>
+  ggplot(aes(value, terms, fill = terms)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~component) +
+  labs(y = NULL)
+
+```
+
+Let's double click on the first 4 components.
+
+```{r TopFourPlot}
+
+library(tidytext)
+
+tidied_pca |>
+  filter(component %in% c("PC1", "PC2", "PC3", "PC4")) |>
+  group_by(component) |>
+  top_n(6, abs(value)) |>
+  ungroup() |>
+  mutate(terms = reorder_within(terms, abs(value), component)) |>
+  ggplot(aes(abs(value), terms, fill = value > 0)) +
+  geom_col() +
+  facet_wrap(~component, scales = "free_y") +
+  scale_y_reordered() +
+  labs(
+    x = "Absolute value of contribution",
+    y = NULL, fill = "Positive?"
+  )
+
+```
+
+It looks like PC1 is mostly about loudness and energy, PC2 is mostly danceability and speechiness, PC3 is mostly mode and valence, and PC4 is mostly tempo and liveness.
+
+Let's narrow down to the first 2 components and see how the songs are distributed using `juice(taylor_prep)` to apply the PCA to our Taylor Swift songs.
+
+```{r TopTwoPlot}
+
+taylor_juice <- juice(taylor_prep) 
+
+taylor_juice |>
+  ggplot(aes(PC1, PC2, label = track_name)) +
+  geom_point(alpha = 0.5) +
+  geom_text(check_overlap = TRUE)
+
+```
+
+Loud, energetic songs to the left. Danceable, "speechy" songs to the bottom.
+
+Now, let's see how much variation are we capturing.
+
+```{r VariationPlot}
+
+sdev <- taylor_prep$steps[[2]]$res$sdev
+
+percent_variation <- sdev^2 / sum(sdev^2)
+
+tibble(
+  component = unique(tidied_pca$component),
+  percent_var = percent_variation ## use cumsum() to find cumulative, if you prefer
+) |>
+  mutate(component = fct_inorder(component)) |>
+  ggplot(aes(component, percent_var)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(x = NULL, y = "Percent variance explained by each PCA component")
+
+```
+
+Lastly, let's fit a linear model with our components.
+
+```{r Model}
+
+pca_df <- taylor_juice |>
+  select(-track_name, -album_name)
+  
+pca_fit <- lm(duration_ms ~ ., data = pca_df)
+
+summary(pca_fit)
+
+```
+
+The model tells us that there might be some evidence here that "undanceable", "unspeechy" songs (PC2) are longer.
+
+# Final visualization
+
+```{r camcorder}
+
+library(camcorder)
+
+# start recording
+gg_record(
+  dir = "~/Downloads/camcorder/2023_10_17_tidy_tuesday_taylor", # where to save the recording
+  device = "png", # device to use to save images
+  width = 9, # width of saved image
+  height = 6, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+```
+
+
+```{r FinalDataViz}
+
+library(ggtext)
+library(showtext)
+library(ggrepel)
+
+# Font selected from http://fonts.google.com
+tt_family <- "ff_family"
+font_add_google("Lobster", tt_family)
+
+theme_set(theme_light(base_size = 32))
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+# Colors selected using https://coolors.co/
+tt_source <- "{taylor} R package"
+bg_color <- "#4C1A57"
+txt_color <- "#FAE8EB"
+pink <- "#FF3CC7"
+blue <- "#75DDDD"
+yellow <- "#F9DC5C"
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xe61b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+
+gg_resize_film(
+  height = 12, 
+  width = 9, 
+  units = "in", 
+  dpi = 300
+)
+
+taylor_juice |>
+  mutate(
+    track_name = if_else(
+      str_detect(track_name, "Shit"),
+      str_replace_all(track_name, "Shit", "S#!^"),
+      track_name
+    )
+  ) |>
+  ggplot(aes(PC1, PC2, label = track_name)) +
+  geom_point(
+    alpha = 0.5, 
+    color = pink
+  ) +
+  geom_text_repel(
+    color = "#F9B4ED",
+    family = tt_family,
+    size = 16 #,
+    # check_overlap = TRUE,
+    # max.overlaps = 35
+  ) +
+  expand_limits(x = c(-4.5, 5.5)) +
+  scale_x_reverse() +
+  scale_y_reverse() +
+  labs(
+    x = "Principle Component 1 (loudness & energetic)",
+    y = "Principle Component 2 (danceability & speechiness)", 
+    title = "Taylor Swift",
+    subtitle = "Principle Component Analysis (PCA) of Album Songs",
+    caption = tt_caption
+  ) +
+  theme(
+    plot.background = element_rect(
+      fill = bg_color,
+      color = bg_color
+    ),
+    panel.background = element_rect(
+      fill = bg_color,
+      color = bg_color
+    ),
+    plot.title = element_text(
+      family = tt_family,
+      color = txt_color,
+      hjust = 0.5,
+      size = 300
+    ),
+    plot.title.position = "plot",
+    plot.subtitle = element_text(
+      family = tt_family,
+      color = txt_color,
+      hjust = 0.5,
+      size = 90
+    ),
+    plot.caption = element_markdown(
+      family = tt_family,
+      color = txt_color,
+      hjust = 0.5,
+      size = 32
+    ),
+    plot.caption.position = "plot",
+    axis.title = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 32),
+    axis.text = element_blank(),
+    panel.border = element_blank(),
+    panel.grid = element_blank(),
+    axis.ticks = element_blank()
+  )
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter!
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_10_17_tidy_tuesday_taylor.png",
+  device = "png")
+
+gg_stop_recording()
+
+gg_playback(
+  name = "2023_10_17_tidy_tuesday_taylor.gif",
+  first_image_duration = 4,
+  last_image_duration = 20,
+  frame_duration = 0.5
+)
+
+```
