@@ -90,6 +90,8 @@ taylor |>
 
 # Principal component analysis
 
+Based on Julia Silge's blog post - https://juliasilge.com/blog/best-hip-hop/
+
 Let's implement PCA using the {tidymodels} "meta" package! To do that, we will mainly use the {recipes} package that we usually use for feature engineering. First, we pass the data and a formula into the `recipe()` function. Next, we use the `update_roll()` function to indicate that the track and album names will not be used in the modeling. Then, after normalizing (center and scale) all of the predictors, we use the `step_pca()` function to extract the components. Finally, we call the `prep()` function so that everything in the recipe is evaluated.
 
 ```{r PCA}
