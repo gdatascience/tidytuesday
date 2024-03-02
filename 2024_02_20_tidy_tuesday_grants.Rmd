@@ -105,6 +105,36 @@ grants |>
       size = 24
     )
   )
+
+grants |>
+  count(year, cycle, wt = funded) |>
+  mutate(cycle = fct_rev(cycle)) |>
+  ggplot(aes(factor(year), n, fill = cycle)) +
+  geom_col(
+    position = position_dodge(preserve = "single"),
+    show.legend = FALSE
+  ) +
+  scale_y_continuous(labels = scales::dollar_format()) +
+  scale_fill_manual(values = c("#1E51A5", "#949B96")) +
+  labs(
+    x = "",
+    y = "Amount funded for grants",
+    title = "R Consortium ISC Grants",
+    subtitle = "<span style = 'color:#1E51A5;'>**Spring**</span> and <span style = 'color:#949B96;'>**Fall**</span> Cycles",
+    caption = "Source: www.r-consortium.org  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks = element_blank(),
+    plot.title = element_text(
+      size = 32,
+      face = "bold"
+    ),
+    plot.subtitle = element_markdown(
+      size = 24
+    )
+  )
   
 ```
 
