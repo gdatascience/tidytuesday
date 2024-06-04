@@ -1,0 +1,149 @@
+---
+title: "TidyTemplate"
+date: 2024-06-03
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(geomtextpath)
+library(scales)
+
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2024-05-28")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+spending <-
+  tt$spending_2020 |>
+  select(-eggplant_item_number, -brand, -price) |>
+  mutate(year = 2020) |>
+  bind_rows(
+    tt$spending_2021 |> 
+      select(-price, -brand) |>
+      mutate(year = 2021)
+  )
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+spending |>
+  count(year, vegetable, wt = price_with_tax, name = "amt_spent") |>
+  pivot_wider(names_from = year, values_from = amt_spent) |>
+  filter(!is.na(`2020`), !is.na(`2021`)) |>
+  pivot_longer(cols = -vegetable, names_to = "year", values_to = "amt_spent") |>
+  mutate(
+    year = parse_number(year),
+    vegetable = fct_reorder(vegetable, -amt_spent)
+  ) |>
+  ggplot(aes(year, amt_spent, color = vegetable)) +
+  geom_hline(
+    yintercept = 0,
+    linetype = 2,
+    alpha = 0.5
+  ) +
+  geom_textpath(
+    aes(
+      label = str_to_title(vegetable)
+    ),
+    linewidth = 1
+  ) +
+  geom_point() +
+  geom_text(
+    aes(
+      label = dollar(amt_spent)
+    ),
+    vjust = 0,
+    nudge_y = 0.75
+  ) +
+  expand_limits(x = c(2019.85,2021.15), y = c(-1,11.5)) +
+  scale_y_continuous(labels = dollar_format()) +
+  scale_x_continuous(breaks = c(2020,2021)) +
+  facet_wrap(~vegetable) +
+  labs(
+    x = "",
+    y = "Amount spent",
+    title = "Lisa's Vegetable Garden",
+    subtitle = "Spending on Basil and Spinach increased",
+    caption = "Source: {gardenR} package  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  ) +
+  theme(
+    legend.position = "none",
+    strip.background = element_blank(),
+    strip.text = element_blank(),
+    panel.grid = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks = element_blank()
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2024_05_28_tidy_tuesday_garden.png",
+  device = "png")
+
+```
