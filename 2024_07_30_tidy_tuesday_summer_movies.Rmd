@@ -1,0 +1,506 @@
+---
+title: "TidyTemplate"
+date: 2024-07-30
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(patchwork)
+
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2024-07-30")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt |> 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+summer_movies <- 
+  tt$summer_movies |>
+  mutate(decade = 10 * (year %/% 10))
+
+summer_movie_genres <- 
+  tt$summer_movie_genres |>
+  inner_join(summer_movies |> select(-genres), by = "tconst")
+
+decade_meds <- 
+  summer_movies |>
+  filter(
+    !is.na(year),
+    title_type == "movie"
+  ) |>
+  group_by(decade) |>
+  summarize(
+    median_runtime = median(runtime_minutes, na.rm = TRUE),
+    median_rating = median(average_rating)
+  ) |>
+  ungroup()
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+summer_movies |>
+  filter(
+    decade >= 1940,
+    title_type == "movie"
+  ) |>
+  ggplot(aes(average_rating)) +
+  geom_histogram()
+
+summer_movies |>
+  ggplot(aes(runtime_minutes, fill = title_type)) +
+  geom_histogram() +
+  facet_wrap(~title_type, ncol = 1, scales = "free")
+
+summer_movies |>
+  filter(
+    title_type == "movie"
+  ) |>
+  ggplot(aes(year, runtime_minutes)) +
+  geom_point() +
+  geom_smooth(
+    method = "lm",
+    se = FALSE
+  )
+
+summer_movies |>
+  filter(
+    title_type == "movie"
+  ) |>
+  ggplot(aes(year, average_rating)) +
+  geom_point() +
+  geom_smooth(
+    method = "lm",
+    se = FALSE
+  )
+
+summer_movies |>
+  filter(
+    title_type == "movie"
+  ) |>
+  ggplot(aes(runtime_minutes, average_rating)) +
+  geom_point() +
+  geom_smooth(
+    method = "lm",
+    se = FALSE
+  )
+
+summer_movie_genres |>
+  filter(
+    !is.na(genres),
+    decade >= 1940,
+    title_type == "movie"
+  ) |>
+  mutate(genres = fct_reorder(genres, average_rating)) |>
+  ggplot(aes(average_rating, genres, fill = genres)) +
+  geom_boxplot(show.legend = FALSE)
+
+runtime_plot <- summer_movies |>
+  filter(
+    decade >= 1940,
+    title_type == "movie"
+  ) |>
+  mutate(decade = factor(decade)) |>
+  ggplot(
+    aes(
+      x = decade, 
+      y = runtime_minutes
+    )
+  ) +
+  geom_jitter(
+    aes(color = decade),
+    alpha = 0.5,
+    show.legend = FALSE
+  ) +
+  geom_violin(
+    fill = NA,
+    draw_quantiles = 0.5
+  ) +
+  geom_text(
+    data = decade_meds |> 
+      filter(decade >= 1940) |> 
+      mutate(decade = factor(decade)),
+    aes(
+      x = decade,
+      y = median_runtime,
+      label = round(median_runtime, 0)
+    ),
+    fontface = "bold",
+    nudge_y = 7
+  ) +
+  labs(
+    x = "Decade",
+    y = "Runtime (in minutes)",
+    title = "Summer Movies",
+    subtitle = "Runtime by Decade"
+  )
+
+runtime_plot
+
+ratings_plot <- summer_movies |>
+  filter(
+    decade >= 1940,
+    title_type == "movie"
+  ) |>
+  mutate(decade = factor(decade)) |>
+  ggplot(
+    aes(
+      x = decade, 
+      y = average_rating
+    )
+  ) +
+  geom_jitter(
+    aes(color = decade),
+    alpha = 0.5,
+    show.legend = FALSE
+  ) +
+  geom_violin(
+    fill = NA,
+    draw_quantiles = 0.5
+  ) +
+  geom_text(
+    data = decade_meds |> 
+      filter(decade >= 1940) |> 
+      mutate(decade = factor(decade)),
+    aes(
+      x = decade,
+      y = median_rating,
+      label = round(median_rating, 1)
+    ),
+    fontface = "bold",
+    nudge_y = 0.25
+  ) +
+  labs(
+    x = "Decade",
+    y = "Rating",
+    subtitle = "Ratings by Decade",
+    caption = "Source: IMDB  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  )
+
+ratings_plot
+
+combined_plot <- runtime_plot / ratings_plot
+
+combined_plot
+  
+```
+
+# Machine Learning
+
+## Tune an xgboost model
+
+Use the `tidymodels` package to create a linear model to predict rating. Based on a blog post by Julia Silge (https://juliasilge.com/blog/board-games/).
+
+First, we'll grab a subset of the data to use for modeling, split it into our training/testing sets, and create some cross-validation folds.
+
+```{r PrepareData}
+
+library(tidymodels)
+
+set.seed(123)
+
+movie_split <-
+  summer_movies |>
+  filter(
+    decade >= 1940,
+    title_type == "movie"
+  ) |>
+  select(tconst, average_rating, year, runtime_minutes, genres, simple_title) |>
+  na.omit() |>
+  initial_split(strata = average_rating)
+
+movie_train <- training(movie_split)
+
+movie_test <- testing(movie_split)
+
+set.seed(234)
+movie_folds <- vfold_cv(movie_train, strata = average_rating)
+movie_folds
+
+```
+
+Now, we will do some feature engineering. We will split up the genres using a custom function, and remove certain works from the title.
+
+```{r PreProcessing}
+
+library(textrecipes)
+
+split_genres <- function(x) {
+  x |>
+    str_split(",") |>
+    map(str_remove_all, "[:punct:]") |>
+    map(str_squish) |>
+    map(str_to_lower) |>
+    map(str_replace_all, " ", "_")
+}
+
+title_stopwords <- c("summer", "summers", "midsummer", "summertime",
+                     "2", "3", "5", "68", "9")
+
+movie_rec <-
+  recipe(average_rating ~ ., data = movie_train) |>
+  update_role(tconst, new_role = "id") |>
+  step_tokenize(genres, custom_token = split_genres) |>
+  step_tokenfilter(genres, max_tokens = 10) |>
+  step_tf(genres) |>
+  step_tokenize(simple_title) |>
+  step_stopwords(simple_title) |>
+  step_stopwords(simple_title, custom_stopword_source = title_stopwords) |>
+  step_tokenfilter(simple_title, max_tokens = 20) |>
+  step_tf(simple_title)
+
+## just to make sure this works as expected
+movie_prep <- prep(movie_rec)
+bake(movie_prep, new_data = NULL) |> str()
+
+```
+
+Next, we'll create a tunable xgboost model specification, with only some of the most important hyperparameters tunable, and combine it with our preprocessing recipe in a workflow.
+
+```{r ModelSetup}
+
+xgb_spec <-
+  boost_tree(
+    trees = tune(),
+    mtry = tune(),
+    min_n = tune(),
+    learn_rate = 0.01
+  ) |>
+  set_engine("xgboost") |>
+  set_mode("regression")
+
+xgb_wf <- workflow(movie_rec, xgb_spec)
+xgb_wf
+
+```
+
+Next, we'll use `tune_race_anova()` to eliminate parameter combinations that are not doing well (https://finetune.tidymodels.org/reference/tune_race_anova.html).
+
+```{r ModelTuning}
+
+library(finetune)
+doParallel::registerDoParallel()
+
+set.seed(234)
+xgb_movie_rs <-
+  tune_race_anova(
+    xgb_wf,
+    movie_folds,
+    grid = 20,
+    control = control_race(verbose_elim = TRUE)
+  )
+
+xgb_movie_rs
+
+```
+
+## Evaluate models
+
+Let's visualize how the possible parameter combinations we tried did during the “race.” We saved a time by not evaluating the parameter combinations that were clearly doing poorly on all the resamples; we only kept going with the good parameter combinations.
+
+```{r PlotRace}
+
+plot_race(xgb_movie_rs)
+
+```
+
+We ended up with five hyperparameter configurations in the end, all of which are pretty much the same.
+
+```{r ShowBest}
+
+show_best(xgb_movie_rs, metric = "rmse")
+
+```
+
+Next, we'll use `last_fit()` to fit one final time to the training data and evaluate one final time on the testing data.
+
+```{r LastFit}
+
+xgb_last <-
+  xgb_wf |>
+  finalize_workflow(select_best(xgb_movie_rs, metric = "rmse")) |>
+  last_fit(movie_split)
+
+xgb_last
+
+```
+
+Plot a histogram of the predictions against the testing data.
+
+```{r PredsHistogram}
+
+collect_predictions(xgb_last) |>
+  ggplot(aes(.pred)) +
+  geom_histogram()
+
+```
+
+Scatter plot of the predictions compared to actuals in the testing data.
+
+```{r PredsScatter}
+
+collect_predictions(xgb_last) |>
+  ggplot(aes(average_rating, .pred)) +
+  geom_point() +
+  geom_abline(
+    slope = 1,
+    lty = 2,
+    color = "red"
+  )
+
+```
+
+An xgboost model is not directly interpretable but we have several options for understanding why the model makes the predictions it does. Check out Chapter 18 of Tidy Modeling with R for more on model interpretability with tidymodels.
+
+Let’s start with model-based variable importance using the `vip` package.
+
+```{r VIP}
+
+library(vip)
+
+xgb_fit <- extract_fit_parsnip(xgb_last)
+vip(xgb_fit, geom = "point", num_features = 12)
+
+```
+
+The documentary genre and runtime are the most important predictors driving the predicted movie rating.
+
+We can also use a model-agnostic approach like Shapley Additive Explanations, where the average contributions of features are computed under different combinations or “coalitions” of feature orderings. The SHAPforxgboost package makes setting this up for an xgboost model particularly nice.
+
+We start by computing what we need for SHAP values, with the underlying xgboost engine fit and the predictors in a matrix format.
+
+```{r SHAP}
+
+library(SHAPforxgboost)
+
+movie_shap <-
+  shap.prep(
+    xgb_model = extract_fit_engine(xgb_fit),
+    X_train = bake(movie_prep,
+      has_role("predictor"),
+      new_data = NULL,
+      composition = "matrix"
+    )
+  )
+
+```
+
+Now we'll look at an overall summary:
+
+```{r SHAPSummary}
+
+shap.plot.summary(movie_shap)
+
+```
+
+Finally, we'll create partial dependence plots for year and runtime:
+
+```{r SHAPSummary}
+
+shap.plot.dependence(
+  movie_shap,
+  x = "year",
+  color_feature = "runtime_minutes",
+  size0 = 1.2,
+  smooth = FALSE, 
+  add_hist = TRUE
+)
+
+```
+
+## Movie poster
+
+```{r MoviePoster}
+
+plot_vip <-
+  (xgb_fit |> vip(num_features = 12))$data |>
+  mutate(
+    Variable = str_remove(Variable, "tf_"),
+    Variable = str_remove(Variable, "simple_"),
+    Variable = str_replace_all(Variable, "_", " "),
+    Variable = str_replace_all(Variable, "genres", "Genre:"),
+    Variable = str_replace_all(Variable, "title", "Title:"),
+    Variable = str_to_title(Variable),
+    Variable = fct_reorder(Variable, Importance)
+  ) |>
+  ggplot(aes(Importance, Variable)) +
+  geom_col() +
+  labs(
+    title = "Summer Movies",
+    subtitle = "XGBoost Model Variable Importance",
+    caption = "Source: IMDB  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  )
+
+plot_vip
+
+```
+
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+# ggsave(
+#   filename = "2024_07_30_tidy_tuesday_summer_movies.png",
+#   device = "png")
+
+```
