@@ -84,7 +84,7 @@ Use the {camcorder} package to record all plots that are output to the console
 
 # start recording
 gg_record(
-  dir = "~/Downloads/camcorder/2024_09_17_tidy_tuesday_shakespeare", # where to save the recording
+  dir = "~/Downloads/camcorder/2024_09_17_tidy_tuesday_shakespeare/live", # where to save the recording
   device = "png", # device to use to save images
   width = 6, # width of saved image
   height = 6, # height of saved image
@@ -263,7 +263,7 @@ p
 
 ```
 
-## Train a topic model 
+## Train a topic model
 
 Create a sparse matrix and treat each scene as a document.
 

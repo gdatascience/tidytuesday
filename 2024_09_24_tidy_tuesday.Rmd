@@ -1,6 +1,6 @@
 ---
 title: "TidyTemplate"
-date: 2024-09-18
+date: 2024-09-26
 output: html_document
 ---
 
@@ -26,7 +26,7 @@ library(tidytuesdayR)
 Download the weekly data and make available in the `tt` object.
 
 ```{r Load}
-tt <- tt_load("2024-09-17")
+tt <- tt_load("2024-09-24")
 ```
 
 
