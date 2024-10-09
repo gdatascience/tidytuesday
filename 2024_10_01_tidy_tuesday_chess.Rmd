@@ -1,6 +1,6 @@
 ---
 title: "TidyTemplate"
-date: 2024-09-26
+date: 2024-10-08
 output: html_document
 ---
 
@@ -26,7 +26,11 @@ library(tidytuesdayR)
 Download the weekly data and make available in the `tt` object.
 
 ```{r Load}
-tt <- tt_load("2024-09-24")
+# q: Why am I getting an error with this code for Github authentication?
+# A: You need to create a PAT (Personal Access Token) - follow the instructions here: https://happygitwithr.com/github-pat.html
+# q: How do I save my PAT?
+# A: You can save your PAT as an environmental variable in your .Renviron file.
+tt <- tt_load("2024-10-01")
 ```
 
 
