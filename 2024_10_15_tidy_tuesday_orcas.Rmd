@@ -1,0 +1,354 @@
+---
+title: "TidyTemplate"
+date: 2024-10-15
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2024-10-15")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+orcas <- tt$orcas
+
+# Install the {orcas} package
+# devtools::install_github("jadeynryan/orcas")
+library(orcas)
+
+orcas_tidy <- orcas::cwr_tidy # This is the same as the #TidyTuesday version
+
+```
+
+# Example code 
+From the GitHub page for the {orcas} package - https://github.com/jadeynryan/orcas
+
+```{r Examples}
+# Example code from the GitHub page for the {orcas} package
+# Scrape the two most recent encounters from 2022 and 2023:
+orcas_small <- orcas::make_encounter_df(years = 2022:2023, max_urls = 2)
+
+orcas::cwr_tidy |> 
+  subset(year == 2023) |> 
+  orcas::make_dt()
+
+orcas::cwr_tidy |> 
+  subset(year == 2023) |> 
+  head(2) |> 
+  orcas::make_leaflet()
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+orcas |> 
+  count(year, name = "count") |>
+  ggplot(aes(x = year, y = count)) + #, fill = type)) + # Copilot error
+  geom_col() +
+  labs(
+    title = "Orca Encounters",
+    subtitle = "Encounters by year",
+    caption = "Data Source: Center for Whale Research",
+    x = "Year",
+    y = "Count"
+  )
+
+orcas |>
+  filter(
+    !is.na(date),
+    date < ymd("2024-10-01")
+  ) |>
+  mutate(
+    month = month(date),
+    fct_year = factor(year)
+  ) |>
+  count(month, fct_year, name = "count") |>
+  ggplot(aes(x = month, y = count, color = fct_year)) +
+  geom_point(
+    alpha = 0.5
+  ) +
+  geom_smooth(
+    method = "loess",
+    se = FALSE
+  ) +
+  scale_x_continuous(
+    breaks = 1:12, 
+    labels = month.abb
+  ) +
+  labs(title = "Orca Encounters",
+       subtitle = "Encounters by Month and Year",
+       caption = "Data Source: Center for Whale Research",
+       color = "Year",
+       x = "Month",
+       y = "Count")
+
+# create the plot above but with a single smoothed line representing all years
+orcas |>
+  filter(
+    !is.na(date),
+    date < ymd("2024-10-01")
+  ) |>
+  mutate(
+    month = month(date),
+    fct_year = factor(year)
+  ) |>
+  count(month, fct_year, name = "count") |>
+  ggplot(aes(x = month, y = count)) +
+  geom_jitter(
+    aes(color = fct_year),
+    alpha = 0.5
+  ) +
+  geom_smooth(
+    method = "loess",
+    se = FALSE
+  ) +
+  scale_x_continuous(
+    breaks = 1:12, 
+    labels = month.abb
+  ) +
+  labs(title = "Orca Encounters",
+       subtitle = "Encounters tend to peak in August and September",
+       caption = "Data Source: Center for Whale Research",
+       color = "Year",
+       x = "Month",
+       y = "Encounters")
+
+# create a plot of the cumulative number of orcas encountered by month with a line for each year
+orcas |>
+  filter(
+    !is.na(date),
+    date < ymd("2024-10-01")
+  ) |>
+  mutate(
+    month = month(date),
+    fct_year = factor(year)
+  ) |>
+  count(month, fct_year, name = "count") |>
+  group_by(fct_year) |>
+  mutate(cumulative = cumsum(count)) |>
+  ggplot(aes(x = month, y = cumulative, color = fct_year)) +
+  geom_line() +
+  scale_x_continuous(
+    breaks = 1:12, 
+    labels = month.abb
+  ) +
+  labs(title = "Orca Encounters",
+       subtitle = "Cumulative Encounters by Month and Year",
+       caption = "Data Source: Center for Whale Research",
+       color = "Year",
+       x = "Month",
+       y = "Cumulative Count")
+
+# recreate the cumulative plot above but contrast 2024 vs. 2020 by highlighting them and making them thicker than the rest of the lines
+library(ggtext)
+
+orcas |>
+  filter(
+    !is.na(date),
+    date < ymd("2024-10-01")
+  ) |>
+  mutate(
+    month = month(date),
+    fct_year = factor(year)
+  ) |>
+  count(month, fct_year, name = "count") |>
+  group_by(fct_year) |>
+  mutate(cumulative = cumsum(count)) |>
+  ggplot(aes(
+    x = month, 
+    y = cumulative, 
+    group = fct_year,
+    color = if_else(fct_year == "2020" | fct_year == "2024", fct_year, "Other"), 
+    size = fct_year == "2020" | fct_year == "2024",
+    lty = !(fct_year == "2020" | fct_year == "2024")
+  )) +
+  geom_line() +
+  scale_x_continuous(
+    breaks = 1:12, 
+    labels = month.abb
+  ) +
+  scale_size_manual(values = c(0.5, 1, 1)) +
+  scale_color_manual(
+    values = c("2020" = "orange", "2024" = "royalblue", "Other" = "gray")
+  ) +
+  labs(
+    title = "Orca Encounters from 2017 - 2024",
+    # use the ggtext package to callout 2020 and 2024 in the subtitle and color the year to use as a color legend
+    subtitle = "Cumulative Encounters by Month and Year<br><span style='color:royalblue'>**2024**</span>: Most encounters  **|**  <span style='color:orange'>**2020**</span>: Least encounters",
+    caption = "Data Source: Center for Whale Research",
+    x = "Month",
+    y = "Cumulative Count"
+  ) +
+  theme(
+    legend.position = "none",
+    plot.subtitle = element_markdown()
+  )
+
+# use the prophet package to forecast the number of orca encounters in 2025
+library(prophet)
+
+forecast_model <- orcas |>
+  filter(
+    !is.na(date),
+    date < ymd("2024-10-01")
+  ) |>
+  mutate(month = floor_date(date, unit = "month")) |>
+  count(month, name = "count") |>
+  transmute(ds = month, y = count) |>
+  prophet()
+
+# make predictions for 12 months after the last date in the data
+forecast <- make_future_dataframe(forecast_model, periods = 12, freq = "month")
+
+# combine forecasted values and actual historical values
+forecast_combined <- forecast_model |> 
+  predict(forecast) |>
+  left_join(orcas |>
+               filter(
+                 !is.na(date),
+                 date < ymd("2024-10-01")
+               ) |>
+               mutate(month = floor_date(date, unit = "month")) |>
+               count(month, name = "count") |>
+               transmute(ds = month, y = count), by = "ds"
+  )
+
+# using ggplot, plot the hitorical data and the forecast so that the line changes color once the forecast starts
+forecast_combined |> 
+  ggplot(aes(x = ds)) +
+  geom_line(aes(y = coalesce(y, yhat), color = is.na(y))) +
+  geom_ribbon(
+    aes(
+      ymin = if_else(is.na(y), yhat_lower, y), 
+      ymax = if_else(is.na(y), yhat_upper, y)
+    ), 
+    alpha = 0.2
+  ) +
+  scale_color_manual(
+    values = c("black", "red"),
+    labels = c("Historical", "Forecast")
+  ) +
+  labs(
+    title = "Orca Encounters",
+    subtitle = "Forecasted Encounters for the next 12 months",
+    caption = "Data Source: Center for Whale Research",
+    x = "Month",
+    y = "Count",
+    color = NULL
+  ) +
+  theme(
+    legend.position = "top",
+    # decrease the space on top and bottom of the legend
+    legend.margin = margin(0, 0, 0, 0)
+  )
+
+# plot the forecasted values with calendar month on the x-axis and a line for each year; all the lines should be gray except the forecasted periods which should be red
+library(ggtext)
+
+forecast_combined |>
+  mutate(
+    month = factor(month(ds)),
+    fct_year = factor(year(ds))
+  ) |>
+  ggplot(
+    aes(
+      x = month,
+      y = coalesce(y, yhat)
+    )
+  ) +
+  geom_boxplot(
+    outlier.shape = NA,
+    fill = "gray",
+    alpha = 0.5
+  ) +
+  geom_point(
+    data = forecast_combined |> filter(is.na(y)),
+    aes(
+      x = factor(month(ds)),
+      y = yhat
+    ),
+    color = "red"
+  ) +
+  scale_x_discrete(
+    breaks = 1:12, 
+    labels = month.abb
+  ) +
+  labs(
+    title = "Orca Encounters: 12 Month Forecast",
+    subtitle = "<span style='color:red'>**Forecasted Encounters**</span> for the next 12 months (using Prophet)",
+    caption = "Data Source: Center for Whale Research  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday",
+    x = "Month",
+    y = "Count",
+    color = NULL
+  ) +
+  theme(
+    legend.position = "top",
+    legend.margin = margin(0, 0, 0, 0),
+    plot.subtitle = element_markdown()
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2024_10_15_tidy_tuesday_orcas.png",
+  device = "png"
+)
+```
