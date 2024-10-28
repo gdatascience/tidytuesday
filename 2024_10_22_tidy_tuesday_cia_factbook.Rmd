@@ -1,0 +1,441 @@
+---
+title: "TidyTemplate"
+date: 2024-10-22
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(tidymodels)
+library(ggrepel)
+library(shiny)
+library(ggtext)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2024-10-22")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+# bring in continent or region data for these countries from a package
+cia_factbook <- tt$cia_factbook |>
+  mutate(
+    region = countrycode::countrycode(
+      country,
+      origin = "country.name",
+      destination = "continent"
+    )
+  )
+
+# list the columns in the cia_factbook data in the following comments with some example data
+# this will help you remember what columns are available for plotting
+# you can also use the glimpse function to see the columns
+# glimpse(cia_factbook)
+
+# Rows: 259
+# Columns: 12
+# $ country                 <chr> "Russia", "Canada", "United States", "China", "…
+# $ area                    <dbl> 17098242, 9984670, 9826675, 9596960, 8514877, 7…
+# $ birth_rate              <dbl> 11.87, 10.29, 13.42, 12.17, 14.72, 12.19, 19.89…
+# $ death_rate              <dbl> 13.83, 8.31, 8.15, 7.44, 6.54, 7.07, 7.35, 7.34…
+# $ infant_mortality_rate   <dbl> 7.08, 4.71, 6.17, 14.79, 19.21, 4.43, 43.19, 9.…
+# $ internet_users          <dbl> 40853000, 26960000, 245000000, 389000000, 75982…
+# $ life_exp_at_birth       <dbl> 70.16, 81.67, 79.56, 75.15, 73.28, 82.07, 67.80…
+# $ maternal_mortality_rate <dbl> 34, 12, 21, 37, 56, 7, 200, 77, 51, 97, 540, NA…
+# $ net_migration_rate      <dbl> 1.69, 5.66, 2.45, -0.32, -0.15, 5.74, -0.05, 0.…
+# $ population              <dbl> 142470272, 34834841, 318892103, 1355692576, 202…
+# $ population_growth_rate  <dbl> -0.03, 0.76, 0.77, 0.44, 0.80, 1.09, 1.25, 0.95…
+# $ region                  <chr> "Europe", "Americas", "Americas", "Asia", "Amer…
+
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+p <- cia_factbook |>
+  ggplot(aes(x = internet_users, y = population, color = region)) +
+  geom_point(
+    # use circles instead of dots
+    shape = 21
+  ) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  scale_x_log10(labels = comma_format()) +
+  scale_y_log10(labels = comma_format()) +
+  coord_fixed() +
+  expand_limits(x = 1, y = 1) +
+  labs(
+    title = "Internet Users vs Population by Region",
+    # add a subtitle about what it means to be close or far from the dashed line
+    subtitle = "Countries close to the dashed line have a similar proportion of internet users to population.",
+    x = "Internet Users",
+    y = "Population"
+  ) +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+# Model
+Create an unsupervised clustering model on the cia_factbook data. This will add a new column to the data called cluster.
+
+```{r Model}
+
+# select only the numeric columns for clustering
+features <- cia_factbook |>
+  select(country, where(is.numeric)) |>
+  na.omit() |>
+  # scale the numeric data between 0 and 1
+  mutate(
+    across(where(is.numeric), scale),
+    across(where(is.numeric), as.vector)
+  )
+
+k_test <- NbClust::NbClust(
+  features |> select(-country),
+  distance = "euclidean",
+  min.nc = 2,
+  max.nc = 9,
+  method = "kmeans"
+)
+
+# create a tibble with the number of clusters we want to try
+kclusts <- 
+  tibble(k = 1:9) %>%
+  mutate(
+    kclust = map(k, ~kmeans(features |> select(-country), .x)),
+    tidied = map(kclust, tidy),
+    glanced = map(kclust, glance),
+    augmented = map(kclust, augment, features)
+  )
+
+# plot the clustering results
+clusters <- 
+  kclusts %>%
+  unnest(cols = c(tidied))
+
+assignments <- 
+  kclusts %>% 
+  unnest(cols = c(augmented))
+
+clusterings <- 
+  kclusts %>%
+  unnest(cols = c(glanced))
+
+# this will show the total within sum of squares for each number of clusters
+ggplot(clusterings, aes(k, tot.withinss)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = 1:9)
+
+```
+
+Based on the elbow plot, it looks like 2 clusters is a good choice. Let's visualize the clusters.
+
+# Visualize Model
+
+```{r Visualize Model}
+
+cia_factbook_clust <- assignments |>
+  filter(k == 2) |>
+  transmute(country, cluster = .cluster) |>
+  left_join(cia_factbook, by = "country")
+
+# plot the number of countries by region and cluster
+cia_factbook_clust |>
+  count(region, cluster) |>
+  ggplot(
+    aes(
+      x = n, 
+      y = region, 
+      fill = factor(cluster)
+    )
+  ) +
+  geom_col() +
+  labs(
+    title = "Number of Countries by Region and Cluster",
+    x = "Region",
+    y = "Number of Countries",
+    fill = "Cluster"
+  ) +
+  theme(
+    legend.position = "bottom"
+  )
+
+# Using base R, create a bivariate plot colored by cluster
+plot(
+  cia_factbook_clust |> 
+    select(-country, -cluster, -region), 
+  col = cia_factbook_clust$cluster
+)
+
+cia_factbook_clust |>
+  ggplot(aes(x = internet_users, y = population)) +
+  geom_point(aes(color = cluster, size = area), shape = 21, alpha = 0.8) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  geom_text_repel(aes(label = country), size = 2) +
+  scale_size_continuous(labels = comma_format()) +
+  expand_limits(x = 1000, y = 1000) +
+  scale_x_log10(
+    breaks = c(10000, 1000000, 100000000),
+    labels = c("10K", "1M", "1B")
+  ) +
+  scale_y_log10(
+    breaks = c(10000, 1000000, 100000000),
+    labels = c("10K", "1M", "1B")
+  ) +
+  coord_fixed() +
+  labs(
+    title = "Internet Users vs Population by Cluster",
+    x = "Internet Users",
+    y = "Population",
+    color = "Cluster"
+  ) +
+  theme(
+    legend.title = element_text(size = 6),
+    legend.text = element_text(size = 6),
+    legend.margin = margin(0, 0, 0, 0),
+    strip.text = element_text(size = 6, face = "bold")
+  )
+
+# create a plot comparing two other unused variables by cluster
+cia_factbook_clust |>
+  ggplot(aes(
+    x = birth_rate,
+    y = death_rate
+  )) +
+  geom_point(aes(color = cluster, size = population),shape = 21, alpha = 0.8) +
+  geom_text_repel(aes(label = country), size = 2) +
+  scale_color_manual(values = c("#161618", "#F32A53")) +
+  scale_size_continuous(labels = comma_format()) +
+  labs(
+    title = "Countries: <span style='color:#161618'>**Haves**</span> vs <span style='color:#F32A53'>**Have Nots**</span>",
+    subtitle = "Size of point represents population. Clusters determines by k-means.",
+    x = "Birth Rate",
+    y = "Death Rate",
+    caption = "Source: CIA World Factbook  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  ) +
+  theme(
+    legend.position = "none",
+    plot.title = element_markdown(size = 14),
+    legend.title = element_text(size = 6),
+    legend.text = element_text(size = 6),
+    legend.margin = margin(0, 0, 0, 0)
+  )
+
+# plot infant mortality rate vs life expectancy at birth by cluster
+cia_factbook_clust |>
+  ggplot(aes(
+    x = infant_mortality_rate,
+    y = life_exp_at_birth
+  )) +
+  geom_point(aes(color = cluster, size = population), shape = 21, alpha = 0.8) +
+  geom_text_repel(aes(label = country), size = 2) +
+  scale_size_continuous(labels = comma_format()) +
+  labs(
+    title = "Infant Mortality Rate vs Life Expectancy at Birth by Cluster",
+    x = "Infant Mortality Rate",
+    y = "Life Expectancy at Birth",
+    color = "Cluster",
+    size = "Population"
+  ) +
+  theme(
+    legend.position = "top",
+    legend.title = element_text(size = 6),
+    legend.text = element_text(size = 6),
+    legend.margin = margin(0, 0, 0, 0)
+  )
+
+# plot net migration rate vs population growth rate by cluster
+cia_factbook_clust |>
+  ggplot(aes(
+    x = net_migration_rate,
+    y = population_growth_rate
+  )) +
+  geom_point(aes(color = cluster, size = population), shape = 21, alpha = 0.8) +
+  geom_text_repel(aes(label = country), size = 2) +
+  scale_size_continuous(labels = comma_format()) +
+  labs(
+    title = "Net Migration Rate vs Population Growth Rate by Cluster",
+    x = "Net Migration Rate",
+    y = "Population Growth Rate",
+    color = "Cluster",
+    size = "Population"
+  ) +
+  theme(
+    legend.position = "top",
+    legend.title = element_text(size = 6),
+    legend.text = element_text(size = 6),
+    legend.margin = margin(0, 0, 0, 0)
+  )
+
+# create the same plot as above, but filter out Syria and Lebanon
+cia_factbook_clust |>
+  filter(!country %in% c("Syria", "Lebanon")) |>
+  ggplot(aes(
+    x = net_migration_rate,
+    y = population_growth_rate
+  )) +
+  geom_point(aes(color = cluster, size = population), shape = 21, alpha = 0.8) +
+  geom_text_repel(aes(label = country), size = 2) +
+  scale_size_continuous(labels = comma_format()) +
+  labs(
+    title = "Net Migration Rate vs Population Growth Rate by Cluster",
+    x = "Net Migration Rate",
+    y = "Population Growth Rate",
+    color = "Cluster",
+    size = "Population"
+  ) +
+  theme(
+    legend.position = "top",
+    legend.title = element_text(size = 6),
+    legend.text = element_text(size = 6),
+    legend.margin = margin(0, 0, 0, 0)
+  )
+
+```
+
+
+```{r ShinyApp}
+
+# create a shiny app that creates a scatter plot of two variables and colors by cluster; provide dropdowns for the x and y axis variables and checkboxes to log scale the x and/or y axis
+
+ui <- fluidPage(
+  titlePanel("Cluster Analysis"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        "x", 
+        "X-axis variable",
+        selected = "population",
+        choices = names(cia_factbook_clust |> select(where(is.numeric)))
+      ),
+      selectInput(
+        "y", 
+        "Y-axis variable",
+        selected = "internet_users",
+        choices = names(cia_factbook_clust |> select(where(is.numeric)))
+      ),
+      checkboxInput("log_x", "Log scale X-axis", value = TRUE),
+      checkboxInput("log_y", "Log scale Y-axis", value = TRUE)
+    ),
+    mainPanel(
+      plotOutput("plot")
+    )
+  )
+)
+
+server <- function(input, output) {
+  output$plot <- renderPlot({
+    label_x = str_to_title(str_replace_all(input$x, "_", " "))
+    label_y = str_to_title(str_replace_all(input$y, "_", " "))
+    
+    p <- cia_factbook_clust |>
+      ggplot(aes(
+        x = !!sym(input$x),
+        y = !!sym(input$y),
+        color = factor(cluster)
+      )) +
+      geom_point(
+        aes(size = population), 
+        shape = 21, 
+        alpha = 0.8
+      ) +
+      geom_text_repel(aes(label = country), size = 2) +
+      scale_size_continuous(labels = comma_format()) +
+      scale_color_manual(values = c("#161618", "#F32A53")) +
+      labs(
+        # using the ggtext package make a title about the Haves (black) and Have Nots (red)
+        title = "Countries: <span style='color:#161618'>**Haves**</span> vs <span style='color:#F32A53'>**Have Nots**</span>",
+        subtitle = paste(label_x, "vs", label_y, "by k-means Cluster. Size of point represents population."),
+        x = label_x,
+        y = label_y,
+        caption = "Source: CIA World Factbook  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+      ) +
+      theme(
+        legend.position = "none",
+        legend.margin = margin(0, 0, 0, 0),
+        plot.title = element_markdown(size = 14),
+      )
+    
+    if (input$log_x) {
+      p <- p + scale_x_log10(
+        labels = comma_format()
+      )
+    }
+    
+    if (input$log_y) {
+      p <- p + scale_y_log10(
+        labels = comma_format()
+      )
+    }
+    
+    print(p)
+  })
+}
+
+shinyApp(ui = ui, server = server)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2024_10_22_tidy_tuesday_cia_factbook.png",
+  device = "png"
+)
+```
