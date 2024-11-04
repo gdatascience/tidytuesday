@@ -19,6 +19,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r libraries, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(tidytuesdayR)
+
+theme_set(theme_light())
 ```
 
 # Load the weekly Data
@@ -55,7 +57,13 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
-
+monster <- tt$monster_movie_genres |>
+  rename(genre = genres) |>
+  inner_join(
+    tt$monster_movies,
+    by = "tconst"
+  ) |>
+  mutate(decade = 10 * (year %/% 10))
 
 ```
 
@@ -66,8 +74,102 @@ Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
 
+library(ggstream)
 
-  
+monster_lump <- monster |>
+  filter(!is.na(genre)) |>
+  mutate(genre = fct_lump(genre, 4)) |>
+  count(year, genre) |>
+  mutate(genre = fct_reorder(genre, n))
+
+monster_labels <- monster_lump |>
+  distinct(genre) |>
+  mutate(
+    year = 2025,
+    y = case_when(
+      genre == "Horror" ~ 12,
+      genre == "Documentary" ~ 0,
+      genre == "Comedy" ~ 32,
+      genre == "Drama" ~ 23,
+      genre == "Other" ~ -20
+    )
+  )
+
+monster_pal = c(
+  "Horror" = "#D00000", 
+  "Documentary" = "#FFBA08", 
+  "Comedy" = "#3F88C5", 
+  "Drama" = "#7AC74F", 
+  "Other" = "gray55"
+)
+
+monster_lump |>
+  ggplot(
+    aes(x = year, y = n)
+  ) +
+  geom_stream(
+    aes(fill = genre),
+    type = "mirror",
+    bw = 0.5,
+    extra_span = 0.001,
+    sorting = "none"
+  ) +
+  geom_text(
+    data = monster_labels,
+    aes(
+      x = year,
+      y = y,
+      label = genre,
+      color = genre
+    ),
+    hjust = 0,
+    size = 6,
+    fontface = "bold"
+  ) +
+  scale_x_continuous(
+    limits = c(1920, 2060),
+    breaks = seq(1920, 2020, 20)
+  ) +
+  scale_fill_manual(
+    values = monster_pal
+  ) +
+  scale_color_manual(
+    values = monster_pal
+  ) +
+  labs(
+    title = "Monster Movies by Genre",
+    caption = "Data: IMDb  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday",
+  ) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(
+      color = "white",
+      size = 32,
+      face = "bold"
+    ),
+    plot.caption = element_text(
+      color = "white",
+      size = 8
+    ),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(
+      color = "white",
+      size = 12
+    ),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    plot.background = element_rect(
+      fill = "#2D3047"
+    ),
+    panel.background = element_rect(
+      fill = "#2D3047"
+    ),
+    panel.border = element_rect(
+      color = "#2D3047"
+    )
+  )
+
 ```
 
 # Save Image
