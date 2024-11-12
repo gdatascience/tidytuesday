@@ -28,8 +28,23 @@ showtext_auto()
 tt_source <- "~/Downloads/IMG_2008.jpg"
 txt_color = "white"
 bg_color <- "#0C2340"
-gold <- "#C99700"
-green <- "#00843D"
+blue <- "#0C2340"
+gold <- "#ae9142"
+green <- "#0a843d"
+med_blue <- "#143865"
+light_blue <- "#1c4f8f"
+dark_gold <- "#8c7535"
+light_gold <- "#d39f10"
+light_green <- "#b3dac5"
+sky_blue <- "#e1e8f2"
+sky_blue_dark <- "#c1cddd"
+sky_blue_light <- "#edf2f9"
+warm_white <- "#f8f4ec"
+warm_white_dark <- "#efe9d9"
+
+all_nd_colors <- c(
+  blue, gold, green, med_blue, light_blue, dark_gold, light_gold, light_green, sky_blue, sky_blue_dark, sky_blue_light, warm_white, warm_white_dark
+)
 
 tt_caption <- paste0("Created in R by: Tony Galvan (Class of 2019)  |  Image Source: ", tt_source)
 
@@ -99,7 +114,7 @@ plot(im)
 
 ```{r BlurImage}
 
-im.blurry <- isoblur(im, 2) #Blurry Dome!
+im.blurry <- isoblur(im, 2) #Blurry Grotto!
 plot(im.blurry)
 
 ```
@@ -183,6 +198,50 @@ df_image |>
   )
 
 ```
+
+
+```{r ReColorImage}
+
+# randomly create a color palette of ND colors
+nd_pal <- sample(all_nd_colors, sample(2:length(all_nd_colors), 1))
+
+df_image |>
+  ggplot(aes(row_id, col_id)) +
+  geom_point(
+    aes(
+      color = red
+    ),
+    size = 0.25
+  ) +
+  geom_contour(
+    aes(z = blue),
+    bins = 4,
+    linewidth = 0.1,
+    color = txt_color
+  ) +
+  scale_color_gradientn(
+    # colors = c(gold, green)
+    # colors = c(green, gold)
+    # colors = c(blue, gold)
+    # colors = c(blue, gold, green)
+    # colors = c(blue, "#143865", "#1c4f8f", green, "#8c7535", gold, "#d39f10")
+    # colors = c(blue, "#143865", "#1c4f8f", "#8c7535", gold, "#d39f10")
+    # colors = c("#0a843d", "#efe9d9", "#edf2f9", "#b3dac5") # nice green and cream
+    # colors = c("#0C2340","#d39f10") # blue and gold
+    colors = c("#143865", "#8c7535", "#e1e8f2", "#edf2f9") # blue, gold, and cream
+    # colors = nd_pal
+  ) +
+  coord_equal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "none"
+  )
+
+```
+
 
 # Save Image
 
