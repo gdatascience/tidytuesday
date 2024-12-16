@@ -1,0 +1,187 @@
+---
+title: "TidyTemplate"
+date: 2024-12-06
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(marquee)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2024-12-03")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+traffic <- tt$A64_traffic |>
+  janitor::clean_names() |>
+  mutate(dow = wday(report_date, label = TRUE, abbr = FALSE))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+tt_title <- "# Traffic Volume ![](https://ecoapproach.co.uk/wp-content/uploads/2023/10/National-Highways-Fill.svg)
+
+## **{#6564DB Friday}** has the highest traffic volume
+
+## **{#F1A208 Sunday}** has the lowest traffic volume"
+
+tt_style <- classic_style(
+  weight = 'thin'
+) |> 
+  remove_style('h1') |> 
+  modify_style(
+    'h1',
+    weight = 'bold',
+    size = 48,
+    family = 'Merriweather'
+  ) |> 
+  remove_style('h2') |> 
+  modify_style(
+    'h2',
+    size = 24,
+    family = 'Merriweather'
+  )
+
+df <- traffic |>
+  count(
+    report_date, dow,
+    wt = total_volume, 
+    name = "total_volume"
+  ) |>
+  mutate(
+    label_color = if_else(
+      dow %in% c("Monday", "Tuesday", "Wednesday"),
+      "white",
+      "black"
+    )
+  )
+
+df |>
+  ggplot(
+    aes(
+      x = report_date
+    )
+  ) +
+  geom_col(
+    aes(
+      y = total_volume,
+      fill = dow
+    )
+  ) +
+  geom_marquee(
+    aes(
+      y = 0,
+      label = dow
+    ),
+    color = df$label_color,
+    style = tt_style,
+    size = 3.5,
+    angle = 90,
+    hjust = -0.05,
+    vjust = 0.75
+  ) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_fill_manual(
+    values = c(
+      "#F1A208",
+      "#131B23",
+      "#2D353C",
+      "#464E54",
+      "#798084",
+      "#6564DB",
+      "#DEE5E5")
+  ) +
+  labs(
+    x = NULL,
+    y = "Total Volume",
+    fill = "Day of Week",
+    title = tt_title,
+    caption = "Data Source: webtris.nationalhighways.co.uk  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_marquee(
+      width = 1,
+      style = tt_style
+    ),
+    plot.title.position = "plot",
+    legend.position = "none",
+    plot.background = element_rect(
+      fill = "#80C1E4"
+    ),
+    panel.background = element_rect(
+      fill = "#80C1E4"
+    ),
+    panel.border = element_rect(
+      color = "#80C1E4",
+      fill = NA
+    ),
+    panel.grid = element_blank(),
+    axis.ticks = element_blank()
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2024_12_03_tidy_tuesday_traffic.png",
+  device = "png"
+)
+```
