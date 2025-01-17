@@ -1,0 +1,225 @@
+---
+title: "TidyTemplate"
+date: 2025-01-14
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(gender)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-01-14")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+conf2023 <- tt$conf2023
+
+conf2024 <- tt$conf2024
+
+talks <- conf2023 |>
+  transmute(
+    year = 2023,
+    title = session_title,
+    speaker_name,
+    track = block_track_title,
+    type = session_type,
+    description = session_abstract
+  ) |>
+  bind_rows(
+    conf2024 |>
+      transmute(
+        year = 2024,
+        title = talk_title,
+        speaker_name,
+        track,
+        type = case_when(
+          str_detect(track, "Keynote") ~ "keynote",
+          str_detect(track, "Lightning") ~ "lightning",
+          TRUE ~ "regular"
+        ),
+        description
+      )
+  ) |>
+  separate_rows(speaker_name, sep = ", ") |>
+  mutate(
+    speaker_name = str_remove(speaker_name, "and "),
+    first_name = word(speaker_name, 1)
+  )
+
+gender_df <- gender(
+  unique(talks$first_name), 
+  years = c(1960, 2012),
+  method = "ssa"
+) |>
+  transmute(first_name = name, gender) |>
+  mutate(gender = if_else(first_name == "Hadley", "male", gender))
+
+talks_gender <- talks |>
+  left_join(gender_df, by = "first_name")
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+talks_gender |>
+  filter(!is.na(gender)) |>
+  distinct(year, title, type, track, gender) |>
+  count(year, type, gender) |>
+  mutate(gender = fct_rev(gender)) |>
+  ggplot(aes(x = n, y = type, fill = gender)) +
+  geom_col(position = "dodge") +
+  geom_text(
+    aes(label = n), 
+    position = position_dodge(width = 0.9), 
+    vjust = 0.5,
+    hjust = -0.05,
+    size = 3
+  ) +
+  facet_wrap(
+    ~year,
+    scales = "free_x"
+  ) +
+  labs(
+    title = "posit::conf Talks",
+    subtitle = "There were fewer female speakers in 2024 regular talks",
+    x = "# of talks",
+    y = "",
+    fill = "Gender",
+    caption = "Source: posit::conf Attendee Portal  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom"
+  )
+
+library(tidytext)
+library(Hmisc)
+library(ggtext)
+
+talks_gender |>
+  filter(!is.na(gender)) |>
+  unnest_tokens(word, description) |>
+  anti_join(stop_words) |>
+  count(year, gender, word) |>
+  group_by(year, gender) |>
+  top_n(10) |>
+  ungroup() |>
+  mutate(word = reorder_within(word, n, list(gender, year))) |>
+  ggplot(aes(n, word, fill = gender)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_reordered() +
+  scale_fill_manual(
+    values = c("#FFD9DA", "#A8D0DB")
+  ) +
+  facet_wrap(
+    vars(gender, year),
+    scales = "free_y",
+    labeller = labeller(
+      .multi_line = FALSE,
+      .default = capitalize
+    )
+  ) +
+  labs(
+    title = "posit::conf Talks",
+    subtitle = "<span style = 'color:#FFD9DA;'>Females talked more about community and sharing</span><br><span style = 'color:#A8D0DB;'>Males talked more about code and process",
+    x = "# of mentions",
+    y = "",
+    fill = "",
+    caption = "Source: posit::conf Attendee Portal  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  ) +
+  theme(
+    plot.background = element_rect(fill = "#213D50"),
+    panel.background = element_rect(fill = "#213D50"),
+    panel.border = element_rect(fill = NA, color = "#213D50"),
+    strip.background = element_rect(fill = "#213D50"),
+    text = element_text(color = "white"),
+    axis.text = element_text(color = "white"),
+    panel.grid = element_blank(),
+    axis.ticks = element_blank(),
+    strip.text = element_text(
+      color = "white",
+      face = "bold",
+      hjust = 0
+    ),
+    plot.title.position = "plot",
+    plot.title = element_text(
+      color = "white",
+      size = 48,
+      face = "bold"
+    ),
+    plot.subtitle = element_markdown(
+      color = "white",
+      size = 18
+    ),
+    plot.caption.position = "plot",
+    plot.caption = element_text(
+      color = "white",
+      size = 6,
+      hjust = 0.5
+    )
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_01_14_tidy_tuesday_talks.png",
+  device = "png"
+)
+```
