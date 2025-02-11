@@ -1,0 +1,13 @@
+name: pinewood_derby
+title: pinewood_derby
+username: gdatascience
+account: gdatascience
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 13926992
+bundleId: 9767335
+url: https://gdatascience.shinyapps.io/pinewood_derby/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: pinewood_derby_results.xlsx
