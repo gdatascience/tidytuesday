@@ -1,0 +1,199 @@
+---
+title: "TidyTemplate"
+date: 2025-03-22
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(palmtrees)
+
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+# tt <- tt_load("2025-03-18")
+palmtrees <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-03-18/palmtrees.csv')
+
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+# tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+# tt %>% 
+#   map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+palmtrees |>
+  glimpse()
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+palmtrees |>
+  ggplot(aes(max_stem_height_m)) +
+  geom_histogram() +
+  scale_x_log10()
+
+palmtrees |>
+  ggplot(aes(max_stem_dia_cm)) +
+  geom_histogram() +
+  scale_x_log10()
+  
+```
+
+
+```{r}
+
+palmtrees |>
+  mutate(palm_subfamily = fct_lump(palm_subfamily, 2)) |>
+  count(palm_subfamily) |>
+  mutate(palm_subfamily = fct_reorder(palm_subfamily, n)) |>
+  ggplot(aes(n, palm_subfamily, fill = palm_subfamily)) +
+  geom_col()
+
+palmtrees |>
+  mutate(palm_subfamily = fct_lump(palm_subfamily, 2)) |>
+  ggplot(
+    aes(
+      x = max_stem_dia_cm, 
+      y = max_stem_height_m, 
+      color = palm_subfamily
+    )
+  ) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(
+    method = "lm",
+    se = FALSE
+  ) +
+  scale_x_log10() +
+  scale_y_log10()
+
+lmod <-
+  lm(
+    log(max_stem_height_m) ~ log(max_stem_dia_cm) + palm_subfamily,
+    data = palmtrees |>
+      filter(max_stem_height_m > 0, max_stem_dia_cm > 0) |>
+      mutate(palm_subfamily = fct_lump(palm_subfamily, 2))
+  )
+
+summary(lmod)
+
+```
+
+
+```{r}
+
+library(broom)
+
+# Assuming your linear regression model is stored in a variable called 'lmod'
+# Replace 'lmod' with the actual name of your model object.
+
+# Tidy the coefficients
+tidy_coef <- tidy(lmod)
+
+# Extract specific values
+intercept <- tidy_coef %>% filter(term == "(Intercept)") %>% pull(estimate)
+dia_coef <- tidy_coef %>% filter(term == "log(max_stem_dia_cm)") %>% pull(estimate)
+calamoideae_coef <- tidy_coef %>% filter(term == "palm_subfamilyCalamoideae") %>% pull(estimate)
+other_coef <- tidy_coef %>% filter(term == "palm_subfamilyOther") %>% pull(estimate)
+
+# Example data for visualization (replace with your actual palm tree data)
+example_data <- data.frame(
+  max_stem_dia_cm = seq(1, 100, length.out = 100),
+  palm_subfamily = factor(rep(c("Baseline", "Calamoideae", "Other"), length.out = 100))
+)
+
+# Function to predict log(max_stem_height_m)
+predict_log_height <- function(dia, subfamily) {
+  log_height <- intercept + dia_coef * log(dia)
+  if (subfamily == "Calamoideae") {
+    log_height <- log_height + calamoideae_coef
+  } else if (subfamily == "Other") {
+    log_height <- log_height + other_coef
+  }
+  return(log_height)
+}
+
+# Apply the prediction function to create predicted heights
+example_data <- example_data %>%
+  mutate(
+    predicted_log_height = predict_log_height(max_stem_dia_cm, palm_subfamily),
+    predicted_height = exp(predicted_log_height) # Back-transform log
+  )
+
+# Create the visualization
+ggplot(example_data, aes(x = max_stem_dia_cm, y = predicted_height, color = palm_subfamily)) +
+  geom_line(size = 1) +
+  labs(
+    title = "Predicted Palm Tree Height vs. Stem Diameter by Subfamily",
+    x = "Maximum Stem Diameter (cm)",
+    y = "Predicted Maximum Stem Height (m)",
+    color = "Palm Subfamily"
+  ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1")
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "My TidyTuesday Plot.png",
+  device = "png")
+
+```
