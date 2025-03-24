@@ -1,0 +1,12 @@
+name: border_patrol_encounters
+title: Border Patrol Encounters
+username: gdatascience
+account: gdatascience
+server: posit.cloud
+hostUrl: https://api.posit.cloud/v1
+appId: 9130042
+bundleId: 9292609
+url: https://posit.cloud/content/9130042
+version: 1
+asMultiple: FALSE
+asStatic: TRUE

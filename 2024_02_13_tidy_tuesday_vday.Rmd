@@ -1,0 +1,158 @@
+---
+title: "TidyTemplate"
+date: 2024-02-18
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2024-02-13")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+spending <- tt$historical_spending |>
+  janitor::clean_names()
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+spending |>
+  mutate(
+    other = per_person - (candy + flowers + jewelry + greeting_cards + evening_out + clothing + gift_cards)
+  ) |>
+  pivot_longer(
+    cols = (candy:other),
+    names_to = "item",
+    values_to = "avg_amt_spent"
+  ) |>
+  mutate(
+    item = str_replace(item, "_", " "),
+    item = str_to_title(item),
+    item = fct_reorder(item, -avg_amt_spent)
+  ) |>
+  ggplot(aes(year, avg_amt_spent, fill = item)) +
+  geom_area(show.legend = FALSE) +
+  facet_wrap(~item, scales = "free_y") +
+  scale_x_continuous(
+    labels = number_format(
+      accuracy = 1, 
+      big.mark = ""
+    )
+  ) +
+  scale_y_continuous(
+    labels = dollar_format()
+  ) +
+  scale_fill_manual(
+    values = c("#590d22", "#800f2f", "#a4133c", "#c9184a", "#ff4d6d", "#ff758f", "#ff8fa3", "#ffb3c1")
+  ) +
+  labs(
+    x = NULL,
+    y = "Average amount spent",
+    title = "Valentine's Day Spending",
+    subtitle = "From 2010 - 2022",
+    caption = "Source: National Retail Federation  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  ) +
+  theme(
+    axis.text.x = element_text(
+      angle = 45, 
+      hjust = 1
+    ),
+    plot.title = element_text(
+      size = 32,
+      face = "bold",
+      color = "#590d22"
+    ),
+    plot.subtitle = element_text(
+      size = 24,
+      face = "bold",
+      color = "#c9184a"
+    ),
+    strip.text = element_text(
+      size = 12,
+      face = "bold",
+      color = "#590d22"
+    ),
+    strip.background = element_rect(
+      fill = "white"
+    ),
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    panel.grid = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks = element_blank()
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2024_02_13_tidy_tuesday_vday.png",
+  device = "png")
+
+```

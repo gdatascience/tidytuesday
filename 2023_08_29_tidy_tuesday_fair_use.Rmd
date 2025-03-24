@@ -1,0 +1,636 @@
+---
+title: "TidyTemplate"
+date: 2023-08-30
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(camcorder)
+library(ggtext)
+library(showtext)
+library(tidytext)
+
+# Font selected from http://fonts.google.com
+tt_family <- "playfair"
+font_add_google("Playfair Display", tt_family)
+
+theme_set(theme_light(base_size = 32))
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+# Colors selected using https://coolors.co/
+tt_source <- "U.S. Copyright Office Fair Use Index"
+bg_color <- "#132E51"
+txt_color <- "#EAECEF"
+green <- "#79B473"  
+red <- "#66101F"
+blue <- "#4576C1"
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xe61b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2023-08-29")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt |> 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+cariou_key_facts <- "Plaintiff Patrick Cariou published Yes Rasta, a book of portraits and landscape photographs taken in Jamaica. Defendant Richard Prince was an appropriation artist who altered and incorporated several of plaintiff’s photographs into a series of paintings and collages called Canal Zone that was exhibited at a gallery and in the gallery’s exhibition catalog. Plaintiff filed an infringement claim, and the district court ruled in his favor, stating that to qualify as fair use, a secondary work must “comment on, relate to the historical context of, or critically refer back to the original works.” Defendant appealed."
+
+fair_use <- tt$fair_use_cases |>
+  rename(court_short = court) |>
+  select(-categories) |>
+  bind_cols(
+    tt$fair_use_findings |>
+      select(-year, -outcome)
+  ) |>
+  mutate(
+    tags = if_else(str_detect(case, "Cariou"), holding, tags),
+    holding = if_else(str_detect(case, "Cariou"), issue, holding),
+    issue = if_else(str_detect(case, "Cariou"), key_facts, issue),
+    key_facts = if_else(str_detect(case, "Cariou"), cariou_key_facts, key_facts),
+    tags = str_to_lower(tags),
+    tags = case_when(
+      str_detect(tags, "educational") ~ str_replace_all(tags, "educational", "education"),
+      str_detect(tags, "photography") ~ str_replace_all(tags, "photography", "photograph"),
+      str_detect(tags, "films") ~ str_replace_all(tags, "films", "film"),
+      TRUE ~ tags
+    )
+  )
+
+```
+
+
+# Start recording
+
+Use the {camcorder} package to record all plots that are output to the console
+
+```{r camcorder}
+
+# start recording
+gg_record(
+  dir = "~/Downloads/camcorder/2023_08_29_tidy_tuesday_fair_use", # where to save the recording
+  device = "png", # device to use to save images
+  width = 6, # width of saved image
+  height = 6, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+```
+
+# Theme
+
+Set up a custom data visualization theme
+
+```{r VizTheme}
+
+tt_theme <- function() {
+  theme(
+    panel.grid = element_blank(),
+    axis.ticks = element_blank(),
+    panel.border = element_blank(),
+    plot.background = element_rect(fill = bg_color),
+    panel.background = element_rect(fill = bg_color),
+    legend.background = element_rect(fill = bg_color),
+    legend.key = element_rect(fill = bg_color),
+    strip.background = element_rect(fill = bg_color), 
+    plot.title = element_textbox_simple(
+      family = tt_family, 
+      color = txt_color,
+      face = "bold",
+      size = 150,
+      margin = margin(t = 0, r = 0, b = 0, l = 0)
+    ),
+    plot.title.position = "plot",
+    plot.subtitle = element_textbox_simple(
+      family = tt_family, 
+      color = txt_color,
+      size = 68,
+      lineheight = 0.3,
+      margin = margin(t = 0, r = 0, b = 4, l = 0)
+    ),
+    plot.caption = element_textbox_simple(
+      family = tt_family, 
+      color = txt_color,
+      size = 24,
+      margin = margin(t = 10, r = 0, b = 0, l = 0)
+    ),
+    plot.caption.position = "plot",
+    strip.text = element_text(
+      family = tt_family,
+      color = txt_color,
+      face = "bold",
+      size = 32, 
+      lineheight = 0.3,
+      margin = margin(t = 0, r = 0, b = 0, l = 0)
+    ),
+    legend.text = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 32
+    ),
+    legend.title = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 32
+    ),
+    axis.title = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 32
+    ),
+    axis.text = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 32
+    ),
+  )
+}
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+fair_use |>
+  mutate(decade = 10 * (year %/% 10)) |>
+  count(decade, fair_use_found) |>
+  ggplot(aes(decade, n, fill = fair_use_found)) +
+  geom_col() +
+  scale_fill_manual(
+    values = c(txt_color, blue)
+  ) +
+  tt_theme() +
+  theme(legend.position = "top") +
+  labs(
+    x = "Decade",
+    y = "# of cases",
+    fill = "Fair Use Found?",
+    title = "Fair Use Cases",
+    subtitle = "When did these cases happen?",
+    caption = tt_caption
+  )
+  
+```
+
+
+```{r}
+
+fair_use |>
+  separate_rows(
+    tags,
+    sep = "[,;](?=\\s)|\\/"
+  ) |>
+  mutate(
+    tags = str_to_lower(tags),
+    tags = str_trim(tags),
+    tags = str_remove_all(tags, "\\.")
+  ) |>
+  filter(
+    !str_detect(tags, "circuit"),
+    !str_detect(tags, "court")
+  ) |>
+  count(tags) |>
+  mutate(
+    tags = str_to_title(tags),
+    tags = fct_reorder(tags, n)
+  ) |>
+  ggplot(aes(n, tags)) +
+  geom_col(fill = blue) +
+  tt_theme() +
+  labs(
+    x = "# of cases",
+    y = NULL,
+    title = "Fair Use Cases",
+    subtitle = "What are the most common categories?",
+    caption = tt_caption
+  )
+
+```
+
+# Text Features
+As seen in Julia Silge's blog post - https://juliasilge.com/blog/last-airbender/
+
+```{r TextFeatures}
+
+gg_resize_film(
+  height = 9, 
+  width = 12,
+  units = "in",
+  dpi = 300
+)
+
+library(textfeatures)
+
+tf <- textfeatures(
+  fair_use |> rename(text = key_facts),
+  sentiment = FALSE,
+  word_dims = 0,
+  normalize = FALSE,
+  verbose = FALSE
+)
+
+tf |>
+  bind_cols(fair_use) |>
+  group_by(fair_use_found) |>
+  summarize(across(starts_with("n_"), mean)) |>
+  pivot_longer(starts_with("n_"), names_to = "text_feature") |>
+  filter(value > 0.01) |>
+  mutate(text_feature = fct_reorder(text_feature, -value)) |>
+  ggplot(aes(fair_use_found, value, fill = fair_use_found)) +
+  geom_col(position = "dodge", show.legend = FALSE) +
+  facet_wrap(~text_feature, scales = "free", ncol = 6) +
+  scale_fill_manual(values = c(blue, txt_color)) +
+  tt_theme() +
+  labs(
+    x = NULL, 
+    y = "Mean text features per case",
+    title = "Fair Use Cases",
+    subtitle = "Can it be determined if fair use was found based on text features of case key facts?",
+    caption = tt_caption
+  )
+
+```
+
+Definitions - https://textfeatures.mikewk.com/reference/count_functions.html
+
+# Modeling
+
+Can we predict the outcome using text mining techniques?
+
+```{r DataPrep}
+
+fair_use_for_model <- fair_use |>
+  transmute(
+    case_number,
+    fair_use_found = if_else(fair_use_found, "yes", "no"),
+    year,
+    key_facts,
+    tags
+  )
+
+library(tidymodels)
+library(textrecipes)
+
+set.seed(123)
+
+use_split <- initial_split(fair_use_for_model, strata = fair_use_found)
+use_train <- training(use_split)
+use_test <- testing(use_split)
+
+```
+
+Create cross-validation resamples of the training data, to evaluate our models
+
+```{r cvfolds}
+
+set.seed(234)
+use_folds <- vfold_cv(use_train, strata = fair_use_found)
+use_folds
+
+```
+
+Create bootstrap resamples of the training data, to tune our models
+
+```{r bootfolds}
+
+set.seed(567)
+use_boots <- bootstraps(use_train, strata = fair_use_found)
+use_boots
+
+```
+
+
+# Preprocessing
+
+```{r preproc}
+
+use_rec <- recipe(fair_use_found ~ key_facts, data = use_train) |>
+  step_textfeature(key_facts) |>
+  step_zv(all_predictors()) |>
+  step_normalize(all_predictors())
+
+use_prep <- prep(use_rec)
+use_prep
+
+juice(use_prep)
+
+use_tr_rec <- recipe(fair_use_found ~ key_facts, data = use_train) |>
+  step_tokenize(key_facts) |>
+  step_stopwords(key_facts) |>
+  step_tokenfilter(key_facts, max_tokens = 100) |>
+  step_tfidf(key_facts) |>
+  step_normalize(all_predictors())
+
+use_tr_prep <- prep(use_tr_rec)
+use_tr_prep
+
+glimpse(juice(use_tr_prep))
+
+```
+
+Create model specs: random forest model and a support vector machine model
+
+```{r RFSpec}
+
+rf_spec <- rand_forest(trees = 1000) |>
+  set_engine("ranger") |>
+  set_mode("classification")
+
+rf_spec
+
+```
+
+```{r SVMSpec}
+
+svm_spec <- svm_rbf(cost = 0.5) |>
+  set_engine("kernlab") |>
+  set_mode("classification")
+
+svm_spec
+
+```
+
+
+```{r LassoSpec}
+
+lasso_spec <- logistic_reg(penalty = tune(), mixture = 1) |>
+  set_engine("glmnet")
+
+lasso_wf <- workflow() |>
+  add_recipe(use_tr_rec) |>
+  add_model(lasso_spec)
+
+lasso_wf
+
+```
+
+
+Create a workflow
+
+```{r WF}
+
+use_wf <- workflow() |>
+  add_recipe(use_rec)
+
+use_wf
+
+```
+
+Fit to the resamples
+
+```{r}
+
+doParallel::registerDoParallel()
+
+set.seed(1234)
+rf_rs <- use_wf |>
+  add_model(rf_spec) |>
+  fit_resamples(
+    resamples = use_folds,
+    metrics = metric_set(roc_auc, accuracy, sens, spec),
+    control = control_grid(save_pred = TRUE)
+  )
+
+set.seed(2345)
+svm_rs <- use_wf |>
+  add_model(svm_spec) |>
+  fit_resamples(
+    resamples = use_folds,
+    metrics = metric_set(roc_auc, accuracy, sens, spec),
+    control = control_grid(save_pred = TRUE)
+  )
+
+set.seed(3456)
+lambda_grid <- grid_regular(penalty(), levels = 40)
+lasso_grid <- tune_grid(
+  lasso_wf,
+  resamples = use_boots,
+  grid = lambda_grid,
+  metrics = metric_set(roc_auc, ppv, npv)
+)
+
+```
+
+# Evaluate Models
+
+```{r RFMetrics}
+
+collect_metrics(rf_rs)
+
+conf_mat_resampled(rf_rs)
+
+```
+
+```{r SVMMetrics}
+
+collect_metrics(svm_rs)
+
+conf_mat_resampled(svm_rs)
+
+```
+
+```{r LassoMetrics}
+
+lasso_grid |>
+  collect_metrics()
+
+lasso_grid |>
+  collect_metrics() |>
+  ggplot(aes(penalty, mean, color = .metric)) +
+  geom_line(size = 1.5, show.legend = FALSE) +
+  facet_wrap(~.metric) +
+  scale_x_log10() +
+  tt_theme()
+
+```
+
+
+
+```{r AUC}
+
+gg_resize_film(
+  height = 6, 
+  width = 6,
+  units = "in",
+  dpi = 300
+)
+
+svm_rs |>
+  collect_predictions() |>
+  group_by(id) |>
+  roc_curve(fair_use_found, .pred_yes) |>
+  ggplot(aes(1 - specificity, sensitivity, color = id)) +
+  geom_abline(lty = 2, color = "gray80", size = 1.5) +
+  geom_path(show.legend = FALSE, alpha = 0.6, size = 1.2) +
+  coord_equal() +
+  tt_theme()
+
+```
+
+```{r SVMVIP}
+
+library(vip)
+
+set.seed(345)
+use_imp <- use_wf |>
+  add_model(svm_spec) |>
+  fit(use_train) |>
+  extract_fit_parsnip() |>
+  vi(
+    method = "permute", nsim = 10,
+    target = "fair_use_found", metric = "auc", reference_class = "yes",
+    pred_wrapper = kernlab::predict, train = juice(use_prep)
+  )
+
+use_imp |>
+  slice_max(Importance, n = 8) |>
+  mutate(
+    Variable = str_remove(Variable, "textfeature_key_facts_n_"),
+    Variable = fct_reorder(Variable, Importance)
+  ) |>
+  ggplot(aes(Importance, Variable, color = Variable)) +
+  geom_vline(xintercept = 0, color = txt_color, lty = 2) +
+  geom_errorbar(aes(xmin = Importance - StDev, xmax = Importance + StDev),
+    alpha = 0.5, size = 1.3
+  ) +
+  geom_point(size = 3) +
+  tt_theme() +
+  theme(legend.position = "none") +
+  labs(
+    y = NULL,
+    title = "Fair Use Cases",
+    subtitle = "Key fact text feature importance",
+    caption = tt_caption
+  )
+
+```
+
+
+```{r LassoBest}
+
+best_auc <- lasso_grid |>
+  select_best("roc_auc")
+
+best_auc
+
+```
+
+```{r BestWF}
+
+final_lasso <- finalize_workflow(lasso_wf, best_auc)
+
+final_lasso
+
+```
+
+```{r LassoVIP}
+
+set.seed(456)
+p <- final_lasso |>
+  fit(use_train) |>
+  extract_fit_parsnip() |>
+  vip(num_features = 20)
+
+p$data |>
+  group_by(Sign) |>
+  top_n(7, wt = abs(Importance)) |>
+  ungroup() |>
+  mutate(
+    Importance = abs(Importance),
+    Variable = str_remove(Variable, "tfidf_key_facts_"),
+    Variable = fct_reorder(Variable, Importance),
+    Sign = if_else(Sign == "POS", "Fair Use Found", "Fair Use Not Found")
+  ) |>
+  ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c(blue, txt_color)) +
+  facet_wrap(~Sign, scales = "free_y") +
+  tt_theme() +
+  labs(
+    y = NULL,
+    title = "Fair Use Cases",
+    subtitle = "Key fact word importance",
+    caption = tt_caption
+  )
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2023_08_29_tidy_tuesday_fair_use.png",
+  device = "png")
+
+gg_stop_recording()
+
+gg_playback(
+  name = "2023_08_29_tidy_tuesday_fair_use.gif",
+  first_image_duration = 4,
+  last_image_duration = 20,
+  frame_duration = 0.5
+)
+
+```

@@ -1,0 +1,101 @@
+---
+title: "TidyTemplate"
+date: 2025-02-01
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(sf)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-01-28")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+water <- tt$water_insecurity_2022 |>
+  bind_rows(tt$water_insecurity_2023) |>
+  mutate(state = substr(name, str_locate(name, ",") + 2, nchar(name)))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+library(geofacet)
+
+water |>
+  group_by(year, state) |>
+  summarize(
+    # state_population = sum(total_pop),
+    # state_plumbing = sum(plumbing),
+    percent_plumbing = sum(plumbing) / sum(total_pop)
+  ) |>
+  ungroup() |>
+  ggplot(aes(x = year, y = percent_plumbing)) +
+  geom_line() +
+  facet_geo(~state, grid = "us_state_grid2") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 0.1))
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_01_28_tidy_tuesday_water.png",
+  device = "png"
+)
+```

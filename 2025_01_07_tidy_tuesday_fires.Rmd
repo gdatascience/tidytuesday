@@ -1,0 +1,220 @@
+---
+title: "California_Wildfires"
+author: "Tony Galvan"
+date: "2025-01-09"
+output: html_document
+---
+
+# CA Wildfires
+
+This is an analysis of California wildfires from 1950 to 2020. The data was obtained from the [California Fire and Resource Assessment Program](https://data.ca.gov/dataset/california-fire-perimeters-1950).
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(janitor)
+library(scales)
+
+theme_set(theme_light())
+
+```
+
+## Load the data
+
+```{r Load}
+
+fires_raw <- read_csv("~/Downloads/California_Fire_Perimeters_1950.csv")
+
+fires <- fires_raw |>
+  clean_names() |>
+  filter(
+    state == "CA",
+    year >= 1910
+  ) |>
+  mutate(
+    alarm_date = ymd(str_sub(alarm_date, 1, 10)),
+    cont_date = ymd(str_sub(cont_date, 1, 10)),
+    month = month(alarm_date, label = TRUE, abbr = TRUE),
+    quarter_century = case_when(
+      year < 1900 ~ "<1900",
+      year < 1925 ~ "1900-1924",
+      year < 1950 ~ "1925-1949",
+      year < 1975 ~ "1950-1974",
+      year < 2000 ~ "1975-1999",
+      TRUE ~ ">2000"
+    ),
+    quarter_century = fct_relevel(quarter_century, ">2000", after = Inf),
+    cause_label = case_when(
+      cause == 1 ~ "Lightning",
+      cause == 2 ~ "Equipment Use",
+      cause == 3 ~ "Smoking",
+      cause == 4 ~ "Campfire",
+      cause == 5 ~ "Debris",
+      cause == 6 ~ "Railroad",
+      cause == 7 ~ "Arson",
+      cause == 8 ~ "Playing With Fire",
+      cause == 9 ~ "Miscellaneous",
+      cause == 10 ~ "Vehicle",
+      cause == 11 ~ "Powerline",
+      cause == 12 ~ "Firefighter Training",
+      cause == 13 ~ "Non-Firefighter Training",
+      cause == 15 ~ "Structure",
+      cause == 16 ~ "Aircraft",
+      cause == 18 ~ "Escaped Prescribed Burn",
+      cause == 19 ~ "Illegal Alien Campfire",
+      TRUE ~ "Unknown"
+    ),
+    cause_human = case_when(
+      cause == 1 ~ "Natural", 
+      TRUE ~ "Human"
+    ),
+    collection_method = case_when(
+      c_method == 1 ~ "GPS Ground",
+      c_method == 2 ~ "GPS Air",
+      c_method == 3 ~ "Infrared",
+      c_method == 4 ~ "Other Imagery",
+      c_method == 5 ~ "Photo Interpretation",
+      c_method == 6 ~ "Hand Drawn",
+      c_method == 7 ~ "Mixed Collection Methods",
+      TRUE ~ "Unknown"
+    )
+  )
+
+```
+
+## Explore the data
+
+```{r Explore}
+
+fires |>
+  count(year) |>
+  ggplot(aes(x = year, y = n)) +
+  geom_smooth(
+    method = "loess",
+    se = FALSE,
+    color = "red"
+  ) +
+  geom_point(
+    alpha = 0.5
+  ) +
+  labs(
+    title = "California Wildfires by Year",
+    x = "",
+    y = "# of fires",
+    caption = "Source: California Fire and Resource Assessment Program"
+  )
+
+fires |>
+  count(decades, cause_human) |>
+  mutate(cause_human = fct_reorder(cause_human, n, sum)) |>
+  ggplot(
+    aes(
+      x = decades,
+      y = n,
+      fill = cause_human
+    )
+  ) +
+  geom_col() +
+  labs(
+    title = "California Wildfires by Decade and Cause",
+    x = "",
+    y = "# of fires",
+    fill = "Cause",
+    caption = "Source: California Fire and Resource Assessment Program"
+  )
+
+fires |>
+  ggplot(aes(gis_acres, fill = quarter_century)) +
+  geom_histogram(show.legend = FALSE) +
+  scale_x_log10(labels = comma_format()) +
+  facet_wrap(
+    ~quarter_century,
+    ncol = 1
+  ) +
+  labs(
+    title = "Distribution of California Wildfires by Size",
+    x = "Acres (log scale)",
+    y = "# of fires",
+    caption = "Source: California Fire and Resource Assessment Program"
+  )
+
+fires |>
+  ggplot(
+    aes(
+      x = factor(decades),
+      y = gis_acres,
+      fill = factor(decades)
+    )
+  ) +
+  geom_boxplot(show.legend = FALSE) +
+  scale_y_log10(labels = comma_format(accuracy = 0.1))
+
+fires |>
+  count(
+    decades, cause_label,
+    wt = gis_acres,
+    name = "gis_acres"
+  ) |>
+  ggplot() +
+  geom_tile(
+    aes(
+      x = decades,
+      y = fct_reorder(cause_label, gis_acres, sum),
+      fill = gis_acres
+    )
+  ) +
+  scale_fill_viridis_c(
+    option = "magma",
+    trans = pseudo_log_trans(sigma = 0.001),
+    breaks = c(1, 100, 10000, 1000000),
+    labels = comma_format()
+  ) +
+  scale_x_continuous(
+    position = "top",
+    breaks = seq(1910, 2020, 10),
+    labels = paste0(seq(1910, 2020, 10), "'s")
+  ) +
+  labs(
+    title = "California Wildfire Acres Burned by Decade and Cause",
+    subtitle = "Why is lightning burning increasingly more acres since the 1970's?",
+    x = "",
+    y = "",
+    fill = "Acres",
+    caption = "Source: California Fire and Resource Assessment Program  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    plot.title = element_text(
+      face = "bold",
+      size = 17.5
+    ),
+    plot.subtitle = element_text(
+      size = 15
+    ),
+    plot.caption = element_text(
+      color = "gray50",
+      size = 7,
+      hjust = 0.5
+    ),
+    plot.title.position = "plot",
+    caption.position = "plot"
+  )
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_01_07_tidy_tuesday_fires.png",
+  device = "png"
+)
+```

@@ -1,0 +1,185 @@
+---
+title: "TidyTemplate"
+date: 2024-10-29
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2024-10-29")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+monster <- tt$monster_movie_genres |>
+  rename(genre = genres) |>
+  inner_join(
+    tt$monster_movies,
+    by = "tconst"
+  ) |>
+  mutate(decade = 10 * (year %/% 10))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+library(ggstream)
+
+monster_lump <- monster |>
+  filter(!is.na(genre)) |>
+  mutate(genre = fct_lump(genre, 4)) |>
+  count(year, genre) |>
+  mutate(genre = fct_reorder(genre, n))
+
+monster_labels <- monster_lump |>
+  distinct(genre) |>
+  mutate(
+    year = 2025,
+    y = case_when(
+      genre == "Horror" ~ 12,
+      genre == "Documentary" ~ 0,
+      genre == "Comedy" ~ 32,
+      genre == "Drama" ~ 23,
+      genre == "Other" ~ -20
+    )
+  )
+
+monster_pal = c(
+  "Horror" = "#D00000", 
+  "Documentary" = "#FFBA08", 
+  "Comedy" = "#3F88C5", 
+  "Drama" = "#7AC74F", 
+  "Other" = "gray55"
+)
+
+monster_lump |>
+  ggplot(
+    aes(x = year, y = n)
+  ) +
+  geom_stream(
+    aes(fill = genre),
+    type = "mirror",
+    bw = 0.5,
+    extra_span = 0.001,
+    sorting = "none"
+  ) +
+  geom_text(
+    data = monster_labels,
+    aes(
+      x = year,
+      y = y,
+      label = genre,
+      color = genre
+    ),
+    hjust = 0,
+    size = 6,
+    fontface = "bold"
+  ) +
+  scale_x_continuous(
+    limits = c(1920, 2060),
+    breaks = seq(1920, 2020, 20)
+  ) +
+  scale_fill_manual(
+    values = monster_pal
+  ) +
+  scale_color_manual(
+    values = monster_pal
+  ) +
+  labs(
+    title = "Monster Movies by Genre",
+    caption = "Data: IMDb  |  DataViz: Tony Galvan (@GDataScience1)  |  #TidyTuesday",
+  ) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(
+      color = "white",
+      size = 32,
+      face = "bold"
+    ),
+    plot.caption = element_text(
+      color = "white",
+      size = 8
+    ),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(
+      color = "white",
+      size = 12
+    ),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    plot.background = element_rect(
+      fill = "#2D3047"
+    ),
+    panel.background = element_rect(
+      fill = "#2D3047"
+    ),
+    panel.border = element_rect(
+      color = "#2D3047"
+    )
+  )
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2024_10_29_tidy_tuesday_monster.png",
+  device = "png"
+)
+```

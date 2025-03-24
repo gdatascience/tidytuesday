@@ -19,6 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(tidytuesdayR)
 library(scales)
+# remotes::install_github("emilhvitfeldt/elevators")
 library(elevators)
 
 theme_set(theme_light())

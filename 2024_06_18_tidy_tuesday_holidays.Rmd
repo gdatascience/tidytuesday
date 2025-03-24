@@ -1,0 +1,198 @@
+---
+title: "TidyTemplate"
+date: 2024-06-21
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(shiny)
+library(shinydashboard)
+library(lubridate)
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2024-06-18")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+holidays <- tt$federal_holidays
+
+```
+
+
+# Shiny App
+
+Using your processed dataset, create your unique visualization.
+
+```{r ShinyAppUI}
+
+# Define the list of holidays with their names and dates
+holidays <- list(
+  "New Year's Day" = "2025-01-01 00:00:00",
+  "Independence Day" = "2024-07-04 00:00:00",
+  "Labor Day" = "2024-09-02 00:00:00",
+  "Thanksgiving" = "2024-11-28 00:00:00",
+  "Christmas Day" = "2024-12-25 00:00:00"
+)
+
+# Find the closest future holiday
+closest_holiday <- function(holidays) {
+  now <- Sys.time()
+  future_holidays <- sapply(holidays, function(date) as.POSIXct(date, format="%Y-%m-%d %H:%M:%S", tz="America/Los_Angeles"))
+  future_holidays <- future_holidays[future_holidays > now]
+  closest <- names(future_holidays)[which.min(as.numeric(future_holidays) - as.numeric(now))]
+  return(closest)
+}
+
+default_holiday <- closest_holiday(holidays)
+
+# Define the UI
+ui <- dashboardPage(
+  dashboardHeader(title = "Holiday Countdown Timer"),
+  dashboardSidebar(
+    sidebarMenu(
+      selectInput(
+        "selected_date",
+        "Select a Holiday:",
+        choices = holidays,
+        selected = holidays[[default_holiday]]
+      )
+    )
+  ),
+  dashboardBody(
+    fluidRow(
+      box(
+        title = textOutput("countdown_title"), 
+        status = "primary", 
+        solidHeader = TRUE, 
+        width = 12,
+        textOutput("countdown_timer"),
+        tags$head(tags$script(HTML("
+          setInterval(function() {
+            var now = new Date();
+            Shiny.onInputChange('current_time', now.toISOString());
+          }, 1000);
+        ")))
+      )
+    )
+  )
+)
+
+```
+
+```{r ShinyAppServer}
+
+# Define the server logic
+server <- function(input, output, session) {
+  
+  # Reactive expression to get the current time every second
+  current_time <- reactive({
+    invalidateLater(1000, session)
+    if (is.null(input$current_time)) return(NULL)
+    as.POSIXct(input$current_time, format="%Y-%m-%dT%H:%M:%OSZ", tz="America/Los_Angeles")
+  })
+  
+  # Get the name of the selected holiday
+  selected_holiday <- reactive({
+    names(holidays)[sapply(holidays, function(date) date == input$selected_date)]
+  })
+  
+  # Update the title of the box dynamically
+  output$countdown_title <- renderText({
+    paste("Countdown to", selected_holiday())
+  })
+  
+  output$countdown_timer <- renderText({
+    if (is.null(current_time()) || is.null(input$selected_date)) {
+      return("Calculating...")
+    }
+    
+    current <- current_time()
+    target_date <- as.POSIXct(input$selected_date, format="%Y-%m-%d %H:%M:%S", tz="America/Los_Angeles")
+    diff <- as.numeric(difftime(target_date, current, units = "secs"))
+    
+    if (diff <= 0) {
+      return("The countdown is over!")
+    }
+    
+    days <- as.integer(diff / (60 * 60 * 24))
+    hours <- as.integer((diff %% (60 * 60 * 24)) / (60 * 60))
+    minutes <- as.integer((diff %% (60 * 60)) / 60)
+    seconds <- as.integer(diff %% 60)
+    
+    paste0(
+      "Time remaining: ", 
+      sprintf("%02d", days), " days, ",
+      sprintf("%02d", hours), " hours, ",
+      sprintf("%02d", minutes), " minutes, ",
+      sprintf("%02d", seconds), " seconds"
+    )
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2024_06_18_tidy_tuesday_holidays.png",
+  device = "png")
+
+```

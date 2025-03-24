@@ -1,0 +1,136 @@
+---
+title: "2025 Pinewood Derby"
+author: "Tony Galvan"
+date: "2025-02-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+theme_set(theme_light())
+```
+
+## Load the data
+
+```{r}
+derby <- read_csv("~/Downloads/derbynet.csv") |>
+  janitor::clean_names()
+```
+
+## Explore the data
+
+```{r}
+derby |>
+  count(lane, finish_place) |>
+  ggplot(aes(finish_place, n, fill = factor(lane))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~paste0("Lane ", lane), nrow = 1) +
+  scale_y_continuous(breaks = 0:10) +
+  labs(
+    x = "Finish Place",
+    y = "Count",
+    title = "Cub Scout Pack 369: 2025 Pinewood Derby",
+    subtitle = "Distribution of Finish Places by Lane"
+  )
+```
+
+## Create a table of the results
+
+```{r}
+library(gt)
+
+gt_tbl1 <- derby |>
+  select(first_name, last_name, lane, finish_place, car_number) |>
+  pivot_wider(
+    names_from = lane,
+    values_from = finish_place,
+    names_prefix = "lane_"
+  ) |>
+  mutate(
+    points = rowSums(across(starts_with("lane"))), 
+    image = paste0(last_name, "-", first_name, ".jpg")
+  ) |>
+  arrange(points, car_number) |>
+  mutate(
+    place = row_number(),
+    place = case_when(
+      place == 1 ~ paste0(place, "st"), 
+      place == 2 ~ paste0(place, "nd"),
+      place == 3 ~ paste0(place, "rd"),
+      TRUE ~ ""
+    )
+  ) |>
+  transmute(
+    place,
+    name = paste0(first_name, " ", last_name),
+    car_number,
+    image
+  ) |>
+  gt()
+
+gt_tbl1
+
+gt_tbl2 <- gt_tbl1 |>
+  tab_header(
+    title = md("**Cub Scout Pack 369**: 2025 Pinewood Derby"),
+    subtitle = "Results by Finish Place"
+  ) |>
+  cols_label(
+    name = "Scout Name",
+    car_number = "Car #",
+    place = "Place",
+    image = "Photo"
+  ) |>
+  tab_source_note(
+    source_note = md("Source: **DerbyNet.org**  |  Created by: **Anthony Galvan**")
+  )
+
+gt_tbl2
+
+gt_tbl3 <- gt_tbl2 |>
+  text_transform(
+    locations = cells_body(columns = image),
+    fn = function(x) {
+      local_image(
+        filename = paste0("~/Downloads/cars/0-cropped/", x),
+        height = 30
+      )
+    }
+  )
+
+gt_tbl3
+
+library(gtExtras)
+gt_tbl4 <- gt_tbl3 |>
+  # gt_theme_538()
+  # gt_theme_dark()
+  # gt_theme_espn()
+  # gt_theme_nytimes()
+  gt_theme_guardian()
+
+gt_tbl4
+```
+
+## Save the table
+
+```{r}
+gtsave(
+  gt_tbl4, 
+  "2025_02_08_pinewood_derby.png"
+)
+```
+
+## Use a model to see if there is a lane bias
+
+```{r}
+lm <- lm(finish_place ~ lane, data = derby)
+
+library(gtsummary)
+
+tbl_lm <- lm |>
+  tbl_regression()
+
+tbl_lm
+```
+

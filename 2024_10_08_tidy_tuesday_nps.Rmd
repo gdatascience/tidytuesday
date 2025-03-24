@@ -1,0 +1,259 @@
+---
+title: "TidyTemplate"
+date: 2024-10-07
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2024-10-08")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+nps <- tt$most_visited_nps_species_data |>
+  janitor::clean_names()
+
+# download the full data from the NPSpecies package (https://github.com/frankiethull/NPSpecies)
+
+species <- NPSpecies::species |>
+  janitor::clean_names()
+
+```
+
+
+# Exploration
+
+Reproduce tables from https://github.com/frankiethull/NPSpecies
+
+```{r Visualize}
+
+species |>
+    filter(park_code == "GRSA") |>
+    filter(category_name == "Reptile") |>
+    select(
+      park_name, category_name, family, sci_name, common_names, observations
+    ) |>
+    arrange(
+      desc(observations)
+    ) |>
+    head(3) |>
+    tinytable::tt()
+
+species |>
+    filter(park_code == "EVER") |> 
+    filter(nativeness == "Non-native") |>
+    select(
+      park_name, category_name, family, sci_name, common_names, observations
+    ) |>
+    arrange(desc(observations)) |>
+    head(5) |>
+    tinytable::tt()
+
+species |>
+  filter(category_name == "Bird") |> 
+  group_by(park_name) |>
+  select(park_name, common_names, observations) |>
+  arrange(desc(observations)) |>
+  slice(1) |>
+  ungroup() |>
+  arrange(desc(observations)) |> 
+  head(10) |> # only display 10
+  tinytable::tt()
+  
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+species |>
+  filter(category_name == "Mammal") |>
+  count(park_name, wt = observations, name = "total_observations") |>
+  top_n(10, wt = total_observations) |>
+  mutate(park_name = fct_reorder(park_name, total_observations)) |>
+  ggplot(
+    aes(
+      x = total_observations, 
+      y = park_name,
+      fill = park_name
+    )
+  ) +
+  geom_col() +
+  # add text at the end of the bars
+  geom_text(
+    aes(label = comma(total_observations)),
+    hjust = 0,
+    nudge_x = 200
+  ) +
+  # give room for the text at the end of the bars
+  scale_x_continuous(
+    labels = comma_format(),
+    limits = c(0, 21000)
+  ) +
+  labs(
+    title = "Total Observations of Mammals",
+    subtitle = "Top 10 National Parks with most mammal observations",
+    x = "Total Observations",
+    y = NULL,
+    caption = "Data Source: {NPSpecies} R Package  |  DataViz: Tony Galvan (@GDataScience1). |  #TidyTuesday"
+  ) +
+  theme(
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    legend.position = "none"
+  )
+
+```
+
+
+```{r}
+
+library(ggrepel)
+
+# using the species data visualize the parks where you can see a coyote and a roadrunner
+p1 <- species |>
+  filter(
+    sci_name %in% c("Canis latrans", "Geococcyx californianus"),
+    observations > 0
+  ) |>
+  count(
+    park_name, sci_name, 
+    wt = observations, 
+    name = "total_observations"
+  ) |>
+  pivot_wider(
+    names_from = sci_name, 
+    values_from = total_observations, 
+    values_fill = 0
+  ) |>
+  rename(
+    coyote = `Canis latrans`,
+    roadrunner = `Geococcyx californianus`
+  ) |>
+  filter(
+    coyote > 0,
+    roadrunner > 0
+  ) |>
+  ggplot(
+    aes(
+      x = coyote,
+      y = roadrunner,
+      label = park_name
+    )
+  ) +
+  geom_abline(
+    slope = 1,
+    color = "grey50",
+    size = 0.5,
+    lty = 2
+  ) +
+  geom_point(
+    color = "goldenrod",
+    size = 3
+  ) +
+  geom_text_repel(
+    box.padding = 0.5,
+    point.padding = 0.5,
+    segment.color = "grey50",
+    segment.size = 0.25
+  ) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    title = "National Parks with Coyotes and Roadrunners",
+    subtitle = "Parks where you can see both animals",
+    x = "Coyote Observations (log scale)",
+    y = "Roadrunner Observations (log scale)",
+    caption = "Data Source: {NPSpecies} R Package  |  DataViz: Tony Galvan (@GDataScience1). |  #TidyTuesday"
+  )
+
+p1
+
+library(webp)
+path = "~/Documents/GitHub/tidytuesday/"
+img_coyote <- read_webp(paste0(path, "coyote.webp"))
+img_roadrunner <- read_webp(paste0(path, "roadrunner.webp"))
+
+library(png)
+writePNG(img_coyote, paste0(path, "coyote.png"))
+writePNG(img_roadrunner, paste0(path, "roadrunner.png"))
+
+library(magick)
+img_coyote2 <- image_read(paste0(path, "coyote.png"))
+img_coyote3 <- image_flop(img_coyote2)
+
+library(cowplot)
+ggdraw(p1) +
+  draw_image(
+    paste0(path, "roadrunner.png"),
+    x = 0.02, y = 0.6, width = 0.25, height = 0.25
+  ) + 
+  draw_image(
+    img_coyote3,
+    x = 0.75, y = 0.55, width = 0.325, height = 0.325
+  )
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2024_10_08_tidy_tuesday_nps.png",
+  device = "png"
+)
+```

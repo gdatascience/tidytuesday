@@ -1,0 +1,319 @@
+---
+title: "TidyTemplate"
+date: 2024-12-13
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(tidymodels)
+library(textrecipes)
+library(vip)
+library(tidytext)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2024-12-10")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt |> 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+parfumo <- tt$parfumo_data_clean |>
+  janitor::clean_names() |>
+  mutate(decade = floor(release_year / 10) * 10)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+summary(parfumo$rating_value)
+
+parfumo |>
+  ggplot(aes(rating_value)) +
+  geom_histogram(bins = 30)
+
+parfumo |>
+  filter(!is.na(decade)) |>
+  mutate(
+    decade_plot = if_else(
+      decade < 1900, 
+      "< 1900", 
+      factor(decade)
+    ),
+    decade_plot = fct_relevel(decade_plot, "Before 1900")
+  ) |>
+  ggplot(
+    aes(
+      x = factor(decade_plot),
+      y = rating_value,
+      fill = factor(decade_plot)
+    )
+  ) +
+  geom_violin(
+    show.legend = FALSE,
+    draw_quantiles = 0.5
+  ) +
+  labs(
+    title = "Parfumo Ratings by Decade",
+    subtitle = "Lower ratings since the 1980's",
+    x = "Decade",
+    y = "Rating Value",
+    caption = "Data Source: Parfumo"
+  )
+  
+```
+
+# Modeling
+Let's see if we can predict the rating value based on the accords and notes.
+
+```{r Modeling}
+
+set.seed(123)
+parfumo_split <- initial_split(
+  parfumo |>
+    filter(
+      !is.na(rating_value),
+      rating_count > 5
+    ) |>
+    select(
+      url, 
+      release_year, 
+      rating_value,
+      main_accords, 
+      ends_with("_notes")
+    ), 
+  strata = rating_value
+)
+parfumo_train <- training(parfumo_split)
+parfumo_test <- testing(parfumo_split)
+
+set.seed(234)
+parfumo_folds <- vfold_cv(parfumo_train, strata = rating_value)
+parfumo_folds
+
+parfumo_rec <- recipe(rating_value ~ ., data = parfumo_train) |>
+  update_role(url, release_year, new_role = "id") |>
+  step_tokenize(main_accords, ends_with("_notes")) |>
+  step_tokenfilter(main_accords, ends_with("_notes"), max_tokens = 20) |>
+  step_tfidf(main_accords, ends_with("_notes"))
+
+xgb_spec <-
+  boost_tree(
+    trees = tune(),
+    mtry = tune(),
+    min_n = tune(),
+    learn_rate = 0.01
+  ) |>
+  set_engine("xgboost") |>
+  set_mode("regression")
+
+xgb_wf <- workflow(parfumo_rec, xgb_spec)
+xgb_wf
+
+doParallel::registerDoParallel()
+contrl_preds <- control_resamples(save_pred = TRUE)
+
+xgb_rs <- tune_grid(
+  xgb_wf,
+  resamples = parfumo_folds,
+  grid = 20,
+  control = contrl_preds
+)
+
+collect_metrics(xgb_rs)
+
+xgb_rs |>
+  collect_metrics() |>
+  filter(.metric == "rmse") |>
+  select(mean, mtry:min_n) |>
+  pivot_longer(mtry:min_n,
+               values_to = "value",
+               names_to = "parameter"
+  ) |>
+  ggplot(aes(value, mean, color = parameter)) +
+  geom_point(alpha = 0.8, show.legend = FALSE) +
+  facet_wrap(~parameter, scales = "free_x") +
+  labs(x = NULL, y = "RMSE")
+
+lasso_spec <- linear_reg(penalty = tune(), mixture = 1) |>
+  set_engine("glmnet")
+
+lasso_wf <- workflow(parfumo_rec, lasso_spec)
+lasso_wf
+
+lasso_rs <- tune_grid(
+  lasso_wf,
+  resamples = parfumo_folds,
+  grid = 20,
+  control = contrl_preds
+)
+collect_metrics(lasso_rs)
+
+lasso_rs |>
+  collect_metrics() |>
+  ggplot(aes(penalty, mean, color = .metric)) +
+  geom_errorbar(aes(
+    ymin = mean - std_err,
+    ymax = mean + std_err
+  ),
+  alpha = 0.5
+  ) +
+  geom_line(size = 1.5) +
+  facet_wrap(~.metric, scales = "free", nrow = 2) +
+  scale_x_log10() +
+  theme(legend.position = "none")
+
+lowest_rmse <- xgb_rs |>
+  select_best()
+
+final_xgb <- finalize_workflow(
+  xgb_wf,
+  lowest_rmse
+)
+
+```
+
+
+```{r VariableImportance}
+
+vip_xgb <- final_xgb |>
+  fit(parfumo_train) |>
+  extract_fit_parsnip() |>
+  vi() |>
+  mutate(
+    Importance = abs(Importance),
+    Type = case_when(
+      grepl("main_accords", Variable) ~ "Main Accords",
+      grepl("base_notes", Variable) ~ "Base Notes",
+      grepl("top_notes", Variable) ~ "Top Notes",
+      grepl("middle_notes", Variable) ~ "Middle Notes",
+      TRUE ~ "Other"
+    ),
+    Type = fct_relevel(Type, "Main Accords"),
+    Variable = str_remove(Variable, "tfidf_"),
+    Variable = str_remove(Variable, "main_accords_"),
+    Variable = str_remove(Variable, "base_notes_"),
+    Variable = str_remove(Variable, "top_notes_"),
+    Variable = str_remove(Variable, "middle_notes_"),
+    Variable = reorder_within(Variable, Importance, Type)
+  ) 
+
+bg_color <- "#454851"
+txt_color <- "#FCEFF9"
+blush <- "#DA627D"
+yellow <- "#DDA448"
+sage <- "#B9BE7B"
+caledon <- "#95D7AE"
+
+vip_xgb |>
+  ggplot(aes(x = Importance, y = Variable, fill = Type)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_reordered() +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_fill_manual(
+    values = c(
+      blush, 
+      yellow, 
+      sage, 
+      caledon
+    )
+  ) +
+  facet_wrap(~Type, scales = "free") +
+  labs(
+    y = NULL,
+    title = "Parfumo Fragrance Ratings",
+    subtitle = "Variable Importance for Predicting Ratings",
+    caption = "Data Source: Parfumo  |  Model: XGBoost  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(
+      size = 32,
+      color = txt_color,
+      face = "bold",
+      hjust = 0.5
+    ),
+    plot.subtitle = element_text(
+      size = 15,
+      color = txt_color,
+      hjust = 0.5
+    ),
+    plot.caption = element_text(
+      size = 8,
+      color = txt_color,
+      hjust = 0.5
+    ),
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    plot.background = element_rect(fill = bg_color),
+    panel.border = element_rect(color = bg_color),
+    panel.background = element_rect(fill = bg_color),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text = element_text(color = txt_color),
+    axis.title = element_text(color = txt_color),
+    axis.ticks = element_blank(),
+    strip.background = element_rect(fill = bg_color),
+    strip.text = element_text(color = txt_color, face = "bold")
+  )
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2024_12_10_tidy_tuesday_parfumo.png",
+  device = "png"
+)
+```

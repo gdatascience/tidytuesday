@@ -1,0 +1,271 @@
+---
+title: "TidyTemplate"
+date: 2025-01-21
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(janitor)
+
+theme_set(theme_light())
+
+blue <- "#0099F8"
+red <- "#F06449"
+black <- "#36382E"
+grey <- "#DADAD9"
+purple <- "#624CAB"
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-01-21")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+exped_tidy <- tt$exped_tidy |>
+  clean_names()
+
+peaks_tidy <- tt$peaks_tidy |>
+  clean_names()
+
+exped <- exped_tidy |>
+  left_join(peaks_tidy, by = "peakid") |>
+  mutate(total_deaths = mdeaths + hdeaths)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+# Reimagine Faline Rezvani's plot
+exped |>
+  filter(total_deaths > 0) |>
+  count(pkname) |>
+  mutate(pkname = fct_reorder(pkname, n)) |>
+  ggplot(aes(n, pkname)) +
+  geom_col(color = black, fill = blue) +
+  labs(
+    x = "Number of Fatal Expeditions", 
+    y = "Himalayan Peak", 
+    title = "36 Fatal Expeditions by Peak",
+    caption = "Source: The Himalayan Database\nALT TEXT: This bar chart shows the 36 fatal expeditions distributed over peaks. The Everest peak saw 21 fatal expeditions."
+  )
+
+exped |>
+  filter(total_deaths > 0) |>
+  count(pkname, wt = total_deaths) |>
+  mutate(pkname = fct_reorder(pkname, n)) |>
+  ggplot(aes(n, pkname)) +
+  geom_col(color = black, fill = red) +
+  labs(
+    x = "Number of Fatalities", 
+    y = "Himalayan Peak", 
+    title = "53 Fatalities by Peak",
+    caption = "Source: The Himalayan Database\nALT TEXT: This bar chart shows the 53 fatalities distributed over peaks. The Everest peak saw 34 fatalities."
+  )
+
+exped |>
+  count(year) |>
+  ggplot(aes(year, n)) +
+  geom_col(color = black, fill = purple) +
+  labs(
+    x = NULL, 
+    y = "# of expeditions", 
+    title = "Expeditions by Year",
+    caption = "Source: The Himalayan Database\nALT TEXT: This bar chart shows the number of expeditions by year. The year 2022 saw the most expeditions."
+  )
+
+exped_bcmonth <- exped |>
+  filter(!is.na(bcdate)) |>
+  mutate(
+    base_camp_month = month(bcdate)
+  ) |>
+  count(base_camp_month, year) |>
+  bind_rows(
+    data.frame(base_camp_month = 2, year = 2020:2024, n = 0)
+  ) |>
+  bind_rows(
+    data.frame(base_camp_month = 7, year = 2020:2024, n = 0)
+  ) |>
+  left_join(
+    tibble(month_abb = month.abb) |>
+      mutate(month_num = 1:12),
+    by = c("base_camp_month" = "month_num")
+  ) |> 
+  select(-base_camp_month) |>
+  pivot_wider(
+    names_from = month_abb,
+    values_from = n,
+    values_fill = 0
+  ) |>
+  pivot_longer(
+    cols = -year,
+    names_to = "month",
+    values_to = "n"
+  ) |>
+  mutate(month = factor(month, levels = month.abb)) 
+
+exped_bcmonth |>
+  ggplot(aes(month, n, color = factor(year), group = year)) +
+  geom_line() +
+  labs(
+    x = "Month arrived at base camp", 
+    y = "# of expeditions", 
+    color = NULL,
+    title = "Expeditions by Month",
+    subtitle = "Most expeditions arrive at base camp in April.",
+    caption = "Source: The Himalayan Database\nALT TEXT: This line chart shows the number of expeditions by month. The year 2022 saw the most expeditions."
+  )
+
+exped_bcmonth |>
+  ggplot(aes(factor(year), month, fill = n)) +
+  geom_tile(color = grey) +
+  scale_fill_viridis_c() +
+  scale_y_discrete(limits = rev(month.abb)) +
+  scale_x_discrete(position = "top") +
+  labs(
+    x = NULL, 
+    y = NULL, 
+    fill = "# of expeditions", 
+    title = "Expeditions by Base Camp Arrival Month and Year",
+    caption = "Source: The Himalayan Database\nALT TEXT: This heatmap shows the number of expeditions by month and year. The year 2022 saw the most expeditions."
+  )
+
+exped_smtmonth <- exped |>
+  filter(!is.na(smtdate)) |>
+  mutate(
+    summit_month = month(smtdate)
+  ) |>
+  count(summit_month, year) |>
+  bind_rows(
+    data.frame(summit_month = 2, year = 2020:2024, n = 0)
+  ) |>
+  left_join(
+    tibble(month_abb = month.abb) |>
+      mutate(month_num = 1:12),
+    by = c("summit_month" = "month_num")
+  ) |> 
+  select(-summit_month) |>
+  pivot_wider(
+    names_from = month_abb,
+    values_from = n,
+    values_fill = 0
+  ) |>
+  pivot_longer(
+    cols = -year,
+    names_to = "month",
+    values_to = "n"
+  ) |>
+  mutate(month = factor(month, levels = month.abb)) 
+
+exped_smtmonth |>
+  ggplot(aes(month, n, color = factor(year), group = year)) +
+  geom_line() +
+  labs(
+    x = "Month reached summit", 
+    y = "# of expeditions", 
+    color = NULL,
+    title = "Expeditions by Month",
+    subtitle = "Most expeditions reached summit in May.",
+    caption = "Source: The Himalayan Database\nALT TEXT: This line chart shows the number of expeditions by month. The year 2022 saw the most expeditions."
+  )
+
+exped_smtmonth |>
+  ggplot(aes(factor(year), month, fill = n)) +
+  geom_tile(color = grey) +
+  scale_fill_viridis_c() +
+  scale_y_discrete(limits = rev(month.abb)) +
+  scale_x_discrete(position = "top") +
+  labs(
+    x = NULL, 
+    y = NULL, 
+    fill = "# of expeditions", 
+    title = "Expeditions by Summit Month and Year",
+    caption = "Source: The Himalayan Database\nALT TEXT: This heatmap shows the number of expeditions by month and year. The year 2022 saw the most expeditions."
+  )
+
+# library(ggdist)
+# 
+# peaks_tidy |>
+#   ggplot(aes(heightf, pkname, fill = pkname)) +
+#   stat_slab(aes(thickness = after_stat(n)), scale = 0.7) +
+#   stat_dotsinterval(side = "bottom", scale = 0.7, slab_linewidth = NA) #+
+#   # scale_fill_brewer(palette = "Set2")
+# 
+# set.seed(12345) # for reproducibility
+# 
+# tibble(
+#   abc = rep(c("a", "b", "b", "c"), 50),
+#   value = rnorm(200, c(1, 8, 8, 3), c(1, 1.5, 1.5, 1))
+# ) %>%
+#   ggplot(aes(y = abc, x = value, fill = abc)) +
+#   stat_slab(aes(thickness = after_stat(pdf*n)), scale = 0.7) +
+#   stat_dotsinterval(side = "bottom", scale = 0.7, slab_linewidth = NA) +
+#   scale_fill_brewer(palette = "Set2") +
+#   ggtitle(
+#     paste0(
+#       'stat_slab(aes(thickness = after_stat(pdf*n)), scale = 0.7) +\n',
+#       'stat_dotsinterval(side = "bottom", scale = 0.7, slab_linewidth = NA)'
+#     ),
+#     'aes(fill = abc)'
+#   )
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_01_21_tidy_tuesday_exped.png",
+  device = "png"
+)
+```

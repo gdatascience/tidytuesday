@@ -1,0 +1,140 @@
+---
+title: "TidyTemplate"
+date: 2024-01-19
+output: html_document
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2024-01-16")
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+polling_places <- tt$polling_places
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+polling_places |>
+  filter(
+    str_detect(address, "MARTIN"),
+    str_detect(address, "LUTHER"),
+    str_detect(address, "KING")
+  ) |>
+  mutate(election_year = year(election_date)) |>
+  count(election_year, state) |>
+  group_by(state) |>
+  summarize(
+    beginning_places = first(n),
+    last_places = last(n)
+  ) |>
+  ungroup() |>
+  mutate(
+    change = (last_places - beginning_places) / beginning_places,
+    state = fct_reorder(state, change)
+  ) |>
+  ggplot(aes(color = state)) +
+  geom_point(
+    aes(
+      change, 
+      state
+    ),
+    size = 3
+  ) +
+  geom_segment(
+    aes(
+      x = 0,
+      y = state,
+      xend = change,
+      yend = state
+    ),
+    linewidth = 1.5
+  ) +
+  scale_x_continuous(labels = percent_format()) +
+  theme(
+    legend.position = "none",
+    plot.caption.position = "plot",
+    plot.caption = element_text(hjust = 0.5)
+  ) +
+  labs(
+    x = "% change in the number of polling places",
+    y = NULL,
+    title = "Polling Places: 2021 - 2020",
+    subtitle = "Located at an address that contains 'Martin Luther King'",
+    caption = "Source: Center for Public Integrity  |  DataViz: Tony Galvan (@GDataScience1)"
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "2024_01_16_tidy_tuesday_polling_places.png",
+  device = "png")
+
+```
