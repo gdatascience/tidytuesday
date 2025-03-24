@@ -1,0 +1,263 @@
+---
+title: "TidyTemplate"
+date: 2025-03-14
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(ggrepel)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-03-11")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+library(pixarfilms)
+# This package contains six data sets provided mostly in part by Wikipedia.
+# 
+# pixar_films - released and upcoming films
+# pixar_people - main people involved in creating films
+# genres - movie genres for each film
+# box_office - box office reception and budget information
+# public_response - critical and public response
+# academy - academy awards and nominations
+
+films <- pixar_films |>
+  mutate(
+    film = if_else(is.na(film), "Elemental", film)
+  )
+
+people <- pixar_people |>
+  mutate(
+    name = case_when(
+      name == "Stanton" ~ "Andrew Stanton",
+      name == "Docter" ~ "Pete Docter",
+      name == "Lasseter" ~ "John Lasseter",
+      name == "Unkrich" ~ "Lee Unkrich",
+      name == "Scanlon" ~ "Dan Scanlon",
+      name == "Aldrich" ~ "Matthew Aldrich",
+      name == "Bird" ~ "Brad Bird",
+      name == "Chapman" ~ "Brenda Chapman",
+      name == "Cooley" ~ "Josh Cooley",
+      name == "Fee" ~ "Brian Fee",
+      name == "Folsom" ~ "Stephany Folsom",
+      name == "Klubien" ~ "Jorgen Klubien",
+      name == "LeFauve" ~ "Meg LeFauve",
+      name == "Molina" ~ "Adrian Molina",
+      name == "Sohn" ~ "Peter Sohn",
+      name == "Ranft" ~ "Joe Ranft",
+      name == "Peterson" ~ "Bob Peterson",
+      TRUE ~ name
+    )
+  )
+
+genres |>
+  View()
+
+box_office |>
+  View()
+
+public_response |>
+  View()
+
+academy |>
+  View()
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+people |>
+  filter(!is.na(name)) |>
+  distinct(film, name) |>
+  count(name, sort = TRUE) |>
+  top_n(10, wt = n) |>
+  mutate(name = fct_reorder(name, n)) |>
+  ggplot(
+    aes(
+      x = n,
+      y = name,
+      fill = name
+    )
+  ) +
+  geom_col(show.legend = FALSE) +
+  scale_x_continuous(
+    breaks = seq(0, 10, 2)
+  ) +
+  labs(
+    x = "# of films",
+    y = "",
+    title = "Top 11 People with the Most Pixar Film Credits",
+    caption = "Data: Wikipedia  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  )
+
+films |>
+  ggplot(aes(release_date, run_time)) +
+  geom_smooth(
+    method = "loess", 
+    se = FALSE,
+    alpha = 0.05,
+    linetype = 2
+  ) +
+  geom_point() +
+  geom_text_repel(aes(label = film)) +
+  expand_limits(y = 0) +
+  labs(
+    x = "Release Date",
+    y = "Run Time (minutes)",
+    title = "Pixar Film Run Time Over Time",
+    caption = "Data: Wikipedia  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  )
+
+genres |>
+  count(genre) |>
+  mutate(genre = fct_reorder(genre, n)) |>
+  ggplot(aes(n, genre, fill = genre)) +
+  geom_col(show.legend = FALSE) +
+  labs(
+    x = "# of Films",
+    y = "",
+    title = "Pixar Film Genre Distribution",
+    caption = "Data: Wikipedia  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  )
+
+box_office |>
+  na.omit() |>
+  inner_join(films, by = "film") |>
+  select(film, budget, box_office_worldwide, release_date) |>
+  pivot_longer(
+    cols = c(budget, box_office_worldwide),
+    names_to = "metric",
+    values_to = "value"
+  ) |>
+  mutate(metric = case_when(
+    metric == "budget" ~ "Budget",
+    metric == "box_office_worldwide" ~ "Box Office"
+  )) |>
+  ggplot(aes(release_date, value, color = metric)) +
+  geom_smooth(
+    method = "loess",
+    se = FALSE,
+    linetype = 2
+  ) +
+  geom_point(
+    alpha = 0.25,
+    show.legend = FALSE
+  ) +
+  geom_text_repel(
+    aes(label = film),
+    angle = 270,
+    show.legend = FALSE
+  ) +
+  scale_y_log10(
+    labels = scales::dollar_format(
+      scale = 1e-6, 
+      suffix = "M", 
+      accuracy = 1
+    )
+  ) +
+  labs(
+    x = "Release Date",
+    y = "Amount (USD)",
+    color = "",
+    title = "Pixar Film Budget and Box Office Worldwide Over Time",
+    caption = "Data: Wikipedia  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  ) +
+  theme(
+    legend.position = "top"
+  )
+
+public_response |>
+  select(-cinema_score) |>
+  na.omit() |>
+  pivot_longer(
+    cols = -film,
+    names_to = "metric",
+    values_to = "score"
+  ) |>
+  group_by(film) |>
+  mutate(med_score = mean(score)) |>
+  ungroup() |>
+  inner_join(films |> select(film, release_date), by = "film") |> 
+  mutate(film = fct_reorder(film, score)) |> 
+  ggplot(aes(release_date, score, group = release_date, fill = film)) +
+  geom_boxplot(
+    show.legend = FALSE
+  ) +
+  geom_text(
+    aes(y = med_score, label = film, color = film),
+    angle = 270,
+    nudge_y = -7.5,
+    hjust = 0,
+    show.legend = FALSE
+  ) +
+  labs(
+    x = "Release Date",
+    y = "Score",
+    title = "Pixar Film Public Response Over Time",
+    caption = "Data: Wikipedia  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_03_11_tidy_tuesday_pixar.png",
+  device = "png"
+)
+```

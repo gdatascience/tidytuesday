@@ -1,0 +1,210 @@
+---
+title: "TidyTemplate"
+date: 2025-02-11
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(tidytext)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-02-11")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+cdc <- tt$cdc_datasets
+
+top_9_categories <- cdc |>
+  filter(category != "This dataset has not been categorized") |>
+  count(category, name = "total_category_datasets") |>
+  # top_n(9, wt = total_category_datasets) |> # this is the same as slice_max
+  slice_max(total_category_datasets, n = 9, with_ties = FALSE)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+cdc |>
+  filter(category != "This dataset has not been categorized") |>
+  count(category) |>
+  top_n(9, wt = n) |>
+  ggplot(aes(n, fct_reorder(category, n))) +
+  geom_col()
+
+cdc |>
+  filter(tags != "This dataset does not have any tags") |>
+  separate_rows(tags, sep = ", ") |>
+  count(tags) |>
+  top_n(9, wt = n) |>
+  ggplot(aes(n, fct_reorder(tags, n))) +
+  geom_col()
+
+cdc |>
+  mutate(publisher = fct_lump(publisher, 4)) |>
+  count(publisher) |>
+  ggplot(aes(n, fct_reorder(publisher, n))) +
+  geom_col()
+
+cdc |>
+  mutate(contact_name = fct_lump(contact_name, 8)) |>
+  count(contact_name) |>
+  ggplot(aes(n, fct_reorder(contact_name, n))) +
+  geom_col()
+
+cdc |>
+  filter(category != "This dataset has not been categorized") |>
+  separate_rows(tags, sep = ", ") |>
+  filter(tags != "...") |>
+  mutate(
+    tags = case_when(
+      tags == "centers for disease control and prevention" ~ "cdc",
+      tags == "coronavirus" ~ "covid-19",
+      tags == "covid 19" ~ "covid-19",
+      tags == "covid19" ~ "covid-19",
+      tags == "This dataset does not have any tags" ~ "no tags",
+      TRUE ~ tags
+    )
+  ) |>
+  unique() |>
+  count(category, tags) |>
+  group_by(category) |>
+  slice_max(n, n = 10, with_ties = FALSE) |>
+  ungroup() |>
+  inner_join(
+    top_9_categories,
+    by = "category"
+  ) |>
+  mutate(
+    category = fct_reorder(category, -total_category_datasets),
+    tags = reorder_within(tags, n, category)
+  ) |>
+  ggplot(aes(n, tags, fill = category)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_reordered() +
+  facet_wrap(~category, scales = "free") +
+  labs(
+    x = "# of datasets",
+    y = NULL,
+    title = "CDC Datasets Recently Purged",
+    subtitle = "Top tags within top 9 categories",
+    caption = "Data: archive.org  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  )
+
+cdc |>
+  filter(category != "This dataset has not been categorized") |>
+  mutate(
+    # pull out the file name from the dataset_url
+    file_name = str_extract(dataset_url, "([^/]+)$"),
+    file_name = str_remove(file_name, ".csv")
+  ) |>
+  transmute(category, word = file_name) |>
+  # separate_rows(file_name, sep = "_") |>
+  separate_longer_delim(
+    cols = word,
+    delim = "_"
+  ) |>
+  # separate_rows(file_name, sep = "-") |>
+  separate_longer_delim(
+    cols = word,
+    delim = "-"
+  ) |>
+  filter(!str_detect(word, "^[0-9]+$")) |>
+  # remove all punctuation
+  mutate(
+    word = str_remove_all(word, "[[:punct:]]"),
+    word = str_remove_all(word, "[0-9]"),
+    word = str_to_lower(word)
+  ) |>
+  filter(
+    word != "",
+    !word %in% c("data", "meta", "table")
+  ) |>
+  anti_join(stop_words) |>
+  count(category, word) |>
+  group_by(category) |>
+  slice_max(n, n = 10, with_ties = FALSE) |>
+  ungroup() |>
+  inner_join(
+    top_9_categories,
+    by = "category"
+  ) |>
+  mutate(
+    category = fct_reorder(category, -total_category_datasets),
+    word = reorder_within(word, n, category)
+  ) |>
+  ggplot(aes(n, word, fill = category)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_reordered() +
+  facet_wrap(~category, scales = "free") +
+  labs(
+    x = "# of datasets",
+    y = NULL,
+    title = "CDC Datasets Recently Purged",
+    subtitle = "Top URL words within top 9 categories",
+    caption = "Data: archive.org  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_02_11_tidy_tuesday_cdc.png",
+  device = "png"
+)
+```

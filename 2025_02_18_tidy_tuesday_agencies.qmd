@@ -1,0 +1,115 @@
+---
+title: "Tidy Tuesday Agencies"
+format: html
+---
+
+```{python}
+import pandas as pd
+
+agencies = pd.read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-02-18/agencies.csv')
+
+# Print the first 5 rows of the dataframe to verify.
+print(agencies.head())
+
+```
+
+```{python}
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Group by 'state' and count the occurrences
+state_counts = agencies.groupby('state').size().reset_index(name='n')
+
+# Sort states by count in descending order
+state_counts = state_counts.sort_values('n', ascending=False)
+
+# Create the plot using seaborn
+plt.figure(figsize=(10, 6))  # Adjust figure size as needed
+sns.barplot(x='n', y='state', data=state_counts, orient='h')
+plt.xlabel('Count')
+plt.ylabel('State')
+plt.title('Agency Count by State')
+plt.show()
+
+```
+
+
+```{python}
+
+# Convert nibrs_start_date to datetime objects
+agencies['nibrs_start_date'] = pd.to_datetime(agencies['nibrs_start_date'])
+
+# Floor the date to the year
+agencies['date'] = agencies['nibrs_start_date'].dt.to_period('Y')
+
+# Count the occurrences of each year
+agency_counts = agencies.groupby('date').size().reset_index(name='n')
+
+# Convert the 'date' column back to datetime for plotting
+agency_counts['date'] = agency_counts['date'].dt.to_timestamp()
+
+
+# Create the line plot using matplotlib
+plt.figure(figsize=(10, 6))
+plt.plot(agency_counts['date'], agency_counts['n'])
+plt.xlabel('Year')
+plt.ylabel('Count')
+plt.title('Agency Count Over Time')
+plt.xticks(rotation=45)  # Rotate x-axis labels for better readability
+plt.tight_layout()  # Adjust layout to prevent labels from overlapping
+plt.show()
+
+```
+
+
+```{python}
+
+import plotly.express as px
+
+# Filter out rows with missing longitude or latitude
+df_filtered = agencies.dropna(subset=['longitude', 'latitude'])
+
+# Create the map using plotly express
+fig = px.scatter_mapbox(df_filtered, 
+                        lat="latitude", 
+                        lon="longitude", 
+                        color="is_nibrs",
+                        hover_name="agency_name",  # Add agency name to hover info
+                        zoom=3,  # Initial zoom level
+                        mapbox_style="open-street-map") # Use a different map style
+
+
+fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0}) # Adjust layout for better display
+fig.show()
+
+```
+
+
+```{python}
+
+# Convert nibrs_start_date to datetime objects if not already done
+# df['nibrs_start_date'] = pd.to_datetime(df['nibrs_start_date'])
+
+# Floor the date to the year
+agencies['year'] = agencies['nibrs_start_date'].dt.to_period('Y')
+
+# Now filter out rows with missing longitude or latitude
+df_filtered = agencies.dropna(subset=['longitude', 'latitude'])
+
+
+# Create the animated map
+fig = px.scatter_mapbox(df_filtered, 
+                        lat="latitude", 
+                        lon="longitude", 
+                        color="is_nibrs",
+                        hover_name="agency_name",
+                        animation_frame="year", # Animate by year
+                        animation_group="agency_name", # Group points by agency
+                        zoom=3,
+                        mapbox_style="open-street-map")
+
+fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+fig.show()
+
+```
