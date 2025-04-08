@@ -1,0 +1,614 @@
+---
+title: "TidyTemplate"
+date: 2025-04-02
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-04-01")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+# Create a function that scales a numeric variable between 0 and 100
+scale_0_100 <- function(x) {
+  (x - min(x)) / (max(x) - min(x)) * 100
+}
+
+# Apply the scale_0_100 function to all columns between hp and speed
+pokemon <- tt$pokemon_df |>
+  mutate(
+    across(hp:speed, ~ scale_0_100(.x), .names = "{.col}_scaled"),
+    score_aggressive = (
+      (0.35 * pmax(attack_scaled, special_attack_scaled)) +
+        (0.30 * speed_scaled) +
+        (0.15 * pmax(defense_scaled, special_defense_scaled)) +
+        (0.20 * hp_scaled)
+    ),
+    score_defensive = (
+      (0.20 * pmax(attack_scaled, special_attack_scaled)) +
+        (0.10 * speed_scaled) +
+        (0.30 * pmax(defense_scaled, special_defense_scaled)) +
+        (0.40 * hp_scaled)
+    ),
+    score_balanced = (
+      (0.25 * pmax(attack_scaled, special_attack_scaled)) +
+        (0.25 * speed_scaled) +
+        (0.25 * pmax(defense_scaled, special_defense_scaled)) +
+        (0.25 * hp_scaled)
+    )
+  ) |>
+  select(-ends_with("_scaled"))
+  
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+pokemon |>
+  ggplot(aes(weight, height)) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    x = "Weight",
+    y = "Height",
+    title = "Pokemon Weight vs Height",
+    caption = "Source: {pokemon}  |  Analysis: Tony Galvan (@GDataScience1)  |  #TidyTuesday"
+  )
+
+pokemon |>
+  select(pokemon, hp, attack, defense, special_attack, special_defense, speed) |>
+  pivot_longer(
+    cols = c(hp, attack, defense, special_attack, special_defense, speed),
+    names_to = "stat",
+    values_to = "value"
+  ) |>
+  ggplot(aes(value, fill = stat)) +
+  geom_histogram(show.legend = FALSE) +
+  facet_wrap(~ stat, scales = "free")
+
+pokemon |>
+  count(type_1) |>
+  mutate(type_1 = fct_reorder(type_1, n)) |>
+  ggplot(aes(n, type_1, fill = type_1)) +
+  geom_col(show.legend = FALSE)
+
+pokemon |>
+  count(type_2) |>
+  mutate(type_2 = fct_reorder(type_2, n)) |>
+  ggplot(aes(n, type_2, fill = type_2)) +
+  geom_col(show.legend = FALSE)
+
+pokemon |>
+  count(egg_group_1) |>
+  mutate(egg_group_1 = fct_reorder(egg_group_1, n)) |>
+  ggplot(aes(n, egg_group_1, fill = egg_group_1)) +
+  geom_col(show.legend = FALSE)
+
+pokemon |>
+  count(egg_group_2) |>
+  mutate(egg_group_2 = fct_reorder(egg_group_2, n)) |>
+  ggplot(aes(n, egg_group_2, fill = egg_group_2)) +
+  geom_col(show.legend = FALSE)
+
+pokemon |>
+  ggplot(aes(hp, base_experience, color = factor(generation_id))) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE)
+  
+```
+
+# Modeling
+
+Create a model to predict the base experience of a Pokemon based on the other variables in the dataset. This is based on Julia Silge's blog post "Predict #TidyTuesday giant pumpkin weights with workflowsets" - https://juliasilge.com/blog/giant-pumpkins/
+
+```{r}
+
+library(tidymodels)
+
+# Split the data into training and test sets
+set.seed(123)
+pokemon_split <- initial_split(
+  pokemon |>
+    select(
+      pokemon, base_experience, height, weight, type_1, egg_group_1, hp, 
+      attack, defense, special_attack, special_defense, speed, generation_id
+    ) |>
+    mutate(generation_id = as.factor(generation_id)) |>
+    na.omit(), 
+  prop = 0.8, 
+  strata = base_experience
+)
+pokemon_train <- training(pokemon_split)
+pokemon_test <- testing(pokemon_split)
+
+# Create cross validation folds
+set.seed(456)
+pokemon_folds <- vfold_cv(pokemon_train, strata = base_experience)
+pokemon_folds
+
+# Create 3 recipes for the model
+base_rec <- recipe(base_experience ~ ., data = pokemon_train) |>
+  update_role(pokemon, new_role = "ID") |>
+  step_other(type_1, egg_group_1, threshold = 0.02)
+  
+ind_rec <- base_rec |>
+  step_dummy(all_nominal_predictors())
+
+spline_rec <- ind_rec |>
+  step_bs(hp)
+
+scale_rec <- spline_rec |>
+  step_center(all_numeric_predictors()) |>
+  step_scale(all_numeric_predictors()) |>
+  step_zv(all_predictors())
+  
+# Create 3 model specs
+lm_spec <- linear_reg() |>
+  set_engine("lm")
+
+rf_spec <- rand_forest() |>
+  set_engine("ranger") |>
+  set_mode("regression")
+
+mars_spec <- mars() |>
+  set_engine("earth") |>
+  set_mode("regression")
+
+lasso_spec <- linear_reg(penalty = tune(), mixture = 1) |>
+  set_engine("glmnet") |>
+  set_mode("regression")
+
+# Create a workflow set
+pokemon_set <- workflow_set(
+  preproc = list(
+    base = base_rec,
+    ind = ind_rec,
+    spline = spline_rec
+  ),
+  models = list(
+    rf = rf_spec,
+    mars = mars_spec,
+    lm = lm_spec
+  ),
+  cross = FALSE
+)
+pokemon_set
+
+# Fit the models
+doParallel::registerDoParallel()
+set.seed(789)
+
+pokemon_rs <- workflow_map(
+  pokemon_set,
+  "fit_resamples",
+  resamples = pokemon_folds,
+  control = control_resamples(save_pred = TRUE)
+)
+pokemon_rs
+
+# Evaluate the workflow set
+autoplot(pokemon_rs)
+
+# Collect the results
+collect_metrics(pokemon_rs)
+
+# Extract the workflow and fit to the training data
+final_fit <- extract_workflow(pokemon_rs, "spline_lm") |>
+  fit(data = pokemon_train)
+
+# Examine the model parameters
+final_fit |>
+  tidy() |>
+  mutate(
+    term = fct_reorder(term, estimate),
+    significant = if_else(p.value < 0.05, "Significant", "Not Significant")
+  ) |>
+  ggplot(aes(x = estimate, y = term, color = significant)) +
+  geom_point() +
+  geom_errorbar(
+    aes(xmin = estimate - std.error, xmax = estimate + std.error), 
+    width = 0.2
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
+  scale_color_manual(values = c("Significant" = "blue", "Not Significant" = "gray")) +
+  labs(title = "Linear Regression Model Coefficients",
+       x = "Estimated Coefficient",
+       y = "Term",
+       color = NULL)
+
+# Plot the predictions vs actuals
+final_fit |>
+  predict(pokemon_test) |>
+  bind_cols(pokemon_test) |>
+  ggplot(aes(x = .pred, y = base_experience)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, lty = 2, linewidth = 1, color = "red") +
+  labs(
+    title = "Predicted vs Actual Base Experience",
+    subtitle = "Linear Regression Model",
+    x = "Predicted Base Experience",
+    y = "Actual Base Experience"
+  )
+
+# -----------------------------------------------------------------------------
+# Use the Lasso Model
+# -----------------------------------------------------------------------------
+# Create a workdlow for the lasso model
+lassso_workflow <- workflow() |>
+  add_model(lasso_spec) |>
+  add_recipe(scale_rec)
+
+# Set up a grid of penalty values to tune (SIMPLIFIED)
+penalty_grid <- grid_regular(penalty(range = c(-2, 2)),
+                             levels = 5) # Try 5 different penalty values
+
+# Tune the hyperparameters (penalty) using cross-validation
+tune_results <- tune_grid(
+  lassso_workflow,
+  resamples = pokemon_folds,
+  grid = penalty_grid,
+  metrics = metric_set(rmse, rsq, mae)
+)
+
+# Select the best model based on the chosen metric (e.g., RMSE)
+best_penalty <- select_best(tune_results, metric = "rmse")
+
+# Finalize the workflow with the best penalty value
+final_workflow <- finalize_workflow(lassso_workflow, best_penalty)
+
+# Train the final Lasso model on the entire training data
+final_fit <- fit(final_workflow, data = pokemon_train)
+
+# Make predictions on the test data using the final model
+lasso_predictions <- predict(final_fit, new_data = pokemon_test)
+
+# Evaluate the final Lasso model performance
+lasso_results <- pokemon_test |>
+  select(base_experience) |>
+  bind_cols(lasso_predictions)
+
+metrics(lasso_results, truth = base_experience, estimate = .pred)
+
+# Examine the coefficients of the final Lasso model
+final_fit |>
+  extract_fit_parsnip() |>
+  tidy() |>
+  filter(estimate != 0) |> # Show only non-zero coefficients (features selected by Lasso)
+  mutate(term = fct_reorder(term, abs(estimate))) |>
+  ggplot(aes(estimate, term, fill = estimate > 0)) +
+  geom_col() +
+  scale_fill_manual(values = c("FALSE" = "firebrick2", "TRUE" = "forestgreen"),
+                    labels = c("Negative", "Positive")) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray") +
+  labs(title = "Lasso Coefficients at Optimal Penalty",
+       subtitle = paste("Lambda = 0.1"),
+       x = "Coefficient Estimate",
+       y = "Term",
+       fill = "Direction")
+
+
+# Plot the predictions vs actuals
+lasso_results |>
+  ggplot(aes(x = .pred, y = base_experience)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, lty = 2, linewidth = 1, color = "red") +
+  labs(
+    title = "Predicted vs Actual Base Experience",
+    subtitle = "Lasso Model",
+    x = "Predicted Base Experience",
+    y = "Actual Base Experience"
+  )
+
+# Plot the predictions vs actuals and show the images for the outliers
+library(ggimage)
+p <- lasso_results |>
+  bind_cols(pokemon_test |> select(pokemon)) |>
+  inner_join(pokemon |> select(-base_experience), by = "pokemon") |>
+  ggplot(aes(x = .pred, y = base_experience)) +
+  # geom_point() +
+  geom_image(aes(image = url_image), size = 0.05) +
+  geom_abline(slope = 1, intercept = 0, lty = 2, linewidth = 1, color = "red") +
+  labs(
+    title = "Predicted vs Actual Base Experience",
+    subtitle = "Lasso Model with Images",
+    x = "Predicted Base Experience",
+    y = "Actual Base Experience"
+  )
+
+library(magick)
+pokemon_logo_url <- "https://1000logos.net/wp-content/uploads/2017/05/Pokemon-logo.jpg"
+
+pokemon_logo <- image_read(pokemon_logo_url) |> 
+  image_transparent(color = "white", fuzz = 10)
+
+g1 <- ggplot() +
+  annotation_custom(
+    grid::rasterGrob(pokemon_logo),
+    xmin = -Inf, xmax = Inf, 
+    ymin = -Inf, ymax = Inf
+  ) +
+  theme_void() +
+  theme(
+    plot.background = element_rect(
+      fill = NA,
+      colour = NA
+    ),
+    panel.background = element_rect(
+      fill = NA,
+      colour = NA
+    )
+  )
+
+g1
+
+library(patchwork)
+g <- p +
+  inset_element(
+    p = g1,
+    left = 0.001, right = 0.55,
+    top = 1, bottom = 0.6
+  )
+g
+
+```
+
+# Create a GT table
+
+```{r}
+library(gt)
+
+pokemon |>
+  slice_max(score_aggressive, n = 10) |>
+  transmute(
+    agg_rank = row_number(),
+    agg_pokemon = pokemon, 
+    agg_url_image = url_image
+  ) |> 
+  bind_cols(
+    pokemon |>
+      slice_max(score_balanced, n = 10) |>
+      transmute(
+        bal_rank = row_number(),
+        bal_pokemon = pokemon, 
+        bal_url_image = url_image
+      )
+  ) |>
+  bind_cols(
+    pokemon |>
+      slice_max(score_defensive, n = 10) |>
+      transmute(
+        def_rank = row_number(),
+        def_pokemon = pokemon, 
+        def_url_image = url_image
+      )
+  ) |>
+  gt() |>
+  tab_header(
+    title = "Top 10 Pokemon by Score",
+    subtitle = "Aggressive, Balanced, and Defensive"
+  ) |>
+  cols_label(
+    agg_rank = "Aggressive Rank",
+    agg_pokemon = "Aggressive Pokemon",
+    agg_url_image = "Aggressive Image",
+    bal_rank = "Balanced Rank",
+    bal_pokemon = "Balanced Pokemon",
+    bal_url_image = "Balanced Image",
+    def_rank = "Defensive Rank",
+    def_pokemon = "Defensive Pokemon",
+    def_url_image = "Defensive Image"
+  ) |>
+  cols_align(
+    align = "center",
+    columns = everything()
+  ) |>
+  cols_width(
+    agg_url_image ~ px(100),
+    bal_url_image ~ px(100),
+    def_url_image ~ px(100)
+  ) |>
+  text_transform(
+    locations = cells_body(columns = agg_url_image),
+    fn = function(x) {
+      web_image(url = x, height = 50)
+    }
+  ) |>
+  text_transform(
+    locations = cells_body(columns = bal_url_image),
+    fn = function(x) {
+      web_image(url = x, height = 50)
+    }
+  ) |>
+  text_transform(
+    locations = cells_body(columns = def_url_image),
+    fn = function(x) {
+      web_image(url = x, height = 50)
+    }
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightblue"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_title(groups = "title")
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightgreen"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_title(groups = "subtitle")
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightyellow"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_column_labels()
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightgray"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_row_groups()
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightpink"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = everything())
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightblue"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = agg_rank)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightgreen"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = bal_rank)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightyellow"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = def_rank)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightblue"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = agg_pokemon)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightgreen"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = bal_pokemon)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightyellow"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = def_pokemon)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightblue"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = agg_url_image)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightgreen"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = bal_url_image)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightyellow"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = def_url_image)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightblue"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = agg_rank)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightgreen"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = bal_rank)
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "lightyellow"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(columns = def_rank)
+  )
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_04_01_tidy_tuesday_pokemon.png",
+  device = "png", width = 6, height = 4
+)
+```
