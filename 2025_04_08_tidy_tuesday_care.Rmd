@@ -1,0 +1,159 @@
+---
+title: "TidyTemplate"
+date: 2025-04-09
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-04-08")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+care <- tt$care_state
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+library(sf)
+
+hex_states <- st_read("/Users/anthonygalvan/Documents/My Tableau Repository/Datasources/Hex States Shapefile/HexStates.shp")
+
+care |>
+  inner_join(
+    hex_states,
+    by = c("state" = "State_Abbr")
+  ) |> 
+  filter(measure_name == "Percentage of healthcare personnel who are up to date with COVID-19 vaccinations") |>
+  ggplot(aes(geometry = geometry, fill = score)) +
+  geom_sf(color = "white", size = 0.1) +
+  geom_sf_text(aes(label = state), size = 5, color = "white", fontface = "bold", nudge_y = 0.25) +
+  geom_sf_text(aes(label = score), size = 4, color = "white", nudge_y = -0.35) +
+  scale_fill_viridis_c(
+    option = "G",
+    name = "Care Score",
+    labels = scales::number_format(accuracy = 0.01)
+    ) +
+  # facet_wrap(~measure_name) +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "white", color = "white"),
+    panel.background = element_rect(fill = "white", color = "white")
+  ) +
+  labs(
+    title = "Timely & Effective Care",
+    subtitle = "Percentage of healthcare personnel who are up to date with COVID-19 vaccinations",
+    caption = "Source: Centers for Medicare and Medicaid Services (CMS) | Designed by: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  )
+
+```
+
+```{r ShinyApp}
+
+library(shiny)
+library(shinycssloaders)
+library(shinythemes)
+
+server <- function(input, output) {
+  output$map <- renderPlot({
+    p <- care |>
+      inner_join(
+        hex_states,
+        by = c("state" = "State_Abbr")
+        ) |>
+      filter(measure_name == input$measure_name) |>
+      ggplot(aes(geometry = geometry, fill = score)) +
+      geom_sf(color = "white", size = 0.1) +
+      geom_sf_text(aes(label = state), size = 5, color = "white", fontface = "bold", nudge_y = 0.25) +
+      geom_sf_text(aes(label = score), size = 4, color = "white", nudge_y = -0.35) +
+      scale_fill_viridis_c(
+        option = "G",
+        name = "Care Score",
+        labels = scales::number_format(accuracy = 0.01)
+        ) +
+      theme_void()
+    
+    p
+  })
+}
+
+ui <- fluidPage(
+  titlePanel("Timely & Effective Care"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("measure_name", "Select Measure Name", choices = unique(care$measure_name))
+    ),
+    mainPanel(
+      plotOutput("map") |> withSpinner()
+    )
+  )
+)
+
+shinyApp(ui = ui, server = server)
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_04_08_tidy_tuesday_care.png",
+  device = "png"
+)
+```
