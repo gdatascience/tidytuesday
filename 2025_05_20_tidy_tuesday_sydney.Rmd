@@ -1,0 +1,129 @@
+---
+title: "TidyTemplate"
+date: 2025-05-23
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-05-20")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+sydney_beaches <- tt$water_quality |>
+  mutate(
+    year = year(date),
+    month = month(date),
+    season = case_when(
+      month %in% c(1, 2, 3) ~ "Summer",
+      month %in% c(4, 5, 6) ~ "Autumn",
+      month %in% c(7, 8, 9) ~ "Winter",
+      month %in% c(10, 11, 12) ~ "Spring"
+    ),
+    season = fct_relevel(season, "Summer", "Autumn", "Winter", "Spring")
+  )
+
+all_seasons <- sydney_beaches |>
+  distinct(swim_site, season) |>
+  count(swim_site) |>
+  filter(n == 4) |>
+  pull(swim_site)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+sydney_beaches |>
+  filter(swim_site %in% all_seasons) |>
+  group_by(swim_site) |>
+  summarise(
+    med_enterococci_cfu_100ml = median(enterococci_cfu_100ml, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  slice_max(
+    n = 9, 
+    order_by = med_enterococci_cfu_100ml
+  ) |>
+  inner_join(
+    sydney_beaches,
+    by = "swim_site"
+  ) |>
+  mutate(swim_site = fct_reorder(swim_site, -enterococci_cfu_100ml)) |>
+  ggplot(aes(season, enterococci_cfu_100ml, fill = season)) +
+  geom_violin(draw_quantiles = c(0.5),show.legend = FALSE) +
+  scale_y_log10(labels = number_format(big.mark = ",")) +
+  facet_wrap(~swim_site) +
+  labs(
+    title = "Dirtiest Sydney Beaches",
+    subtitle = "Enterococci levels at the 9 dirtiest beaches in Sydney, Australia",
+    caption = "Data: BeachwatchNSW | Plot: Tony Galvan | #TidyTuesday",
+    x = "Season",
+    y = "Enterococci (CFU/100ml - log scale)"
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_05_20_tidy_tuesday_sydney.png",
+  device = "png"
+)
+```

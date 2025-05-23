@@ -76,7 +76,7 @@ care |>
   inner_join(
     hex_states,
     by = c("state" = "State_Abbr")
-  ) |> 
+  ) |>
   filter(measure_name == "Percentage of healthcare personnel who are up to date with COVID-19 vaccinations") |>
   ggplot(aes(geometry = geometry, fill = score)) +
   geom_sf(color = "white", size = 0.1) +
