@@ -1,0 +1,250 @@
+---
+title: "TidyTemplate"
+date: 2025-06-06
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(camcorder)
+library(ggtext)
+library(showtext)
+```
+
+```{r theme, message=FALSE, warning=FALSE}
+tt_family <- "tt_family"
+tt_code <- "2025_06_03_tidy_tuesday_gutenberg"
+tt_source <- "The R {gutenbergr} package"
+
+# Font selected from http://fonts.google.com
+font_add_google("Cedarville Cursive", tt_family)
+
+theme_set(theme_light(base_size = 32))
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+# Colors selected using https://coolors.co/
+bg_color <- "#1C1D21"
+txt_color <- "#DFECF3"
+gold <- "#97883A"
+blue <- "#7EBED0"
+aqua <- "#5E9FA0"
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xe61b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-06-03")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+library(ISOcodes)
+gutenberg <- tt$gutenberg_metadata |>
+  rename(language_raw = language) |>
+  inner_join(tt$gutenberg_languages, by = "gutenberg_id") |>
+  left_join(
+    ISO_639_2 |>
+      filter(!is.na(Alpha_2)) |>
+      transmute(language = Alpha_2, language_name = Name),
+    by = "language"
+  )
+
+languages <- 
+  tt$gutenberg_languages |>
+  left_join(
+    ISO_639_2 |>
+      filter(!is.na(Alpha_2)) |>
+      transmute(language = Alpha_2, language_name_2 = Name),
+    by = "language"
+  ) |>
+  left_join(
+    ISO_639_2 |>
+      filter(!is.na(Alpha_3_B)) |>
+      transmute(language = Alpha_3_B, language_name_3_B = Name),
+    by = "language"
+  ) |>
+  left_join(
+    ISO_639_2 |>
+      filter(!is.na(Alpha_3_T)) |>
+      transmute(language = Alpha_3_T, language_name_3_T = Name),
+    by = "language"
+  ) |>
+  mutate(
+    language_name = coalesce(
+      language_name_2, language_name_3_B, language_name_3_T
+    )
+  ) |>
+  select(-language_name_2, -language_name_3_B, -language_name_3_T) |>
+  mutate(language_name = case_when(
+    str_detect(language_name, "Dutch") ~ "Dutch",
+    str_detect(language_name, "Spanish") ~ "Spanish",
+    TRUE ~ language_name
+  ))
+```
+
+# Start recording
+
+Use the {camcorder} package to record all plots that are output to the console
+
+```{r camcorder}
+
+# start recording
+gg_record(
+  dir = paste0("~/Downloads/camcorder/", tt_code), # where to save the recording
+  device = "png", # device to use to save images
+  width = 6, # width of saved image
+  height = 6, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+```
+
+# Set up the theme for the plots
+
+```{r theme}
+tt_theme <- function(){
+  theme(
+    plot.title = element_text(
+        family = tt_family,
+        size = 160,
+        # reduce the space below the title
+        margin = margin(b = 5),
+        color = gold,
+        face = "bold"
+      ),
+      plot.title.position = "plot",
+      plot.subtitle = element_markdown(
+        family = tt_family,
+        size = 56,
+        color = txt_color
+      ),
+      plot.background = element_rect(
+        fill = bg_color
+      ),
+      panel.border = element_rect(
+        color = bg_color
+      ),
+      panel.background = element_rect(
+        fill = bg_color
+      ),
+      text = element_text(
+        family = tt_family,
+        color = txt_color
+      ),
+      axis.text = element_text(
+        family = tt_family,
+        color = txt_color,
+        size = 38
+      ),
+      axis.title = element_text(
+        family = tt_family,
+        color = txt_color,
+        size = 34
+      ),
+      plot.caption = element_markdown(
+        family = tt_family,
+        color = txt_color,
+        size = 27,
+        hjust = 0.5
+      ),
+      plot.caption.position = "plot",
+      panel.grid = element_blank(),
+      axis.ticks = element_blank()
+  )
+}
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+languages |>
+  count(language_name) |>
+  slice_max(n = 10, order_by = n) |>
+  mutate(language_name = fct_reorder(language_name, n)) |>
+  ggplot(aes(n, language_name, fill = language_name == "English")) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c(aqua, gold)) +
+  scale_x_continuous(
+    labels = number_format(scale = 1e-3, suffix = "K"),
+    expand = c(0, 0)
+  ) +
+  labs(
+    title = "Project Gutenberg",
+    subtitle = "Top 10 languages in the Project Gutenberg dataset",
+    x = "# of books",
+    y = NULL,
+    caption = tt_caption
+  ) +
+  tt_theme()
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = paste0(tt_code, ".png"),
+  device = "png"
+)
+
+gg_stop_recording()
+
+gg_playback(
+  name = paste0(tt_code, ".gif"),
+  first_image_duration = 4,
+  last_image_duration = 20,
+  frame_duration = 0.5
+)
+```
