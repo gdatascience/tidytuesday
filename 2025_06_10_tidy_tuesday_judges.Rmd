@@ -1,0 +1,133 @@
+---
+title: "TidyTemplate"
+date: 2025-06-13
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-06-10")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+judges_appointments <- tt$judges_appointments |>
+  mutate(
+    commission_date = mdy(commission_date),
+    retirement_date = mdy(retirement_from_active_service),
+    termination_date = mdy(termination_date),
+    current_date = mdy("06-17-2025"),
+    # select the earliest of retirement or termination date
+    appointment_end_date = pmin(retirement_date, termination_date, current_date, na.rm = TRUE),
+    appointment_length = appointment_end_date - commission_date,
+    appointment_length_years = as.numeric(appointment_length) / 365.25
+  )
+
+judges <- tt$judges_people |>
+  inner_join(judges_appointments, by = "judge_id")
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+judges_appointments |>
+  filter(!str_detect(president_name, "ssignment")) |>
+  mutate(
+    president_name = fct_reorder(
+      president_name, commission_date, .fun = min, .na_rm = TRUE
+    ),
+    president_name = fct_rev(president_name),
+    president_party = case_when(
+      president_party == "Democratic" ~ "Democrat",
+      str_detect(president_party, "Republican") ~ "Republican",
+      TRUE ~ "Other"
+    ),
+    president_party = fct_relevel(
+      president_party, "Democrat", "Republican", "Other"
+    )
+  ) |>
+  ggplot(aes(
+    x = appointment_length_years,
+    y = president_name,
+    fill = president_party
+    )
+  ) +
+  geom_boxplot() +
+  scale_fill_manual(
+    values = c("#083A90", "#E81B23", "gray70")
+  ) +
+  labs(
+    title = "Length of U.S. Judge Appointments by President",
+    subtitle = "George W. Bush appointed the longest serving judges",
+    x = "Appointment Length (Years)",
+    y = NULL,
+    fill = "Party",
+    caption = "Data: U.S. Courts  |  Visualization: @GDataScience1  |  #TidyTuesday"
+  ) +
+  theme_light() +
+  theme(
+    plot.title.position = "plot"
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_06_10_tidy_tuesday_judges.png",
+  device = "png"
+)
+```
