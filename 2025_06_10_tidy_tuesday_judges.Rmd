@@ -120,6 +120,62 @@ judges_appointments |>
   
 ```
 
+# Linear Regression Model
+
+```{r}
+
+judges_df <- judges_appointments |>
+  filter(
+    !str_detect(president_name, "ssignment"),
+    str_detect(president_party, "Republican") |
+      president_party == "Democratic"
+  ) |>
+  mutate(
+    president_party = case_when(
+      president_party == "Democratic" ~ "Democrat",
+      str_detect(president_party, "Republican") ~ "Republican",
+      TRUE ~ "Other"
+    ),
+    commission_year = year(commission_date)
+  )
+  
+lmod <- lm(
+    appointment_length_years ~ commission_year + president_party,
+    data = judges_df
+)
+
+summary(lmod)
+
+judges_df |>
+  ggplot(aes(
+    x = commission_year,
+    y = appointment_length_years,
+    color = president_party
+  )) +
+  geom_point(alpha = 0.15, size = 0.5) + # Add points for each judge's appointment
+  geom_smooth(
+    method = "lm", 
+    se = TRUE, 
+    aes(group = president_party)
+  ) + # Add linear regression lines for each party
+  labs(
+    title = "U.S. Judge Appointment Lengths\nby Commission Year and Presidential Party",
+    subtitle = "Regression lines show estimated trends for\nDemocrat and Republican appointed judges",
+    x = "Commission Year",
+    y = "Appointment Length (Years)",
+    color = "Presidential Party"
+  ) +
+  scale_color_manual(values = c("Democrat" = "#083A90", "Republican" = "#E81B23")) + # Assign specific colors
+  theme_light() + # Use a clean, minimal theme
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), # Center and bold title
+    plot.subtitle = element_text(hjust = 0.5), # Center subtitle
+    legend.position = "bottom" # Place legend at the bottom
+  )
+
+```
+
+
 # Save Image
 
 Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
