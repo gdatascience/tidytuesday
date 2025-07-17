@@ -1,0 +1,167 @@
+---
+title: "TidyTemplate"
+date: 2025-07-15
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-07-08")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+answers <- tt$answers
+
+# Add RGB columns
+answers_rgb <- answers |>
+  rowwise() |>
+  mutate(rgb_values = list(col2rgb(hex))) |>
+  ungroup() |>
+  mutate(
+    red = map_dbl(rgb_values, ~ .["red", ]),
+    green = map_dbl(rgb_values, ~ .["green", ]),
+    blue = map_dbl(rgb_values, ~ .["blue", ])
+  ) |>
+  select(-rgb_values)
+
+users_rgb <- tt$users |>
+  left_join(answers_rgb, by = "user_id")
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+answers_rgb |>
+  sample_n(1000) |>
+  ggplot(aes(x = red, y = green, color = hex)) +
+  geom_point(aes(size = rank, alpha = 1 / rank), show.legend = TRUE) + # Size by rank, alpha inversely by rank
+  scale_color_identity() + # Use actual hex colors
+  labs(
+    title = "RGB Color Distribution with Rank",
+    x = "Red Component (0-255)",
+    y = "Green Component (0-255)",
+    caption = "Size and opacity scaled by rank (lower rank = larger/more opaque)"
+  ) +
+  theme_minimal() +
+  # Add a Z-axis for Blue by adjusting point shape or a third dimension if using 3D plot (beyond basic ggplot)
+  # For 2D, we can indicate blue with another aesthetic or facet
+  # geom_text(aes(label = name, y = green + 10), size = 3, color = "black", vjust = 0, check_overlap = TRUE) +
+  # You can also use facets for blue component, or map it to shape
+  # facet_wrap(~ cut(blue, breaks = 3, labels = c("Low Blue", "Medium Blue", "High Blue")))
+  # geom_point(aes(shape = factor(cut(blue, breaks = 3))))
+  scale_size_continuous(range = c(0.1, 0.5)) # Adjust size range for better visualization
+
+# create a 3d plot so that we can see the blue component
+library(plotly)
+answers_rgb |>
+  mutate(alpha = 1/rank) |>
+  sample_n(1000) |>
+  plot_ly(
+    x = ~red,
+    y = ~green,
+    z = ~blue,
+    color = ~hex,
+    colors = ~hex,
+    size = ~rank,
+    # alpha = ~alpha,
+    type = "scatter3d",
+    mode = "markers"
+  ) |>
+  layout(
+    title = "3D RGB Color Distribution with Rank",
+    scene = list(
+      xaxis = list(title = "Red Component (0-255)"),
+      yaxis = list(title = "Green Component (0-255)"),
+      zaxis = list(title = "Blue Component (0-255)")
+    )
+  ) |>
+  # hide the legend
+  hide_legend()
+
+users_rgb |>
+  sample_n(1000) |>
+  plot_ly(
+    x = ~red,
+    y = ~green,
+    z = ~blue,
+    color = ~colorblind,
+    # colors = ~monitor,
+    size = ~rank,
+    # alpha = 1 / answers_rgb$rank,
+    type = "scatter3d",
+    mode = "markers"
+  ) |>
+  layout(
+    title = "3D RGB Color Distribution with Rank",
+    scene = list(
+      xaxis = list(title = "Red Component (0-255)"),
+      yaxis = list(title = "Green Component (0-255)"),
+      zaxis = list(title = "Blue Component (0-255)")
+    )
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_07_08_tidy_tuesday_colors.png",
+  device = "png"
+)
+```
