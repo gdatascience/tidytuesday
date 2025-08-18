@@ -1,0 +1,179 @@
+---
+title: "TidyTemplate"
+date: 2025-08-15
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(plotly)
+library(htmlwidgets)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-08-12")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+studies <- tt$attribution_studies
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+Inspired by https://dviz.manishdatt.com/posts/Weather_attribution/weather_attribution.html
+
+```{r Sunburst}
+
+studies_agg <- studies |>
+  count(study_focus, classification, event_type, name = "count")
+
+# Define a function to prepare and plot for a single study focus
+create_sunburst_data <- function(data, focus_type) {
+  # Filter data for the specific study focus
+  plot_data <- data |>
+    filter(study_focus == focus_type)
+
+  # Calculate total count for the title
+  total_count <- sum(plot_data$count)
+
+  # --- Prepare data for a single sunburst plot with explicit ids and parents ---
+  # 1. Create data for the top level (study_focus)
+  top_level_df <- data.frame(
+    ids = focus_type,
+    labels = paste0(focus_type, " Focus"),
+    parents = "",
+    values = total_count
+  )
+
+  # 2. Create data for the classification level
+  class_level_df <- plot_data |>
+    group_by(classification) |>
+    summarise(count = sum(count), .groups = 'drop') |>
+    mutate(
+      ids = paste(focus_type, classification, sep = "-"),
+      labels = classification,
+      parents = focus_type,
+      values = count
+    )
+
+  # 3. Create data for the event type level
+  event_level_df <- plot_data |>
+    mutate(
+      ids = paste(focus_type, classification, event_type, sep = "-"),
+      labels = event_type,
+      parents = paste(focus_type, classification, sep = "-"),
+      values = count
+    )
+
+  # Combine all levels into a single data frame for plotting
+  combined_df <- bind_rows(top_level_df, class_level_df, event_level_df) |>
+    # Ensure columns are of the correct type
+    mutate(
+      ids = as.character(ids),
+      labels = as.character(labels),
+      parents = as.character(parents)
+    )
+    
+  return(combined_df)
+}
+
+# Generate data for each study focus
+data_event <- create_sunburst_data(studies_agg, "Event")
+data_trend <- create_sunburst_data(studies_agg, "Trend")
+
+# Create a single plotly figure
+fig <- plot_ly() |>
+  add_trace(
+    type = "sunburst",
+    data = data_event,
+    ids = ~ids,
+    labels = ~labels,
+    parents = ~parents,
+    values = ~values,
+    domain = list(column = 0), # Place this trace in the first column
+    branchvalues = 'total'
+  ) |>
+  add_trace(
+    type = "sunburst",
+    data = data_trend,
+    ids = ~ids,
+    labels = ~labels,
+    parents = ~parents,
+    values = ~values,
+    domain = list(column = 1), # Place this trace in the second column
+    branchvalues = 'total'
+  ) |>
+  # Update the layout to specify subplots in a 1x2 grid
+  layout(
+    grid = list(rows = 1, columns = 2),
+    title = list(
+      text = "Climate Change and Extreme Weather Attribution",
+      x = 0.5,
+      xanchor = "center"
+    )
+  )
+
+# Save the interactive plot as an HTML file
+saveWidget(fig, file = "2025_08_12_tidy_tuesday_studies.html", selfcontained = TRUE)
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_08_12_tidy_tuesday_studies.png",
+  device = "png"
+)
+```

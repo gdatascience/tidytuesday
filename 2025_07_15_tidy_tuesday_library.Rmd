@@ -1,0 +1,119 @@
+---
+title: "TidyTemplate"
+date: 2025-07-15
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-07-15")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+bl_funding <- tt$bl_funding
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+bl_funding |>
+  arrange(year) |>
+  mutate(yoy_change = total_y2000_gbp_millions - lag(total_y2000_gbp_millions, 1)) |>
+  ggplot() +
+  geom_rect(
+    aes(
+      xmin = year - 0.45,
+      xmax = year + 0.45,
+      ymin = case_when(
+        year == min(year) ~ 0,
+        year == max(year) ~ 0,
+        yoy_change > 0 ~ lag(total_y2000_gbp_millions, 1),
+        TRUE ~ total_y2000_gbp_millions
+      ),
+      ymax = case_when(
+        year == min(year) ~ total_y2000_gbp_millions,
+        year == max(year) ~ total_y2000_gbp_millions,
+        yoy_change < 0 ~ lag(total_y2000_gbp_millions, 1),
+        TRUE ~ total_y2000_gbp_millions
+      ),
+      fill = if_else(year == min(year), TRUE, yoy_change > 0)
+    )
+  ) +
+  scale_fill_manual(
+    values = c("TRUE" = "navyblue", "FALSE" = "lightcoral"),
+    labels = c("TRUE" = "Increase", "FALSE" = "Decrease")
+  ) +
+  labs(
+    title = "British Library Funding in the UK",
+    subtitle = "Year on year change in funding for British Library",
+    caption = "Data from:",
+    x = "Year",
+    y = "Funding (GBP Millions)",
+    fill = "Year on Year Change"
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_07_15_tidy_tuesday_library.png",
+  device = "png"
+)
+```

@@ -1,6 +1,6 @@
 ---
 title: "TidyTemplate"
-date: 2025-07-15
+date: 2025-07-25
 output: html_document
 ---
 
@@ -28,7 +28,7 @@ theme_set(theme_light())
 Download the weekly data and make available in the `tt` object.
 
 ```{r Load}
-tt <- tt_load("2025-07-15")
+tt <- tt_load("2025-07-22")
 ```
 
 
@@ -57,7 +57,14 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
+mta_art <- tt$mta_art
 
+library(tidytext)
+mta_words <- mta_art |>
+  mutate(nyct_agency = if_else(agency == "NYCT", agency, "Non-NYCT")) |>
+  unnest_tokens(word, art_description) |>
+  anti_join(stop_words) |>
+  filter(str_length(word) > 1)
 
 ```
 
@@ -68,8 +75,50 @@ Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
 
+mta_words |>
+  count(nyct_agency, word) |>
+  group_by(nyct_agency) |>
+  top_n(10, wt = n) |>
+  ungroup() |>
+  mutate(
+    word_raw = fct_reorder(word, n),
+    word = reorder_within(word, n, nyct_agency),
+    nyct_agency = fct_rev(nyct_agency)
+  ) |>
+  ggplot(aes(n, word, fill = nyct_agency)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_reordered() +
+  facet_wrap(~nyct_agency, scales = "free")
 
-  
+library(tidylo)
+mta_words |>
+  count(nyct_agency, word) |>
+  bind_log_odds(nyct_agency, word, n) |>
+  group_by(nyct_agency) |>
+  top_n(10, log_odds_weighted) |>
+  ungroup() |>
+  mutate(
+    word = reorder_within(word, log_odds_weighted, nyct_agency),
+    nyct_agency = fct_rev(nyct_agency)
+  ) |>
+  ggplot(aes(log_odds_weighted, word, fill = nyct_agency)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~nyct_agency, scales = "free") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_reordered() +
+  labs(
+    x = "Log odds ratio, weighted by uninformative Dirichlet prior",
+    y = NULL,
+    title = "What were the most specific descriptive words for art?",
+    subtitle = "NYCT stations vs. non-NYCT stations",
+    caption = "Source: MTA Permanent Art Catalog  |  Analysis: Tony Galvan (@GDataScience)  |  #TidyTuesday"
+  )
+
+mta_art |>
+  filter(str_detect(str_to_lower(art_description), "reflective")) |>
+  sample_n(1) |>
+  pull(art_description)
+
 ```
 
 # Save Image
@@ -79,7 +128,7 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 ```{r}
 # This will save your most recent plot
 ggsave(
-  filename = "My TidyTuesday Plot.png",
+  filename = "2025_07_22_tidy_tuesday_art.png",
   device = "png"
 )
 ```
