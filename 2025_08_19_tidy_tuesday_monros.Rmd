@@ -1,0 +1,251 @@
+---
+title: "TidyTemplate"
+date: 2025-08-21
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(sf)
+library(maps)
+# library(rgl)
+library(rayshader)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-08-19")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  purrr::map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+munros_raw <- tt$scottish_munros
+
+munros <-
+  munros_raw |>
+  pivot_longer(
+    cols = starts_with(c("1", "2")),
+    names_to = "year",
+    values_to = "type"
+  ) |>
+  filter(!is.na(type)) |>
+  janitor::clean_names()
+
+munros_map_df <- munros |>
+  count(xcoord, ycoord, name, height_ft, name = "observations") |>
+  arrange(height_ft)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+two_d_plot <- munros_map_df |>
+  ggplot(
+    aes(
+      x = xcoord,
+      y = ycoord
+    )
+  ) +
+  geom_point(
+    aes(
+      size = observations,
+      color = height_ft
+    )
+  ) +
+  scale_color_gradient(low = "darkgreen", high = "yellow") +
+  labs(
+    title = "Scottish Munros",
+    x = NULL,
+    y = NULL,
+    size = "Observations",
+    color = "Height (ft)",
+    caption = "Source: Database of British and Irish hills  |  Created by: Tony Galvan (@GDataScience)  |  #TidyTuesday"
+  ) +
+  coord_fixed() +
+  theme(
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    plot.title = element_text(hjust = 0.5, size = 20),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    plot.caption = element_text(hjust = 0.5, size = 5),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 8)
+  )
+
+two_d_plot
+
+plot_gg(
+  two_d_plot, 
+  width = 4, 
+  height = 5,
+  multicore = TRUE, 
+  windowsize = c(800, 800), 
+  # zoom = 0.85, 
+  # phi = 35, 
+  # theta = 30, 
+  # sunangle = 225, 
+  # soliddepth = -1
+)
+  
+```
+
+
+```{r Map}
+
+# Convert the data frame to an sf object
+munros_sf <- st_as_sf(munros_map_df, coords = c("xcoord", "ycoord"), crs = 27700)
+
+# Transform the CRS of your sf object to WGS84 (lat/long)
+# This is the crucial step to match the map data
+munros_sf_wgs84 <- st_transform(munros_sf, crs = 4326)
+
+# Define the original OSGB36 bounding box coordinates
+osgb_lon_min <- min(munros_map_df$xcoord)
+osgb_lon_max <- max(munros_map_df$xcoord)
+osgb_lat_min <- min(munros_map_df$ycoord)
+osgb_lat_max <- max(munros_map_df$ycoord)
+
+# Create an sf bounding box from these OSGB36 coordinates
+bbox_sf <- st_bbox(c(xmin = osgb_lon_min, xmax = osgb_lon_max, ymin = osgb_lat_min, ymax = osgb_lat_max), crs = 27700)
+bbox_polygon <- st_as_sfc(bbox_sf)
+
+# Transform the bounding box from OSGB36 to WGS84 (longitude/latitude)
+bbox_wgs84 <- st_transform(bbox_polygon, crs = 4326)
+bbox_wgs84_coords <- st_bbox(bbox_wgs84)
+
+# Get the new WGS84 longitude and latitude limits with a buffer
+lon_min <- bbox_wgs84_coords$xmin - (bbox_wgs84_coords$xmax - bbox_wgs84_coords$xmin) * 0.5
+lon_max <- bbox_wgs84_coords$xmax + (bbox_wgs84_coords$xmax - bbox_wgs84_coords$xmin) * 0.5
+lat_min <- bbox_wgs84_coords$ymin - (bbox_wgs84_coords$ymax - bbox_wgs84_coords$ymin) * 0.05
+lat_max <- bbox_wgs84_coords$ymax + (bbox_wgs84_coords$ymax - bbox_wgs84_coords$ymin) * 0.05
+
+# Get the world polygon and extract the UK
+uk <- map_data("world") |>
+  filter(
+    region == "UK",
+  )
+
+p <- munros_sf_wgs84 |>
+  ggplot() +
+  geom_polygon(
+    data = uk,
+    aes(x = long, y = lat, group = group), 
+    fill="grey55"
+  ) +
+  geom_point(
+    aes(
+      x = st_coordinates(munros_sf_wgs84)[, 1], 
+      y = st_coordinates(munros_sf_wgs84)[, 2],
+      size = observations,
+      color = height_ft
+    )
+  ) +
+  scale_color_gradient(low = "darkgreen", high = "yellow") +
+  # make the points smaller
+  scale_size(range = c(0.1, 2.5)) +
+  coord_map(
+    xlim = c(lon_min, lon_max), 
+    ylim = c(lat_min, lat_max)
+  ) +
+  ggthemes::theme_map() +
+  labs(
+    title = "Scottish Munros",
+    x = NULL,
+    y = NULL,
+    size = "Observations",
+    color = "Height (ft)",
+    caption = "Source: Database of British and Irish hills  |  Created by: Tony Galvan (@GDataScience)  |  #TidyTuesday"
+  ) +
+  theme(
+    legend.position = "left",
+    panel.background = element_rect(
+      fill = "lightblue",
+      color = NA
+    ),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA
+    ),
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    plot.title = element_text(hjust = 0.5, size = 20),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    plot.caption = element_text(hjust = 0.5, size = 8),
+    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 8)
+  )
+
+p
+
+# Convert to 3D
+plot_gg(
+  p,
+  width = 6,
+  height = 4,
+  multicore = TRUE,
+  windowsize = c(1200, 800),
+)
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_08_19_tidy_tuesday_monros.png",
+  device = "png"
+)
+```

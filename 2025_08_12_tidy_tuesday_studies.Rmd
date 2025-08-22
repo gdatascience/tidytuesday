@@ -70,7 +70,7 @@ Using your processed dataset, create your unique visualization.
 
 Inspired by https://dviz.manishdatt.com/posts/Weather_attribution/weather_attribution.html
 
-```{r Sunburst}
+```{r Visualize}
 
 studies_agg <- studies |>
   count(study_focus, classification, event_type, name = "count")
