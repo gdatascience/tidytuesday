@@ -1,0 +1,441 @@
+---
+title: "TidyTemplate"
+date: 2025-08-29
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(tidytext)
+library(scales)
+library(camcorder)
+library(ggtext)
+library(showtext)
+```
+
+```{r theme, message=FALSE, warning=FALSE}
+tt_family <- "tt_family"
+tt_code <- "2025_08_26_tidy_tuesday_billboard"
+tt_source <- "Billboard Hot 100 Number Ones Database"
+
+# Font selected from http://fonts.google.com
+font_add_google("Bungee", tt_family)
+
+theme_set(theme_light(base_size = 32))
+
+font_add(family = "fa-brands", regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid", regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+showtext_auto()
+
+# Colors selected using https://coolors.co/
+bg_color <- "#00241B"
+txt_color <- "#CEE5F2"
+green <- "#01FF9A"
+blue <- "#140D4F"
+orange <- "#EC9192"
+
+tt_caption <- paste0("DataViz: Tony Galvan #TidyTuesday<span style='color:", bg_color, ";'>..</span><span style='font-family:fa-solid;color:", txt_color, ";'>&#xf0ce;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>", tt_source, "</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xe61b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>@GDataScience1</span><span style='color:", bg_color, ";'>..</span><span style='font-family:fa-brands;color:", txt_color, ";'>&#xf09b;</span><span style='color:", bg_color, ";'>.</span><span style='color:", txt_color, ";'>GDataScience</span><span style='color:", bg_color, ";'>..</span>")
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-08-26")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt |> 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+billboard <- tt$billboard |>
+  mutate(
+    year = year(date),
+    decade = year - year %% 10,
+    lyrics = str_replace_all(lyrics, "\\.", ". ")
+  )
+
+billboard_words <- 
+  billboard |>
+  filter(!is.na(lyrics)) |>
+  unnest_tokens(word, lyrics) |>
+  anti_join(stop_words)
+
+```
+
+# Start recording
+
+Use the {camcorder} package to record all plots that are output to the console
+
+```{r camcorder}
+
+# start recording
+gg_record(
+  dir = paste0("~/Downloads/camcorder/", tt_code), # where to save the recording
+  device = "png", # device to use to save images
+  width = 6, # width of saved image
+  height = 6, # height of saved image
+  units = "in", # units for width and height
+  dpi = 300 # dpi to use when saving image
+)
+
+```
+
+# Set up the theme for the plots
+
+```{r theme}
+
+tt_theme <- function(){
+  theme(
+    plot.title = element_text(
+      family = tt_family,
+      size = 90,
+      margin = margin(b = 5),
+      color = green,
+      face = "bold"
+    ),
+    plot.title.position = "plot",
+    plot.subtitle = element_markdown(
+      family = tt_family,
+      size = 52,
+      color = txt_color
+    ),
+    plot.background = element_rect(
+      fill = bg_color
+    ),
+    panel.border = element_rect(
+      color = bg_color
+    ),
+    panel.background = element_rect(
+      fill = bg_color
+    ),
+    strip.background = element_rect(
+      fill = bg_color,
+      color = bg_color
+    ),
+    legend.background = element_rect(
+      fill = bg_color,
+      color = bg_color
+    ),
+    legend.text = element_text(
+      family = tt_family,
+      size = 22,
+      margin = margin(b = 2.5, t = 2.5),
+      color = txt_color
+    ),
+    legend.title = element_text(
+      family = tt_family,
+      size = 34,
+      margin = margin(b = 2.5, t = 2.5),
+      color = txt_color
+    ),
+    strip.text = element_text(
+      family = tt_family,
+      size = 34,
+      color = txt_color,
+      margin = margin(b = 2.5, t = 2.5),
+      face = "bold"
+    ),
+    text = element_text(
+      family = tt_family,
+      color = txt_color
+    ),
+    axis.text = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 22
+    ),
+    axis.title = element_text(
+      family = tt_family,
+      color = txt_color,
+      size = 34
+    ),
+    plot.caption = element_markdown(
+      family = tt_family,
+      color = txt_color,
+      size = 18,
+      hjust = 0.5
+    ),
+    plot.caption.position = "plot",
+    # legend.position = "bottom",
+    panel.grid = element_blank(),
+    axis.ticks = element_blank()
+  )
+}
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+billboard |>
+  count(weeks_at_number_one) |>
+  ggplot(aes(weeks_at_number_one, n)) +
+  geom_col(fill = green) +
+  tt_theme() +
+  labs(
+    title = "Billboard Hot 100 #1's",
+    subtitle = "Distribution of Weeks at Number One",
+    x = "Weeks at Number One",
+    y = "Count of Songs",
+    caption = tt_caption
+  )
+
+billboard_words |>
+  count(decade, word) |>
+  group_by(decade) |>
+  slice_max(
+    n = 10, 
+    order_by = n, 
+    with_ties = FALSE
+  ) |>
+  ungroup() |>
+  mutate(word = reorder_within(word, n, decade)) |>
+  ggplot(aes(n, word)) +
+  geom_col(fill = green) +
+  scale_y_reordered() +
+  facet_wrap(~decade, scales = "free") +
+  tt_theme() +
+  labs(
+    title = "Billboard Hot 100 #1's",
+    subtitle = "Most Common Words in Lyrics by Decade",
+    x = "Count of Word",
+    y = NULL,
+    caption = tt_caption
+  )
+  
+```
+
+
+# Predicting Chart Longevity
+
+```{r Modeling}
+
+library(tidymodels)
+
+billboard_clean <- billboard |>
+  select(
+    weeks_at_number_one,
+    # Numerical features
+    energy, danceability, happiness, loudness_d_b, acousticness, bpm, length_sec,
+    intro_length_sec,
+    # Categorical/Other features
+    artist_male, artist_white, artist_black, rap_verse_in_a_non_rap_song,
+    spoken_word, explicit, instrumental, cover, sample, interpolation,
+    # Text feature for TF-IDF
+    lyrics
+  ) |>
+  # For simplicity, we'll convert all logical/integer dummies to factors for the model.
+  mutate(
+    across(
+      c(
+        artist_male, artist_white, artist_black, rap_verse_in_a_non_rap_song,
+        spoken_word, explicit, instrumental, cover, sample, interpolation
+      ),
+      as.factor
+    )
+  ) |>
+  # Remove rows with any remaining missing values for simplicity in this example.
+  na.omit()
+
+# -------------------------------------------------------------------------
+# Splitting the Data and Setting up the Recipe
+# -------------------------------------------------------------------------
+
+# Split the data into training and testing sets. We will use a 75/25 split.
+set.seed(123)
+billboard_split <- initial_split(billboard_clean, prop = 0.75)
+billboard_train <- training(billboard_split)
+billboard_test  <- testing(billboard_split)
+
+library(textrecipes)
+# Create a data recipe to preprocess the data.
+# This is a core part of the tidymodels workflow.
+billboard_recipe <-
+  recipe(weeks_at_number_one ~ ., data = billboard_train) |>
+  # Normalize numerical features to improve model performance
+  step_normalize(all_numeric_predictors()) |>
+  # Binarize the lyrical content using a tokenization and TF-IDF step
+  # We will use the top 500 terms to avoid creating an overly large sparse matrix.
+  step_tokenize(lyrics) |>
+  step_stopwords(lyrics) |>
+  step_tokenfilter(lyrics, max_tokens = 500) |>
+  step_tfidf(lyrics) |>
+  # Remove any columns with zero variance. This is crucial for models like glmnet
+  # and will fix the error you were seeing.
+  step_zv(all_predictors()) |>
+  # We'll need to use `step_other` for low-frequency factors and `step_dummy`
+  # for one-hot encoding.
+  step_dummy(all_nominal_predictors(), one_hot = TRUE)
+
+# You can `prep` and `bake` the recipe to see the processed data
+# processed_data <- prep(billboard_recipe) |> bake(new_data = NULL)
+# glimpse(processed_data)
+
+
+# -------------------------------------------------------------------------
+# Model Specification and Training
+# -------------------------------------------------------------------------
+
+# We will use a regularized regression model, specifically a "glmnet" model,
+# which is good for high-dimensional data (like TF-IDF features).
+# This uses both L1 (Lasso) and L2 (Ridge) regularization to prevent overfitting.
+glmnet_spec <-
+  linear_reg(penalty = tune(), mixture = tune()) |>
+  set_engine("glmnet") |>
+  set_mode("regression")
+
+# Create a model workflow to combine the recipe and the model.
+glmnet_workflow <-
+  workflow() |>
+  add_recipe(billboard_recipe) |>
+  add_model(glmnet_spec)
+
+# -------------------------------------------------------------------------
+# Tuning the Model
+# -------------------------------------------------------------------------
+
+# Create a set of resamples for cross-validation to tune the hyperparameters.
+# We'll use 5-fold cross-validation.
+billboard_folds <- vfold_cv(billboard_train, v = 5)
+
+# Tune the `penalty` and `mixture` hyperparameters of the glmnet model.
+doParallel::registerDoParallel()
+set.seed(345)
+glmnet_tune_res <-
+  tune_grid(
+    glmnet_workflow,
+    resamples = billboard_folds,
+    grid = 20
+  )
+
+# Get the best hyperparameters based on the Root Mean Squared Error (RMSE).
+best_params <- select_best(glmnet_tune_res, metric = "rmse")
+
+# Finalize the workflow with the best parameters.
+final_glmnet_workflow <-
+  finalize_workflow(glmnet_workflow, best_params)
+
+# Fit the final model to the entire training data.
+final_fit <- fit(final_glmnet_workflow, data = billboard_train)
+
+# -------------------------------------------------------------------------
+# Evaluation and Interpretation
+# -------------------------------------------------------------------------
+
+# Make predictions on the test set.
+predictions <- predict(final_fit, new_data = billboard_test) |>
+  bind_cols(billboard_test)
+
+# Evaluate the model performance using common metrics.
+metrics <- metric_set(rmse, rsq)
+test_results <- predictions |>
+  metrics(truth = weeks_at_number_one, estimate = .pred)
+
+print("Final model performance on the test set:")
+print(test_results)
+
+# A good way to interpret a complex model is to look at variable importance.
+# This will show which features were most influential in the predictions.
+# We'll use the `vip` package for this.
+final_glmnet_fit <- final_fit |> extract_fit_parsnip()
+
+library(vip)
+
+# Plot variable importance using the tt_theme
+vi(final_glmnet_fit) |>
+  # mutate(type = if_else(str_detect(Variable, "tfidf_lyrics_"), "Lyric", "Other Feature")) |>
+  # group_by(type) |>
+  slice_max(Importance, n = 20) |>
+  # ungroup() |>
+  mutate(
+    Variable = str_replace(Variable, "tfidf_lyrics_", ""),
+    Variable = reorder(Variable, Importance),
+    Sign = fct_rev(Sign)
+  ) |>
+  ggplot(aes(Variable, Importance, fill = Sign)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(
+    values = c(
+      "POS" = green,
+      "NEG" = orange
+    ),
+    labels = c(
+      "POS" = "Positive",
+      "NEG" = "Negative"
+    )
+  ) +
+  # facet_wrap(~type, scales = "free") +
+  tt_theme() +
+  labs(
+    title = "Billboard Hot 100 #1's",
+    subtitle = "Predicting Weeks at Number One",
+    x = "Variable",
+    y = "Importance to Regularized Regression Model",
+    fill = "Direction",
+    caption = tt_caption
+  )
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = paste0(tt_code, ".png"),
+  device = "png"
+)
+
+gg_stop_recording()
+
+gg_playback(
+  name = paste0(tt_code, ".gif"),
+  first_image_duration = 4,
+  last_image_duration = 20,
+  frame_duration = 0.5
+)
+```
