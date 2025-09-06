@@ -1,0 +1,326 @@
+---
+title: "TidyTemplate"
+date: 2025-09-05
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-09-02")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+frogs <- tt$frogID_data |>
+  janitor::clean_names() |>
+  # Create a Season variable based on the Australian date
+  mutate(
+    season = case_when(
+      month(event_date) %in% c(12, 1, 2) ~ "Summer",
+      month(event_date) %in% c(3, 4, 5) ~ "Autumn",
+      month(event_date) %in% c(6, 7, 8) ~ "Winter",
+      month(event_date) %in% c(9, 10, 11) ~ "Spring"
+    )
+  )
+
+# Create a data frame of major cities in Australia with their latitudes and longitudes
+major_cities <- data.frame(
+  city = c("Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide"),
+  lat = c(-33.8688, -37.8136, -27.4698, -31.9505, -34.9285),
+  lon = c(151.2093, 144.9631, 153.0251, 115.8605, 138.6007)
+)
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+# create a map of the Australian frogs
+frogs |>
+  ggplot() +
+  borders("world", region = "Australia", fill = "lightgrey") +
+  geom_point(aes(x = decimal_longitude, y = decimal_latitude, color = season), alpha = 0.5) +
+  theme_minimal() +
+  labs(
+    title = "Frog Observations in Australia by Season",
+    x = "Longitude",
+    y = "Latitude",
+    color = "Season"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    legend.position = "bottom"
+  )
+
+# create a density map of the Australian frogs
+frogs |>
+  ggplot() +
+  borders("world", region = "Australia", fill = "lightgrey") +
+  stat_density_2d(aes(x = decimal_longitude, y = decimal_latitude, fill = ..level..), geom = "polygon", alpha = 0.5) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(
+    title = "Density of Frog Observations in Australia",
+    x = "Longitude",
+    y = "Latitude",
+    fill = "Density"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    legend.position = "bottom"
+  )
+
+# create a density map of the Australian frogs by season
+frogs |>
+  ggplot() +
+  borders("world", region = "Australia", fill = "lightgrey") +
+  stat_density_2d(aes(x = decimal_longitude, y = decimal_latitude, fill = ..level..), geom = "polygon", alpha = 0.5) +
+  scale_fill_viridis_c() +
+  facet_wrap(~season) +
+  theme_minimal() +
+  labs(
+    title = "Density of Frog Observations in Australia by Season",
+    x = "Longitude",
+    y = "Latitude",
+    fill = "Density"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    legend.position = "bottom"
+  )
+
+# create a hex density map of the Australian frogs by season
+frogs |>
+  ggplot() +
+  borders("world", region = "Australia", fill = "lightgrey") +
+  geom_hex(aes(x = decimal_longitude, y = decimal_latitude), bins = 20) +
+  scale_fill_viridis_c() +
+  facet_wrap(~season) +
+  theme_minimal() +
+  labs(
+    title = "Hex Density of Frog Observations in Australia by Season",
+    x = "Longitude",
+    y = "Latitude",
+    fill = "Count"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    legend.position = "bottom"
+  )
+
+# create a hex density map of the Australian frogs by Season with major cities marked
+
+frogs |>
+  ggplot() +
+  borders("world", region = "Australia", fill = "lightgrey") +
+  geom_hex(aes(x = decimal_longitude, y = decimal_latitude), bins = 20) +
+  geom_point(data = major_cities, aes(x = lon, y = lat), color = "red", size = 3) +
+  geom_text(data = major_cities, aes(x = lon, y = lat, label = city), vjust = -1, color = "red") +
+  scale_fill_viridis_c() +
+  facet_wrap(~season) +
+  theme_minimal() +
+  labs(
+    title = "Hex Density of Frog Observations in Australia by Season with Major Cities",
+    x = "Longitude",
+    y = "Latitude",
+    fill = "Count"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    legend.position = "bottom"
+  )
+
+# create a hex density map of the Australian frogs by Season with major cities marked as stars; fix the map projection; remove the axis titles and text; remove grid lines
+frogs |>
+  ggplot() +
+  borders("world", region = "Australia", fill = "lightgrey") +
+  geom_hex(aes(x = decimal_longitude, y = decimal_latitude), bins = 20) +
+  geom_point(data = major_cities, aes(x = lon, y = lat), color = "red", size = 3, shape = 8) +
+  geom_text(data = major_cities, aes(x = lon, y = lat, label = city), vjust = -1, color = "red") +
+  scale_fill_viridis_c() +
+  facet_wrap(~season) +
+  coord_fixed() +
+  theme_minimal() +
+  labs(
+    title = "Hex Density of Frog Observations in Australia",
+    subtitle = "by Season with Major Cities Marked",
+    fill = "Count",
+    caption = "Data: FrogID dataset 6.0 | Viz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    legend.position = "bottom",
+    plot.caption.position = "plot",
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank()
+  )
+
+# create a density map of the Australian frogs by season with major cities marked as stars; fix the map projection; remove the axis titles and text; remove grid lines; add a subtitle and caption
+frogs |>
+  ggplot() +
+  borders("world", region = "Australia", fill = "lightgrey") +
+  stat_density_2d(aes(x = decimal_longitude, y = decimal_latitude, fill = ..level..), geom = "polygon", alpha = 0.5) +
+  geom_point(data = major_cities, aes(x = lon, y = lat), color = "red", size = 3, shape = 8) +
+  geom_text(data = major_cities, aes(x = lon, y = lat, label = city), vjust = -1, color = "red") +
+  scale_fill_viridis_c() +
+  facet_wrap(~season) +
+  coord_fixed() +
+  theme_minimal() +
+  labs(
+    title = "Density of Frog Observations in Australia",
+    subtitle = "by Season with Major Cities Marked",
+    fill = "Density",
+    caption = "Data: FrogID dataset 6.0 | Viz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    legend.position = "bottom",
+    plot.caption.position = "plot",
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank()
+  )
+
+# create a density map of the Australian frogs by season with major cities marked as stars; fix the map projection; remove the axis titles and text; remove grid lines; add a subtitle and caption; 
+frogs |>
+  ggplot() +
+  borders("world", region = "Australia", fill = "lightgrey") +
+  stat_density_2d(aes(x = decimal_longitude, y = decimal_latitude, fill = ..level..), geom = "polygon", alpha = 0.5) +
+  geom_point(data = major_cities, aes(x = lon, y = lat), color = "red", size = 3, shape = 8) +
+  geom_text(data = major_cities, aes(x = lon, y = lat, label = city), vjust = -1, color = "red") +
+  scale_fill_viridis_c() +
+  facet_wrap(~season) +
+  coord_fixed() +
+  theme_minimal() +
+  labs(
+    title = "Density of Frog Observations in Australia",
+    subtitle = "by Season with Major Cities Marked",
+    fill = "Density",
+    caption = "Data: FrogID dataset 6.0 | Viz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    legend.position = "bottom",
+    plot.caption.position = "plot",
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank()
+  )
+
+# create a density map of the Australian frogs by season with major cities marked as stars; fix the map projection; remove the axis titles and text; remove grid lines; add a subtitle and caption; decrease the size of the city markers and labels
+frogs |>
+  ggplot() +
+  borders("world", region = "Australia", fill = "lightgrey") +
+  stat_density_2d(aes(x = decimal_longitude, y = decimal_latitude, fill = ..level..), geom = "polygon", alpha = 0.5) +
+  geom_point(data = major_cities, aes(x = lon, y = lat), color = "red", size = 2, shape = 8) +
+  geom_text(data = major_cities, aes(x = lon, y = lat, label = city), vjust = -1, color = "red", size = 3) +
+  scale_fill_viridis_c() +
+  facet_wrap(~season) +
+  coord_fixed() +
+  theme_minimal() +
+  labs(
+    title = "Density of Frog Observations in Australia",
+    subtitle = "by Season with Major Cities Marked",
+    fill = "Density",
+    caption = "Data: FrogID dataset 6.0 | Viz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    legend.position = "bottom",
+    plot.caption.position = "plot",
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank()
+  )
+
+# create a density map of the Australian frogs by season with major cities marked as stars; fix the map projection; remove the axis titles and text; remove grid lines; add a subtitle and caption; decrease the size of the city labels; make the city markers transparent; add lines connecting the city labels to the markers
+frogs |>
+  ggplot() +
+  borders("world", region = "Australia", fill = "lightgrey") +
+  stat_density_2d(aes(x = decimal_longitude, y = decimal_latitude, fill = ..level..), geom = "polygon", alpha = 0.5) +
+  # geom_point(data = major_cities, aes(x = lon, y = lat), color = "red", size = 2, shape = 8, alpha = 0.7) +
+  geom_text(data = major_cities, aes(x = lon, y = lat, label = city), vjust = -1, color = "red", size = 2.5) +
+  geom_segment(data = major_cities, aes(x = lon, y = lat, xend = lon, yend = lat + 1), color = "red", linetype = "dashed", alpha = 0.5) +
+  scale_fill_viridis_c() +
+  facet_wrap(~season) +
+  coord_fixed() +
+  theme_minimal() +
+  labs(
+    title = "Density of Frog Observations in Australia",
+    subtitle = "By Season with Major Cities Marked",
+    fill = "Density",
+    caption = "Data: FrogID dataset 6.0 | Viz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, face = "bold"),
+    plot.caption = element_text(size = 8, hjust = 0.5),
+    legend.position = "bottom",
+    plot.caption.position = "plot",
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank()
+  )
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_09_02_tidy_tuesday_frogs.png",
+  device = "png"
+)
+```
