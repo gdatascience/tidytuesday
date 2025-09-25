@@ -1,0 +1,328 @@
+---
+title: "TidyTemplate"
+date: 2025-09-19
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event! Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data. While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format. The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community! As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-09-16")
+```
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset. This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+all_recipes <- tt$all_recipes
+
+```
+
+# Summary Statistics
+
+Calculate key summary statistics for the numerical variables. This helps you understand the central tendency, spread, and potential outliers.
+
+```{r skimr}
+
+summary(all_recipes)
+
+library(skimr)
+skim(all_recipes)
+
+```
+
+# Missing Values
+
+It's crucial to identify if there are any missing values (NA). The `{visdat}` package is great for visualizing this.
+
+```{r missing}
+
+# Install and load the visdat package
+# install.packages("visdat")
+library(visdat)
+
+# Visualize missing values
+vis_miss(all_recipes)
+
+```
+
+# Correlation Analysis
+
+Investigate the relationship between different numerical variables
+
+```{r}
+# Select numerical variables for correlation
+numerical_data <- all_recipes %>%
+  select(avg_rating, total_ratings, reviews, prep_time, cook_time, total_time, calories, fat, carbs, protein, servings)
+
+# Calculate the correlation matrix
+cor_matrix <- cor(numerical_data, use = "pairwise.complete.obs")
+print(cor_matrix)
+
+# Visualize the correlation matrix with a heatmap
+# install.packages("corrplot")
+library(corrplot)
+corrplot(cor_matrix, method = "color")
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+# Plot a boxplot of cook times
+all_recipes |> 
+  filter(!is.na(avg_rating)) |> 
+  ggplot(aes(x = avg_rating)) +
+  geom_histogram(
+    fill = "lightblue"
+    , color = "black"
+    # , binwidth = 0.5
+  ) +
+  labs(
+    title = "Distribution of Recipe Ratings",
+    x = "Rating",
+    y = "Count",
+    caption = "Source: AllRecipes.com | Graphic: Your Name"
+  )
+
+# Plot a boxplot of cook times
+all_recipes |>
+  ggplot(aes(y = cook_time)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Cook Times", y = "Cook Time (minutes)")
+  
+```
+
+# Categorical Variable Analysis
+
+```{r Authors}
+
+# Find the top 10 most prolific authors
+top_authors <- all_recipes %>%
+  count(author, sort = TRUE) %>%
+  top_n(10)
+
+print(top_authors)
+
+# Analyze the average rating of the top authors
+author_ratings <- all_recipes %>%
+  group_by(author) %>%
+  summarise(
+    avg_rating = mean(avg_rating, na.rm = TRUE),
+    total_recipes = n()
+  ) %>%
+  filter(total_recipes > 5) %>% # Filter for authors with a minimum number of recipes
+  arrange(desc(avg_rating))
+
+print(head(author_ratings))
+
+```
+
+# Time Series Analysis
+
+```{r TimeSeries}
+
+# Count recipes published by year
+recipes_by_year <- all_recipes %>%
+  mutate(year = year(date_published)) %>%
+  group_by(year) %>%
+  summarise(count = n())
+
+# Plot recipes published over time
+ggplot(recipes_by_year, aes(x = year, y = count)) +
+  geom_line() +
+  labs(title = "Recipes Published Over Time", x = "Year", y = "Number of Recipes")
+
+```
+
+# Clustering
+
+```{r Clustering}
+
+# Load necessary libraries
+library(tidymodels)
+# install.packages("tidyclust")
+library(tidyclust)
+
+# Create a tidymodels recipe for preprocessing
+clustering_recipe <- recipe(~., data = all_recipes) |>
+  # Select the numerical variables for clustering
+  step_select(
+    calories, fat, carbs, protein, prep_time, cook_time, total_time, servings
+  ) |>
+  # Impute missing numerical data with the median
+  step_impute_median(all_numeric_predictors()) |>
+  # Normalize the data so all features have a mean of zero and a standard deviation of one
+  step_normalize(all_numeric_predictors())
+
+# Define the K-Means clustering model
+k_means_spec <- k_means(num_clusters = 3) |>
+  set_engine("stats")
+
+# Create a tidymodels workflow
+clustering_workflow <- workflow() |>
+  add_recipe(clustering_recipe) |>
+  add_model(k_means_spec)
+
+# Fit the workflow to the data
+clustering_fit <- clustering_workflow |>
+  fit(data = all_recipes)
+
+# Augment the original data with cluster assignments
+all_recipes_clustered <- augment(clustering_fit, new_data = all_recipes)
+
+# View the distribution of recipes in each cluster
+print("Cluster Distribution:")
+all_recipes_clustered |>
+  count(.pred_cluster)
+
+# View the average values for each cluster to understand the groupings
+print("Cluster Characteristics:")
+all_recipes_clustered |>
+  group_by(.pred_cluster) |>
+  summarise(
+    avg_calories = mean(calories, na.rm = TRUE),
+    avg_fat = mean(fat, na.rm = TRUE),
+    avg_protein = mean(protein, na.rm = TRUE),
+    avg_carbs = mean(carbs, na.rm = TRUE),
+    avg_total_time = mean(total_time, na.rm = TRUE)
+  )
+
+# Create a triangular plot to visualize the clusters based on fat, carbs, and protein
+all_recipes_clustered |>
+  select(fat, carbs, protein, .pred_cluster) |>
+  drop_na() |>
+  mutate(
+    # Calculate the sum of the three components
+    S = fat + carbs + protein,
+    # Normalize the data to proportions
+    fat_norm = fat / S,
+    carbs_norm = carbs / S,
+    protein_norm = protein / S,
+    # Convert the ternary proportions to Cartesian coordinates (x, y)
+    x = carbs_norm + 0.5 * protein_norm,
+    y = (sqrt(3) / 2) * protein_norm
+  ) |>
+  ggplot() +
+  # Add the points to the plot
+  geom_point(aes(x = x, y = y, color = .pred_cluster), size = 0.25, alpha = 0.4) +
+  # Manually draw the triangle to serve as a guide for the axes
+  geom_path(
+    data = data.frame(
+      x = c(0, 1, 0.5, 0),
+      y = c(0, 0, sqrt(3)/2, 0)
+    ),
+    aes(x = x, y = y),
+    color = "black"
+  ) +
+  # Add labels for the vertices
+  annotate("text", x = 0, y = -0.05, label = "Fat", vjust = 1, size = 5) +
+  annotate("text", x = 1, y = -0.05, label = "Carbs", vjust = 1, size = 5) +
+  annotate("text", x = 0.5, y = sqrt(3)/2 + 0.02, label = "Protein", vjust = 0, size = 5) +
+  # Set plot title and adjust theme for a cleaner look
+  labs(title = "Ternary Plot of Recipe Nutritional Content") +
+  coord_equal() + # Make sure the axes are equal to maintain the triangle shape
+  theme_void()    # Remove all axis and background elements
+
+# Create a facetted version with one triangle per cluster
+all_recipes_clustered |>
+  select(fat, carbs, protein, .pred_cluster) |>
+  drop_na() |>
+  mutate(
+    # Calculate the sum of the three components
+    S = fat + carbs + protein,
+    # Normalize the data to proportions
+    fat_norm = fat / S,
+    carbs_norm = carbs / S,
+    protein_norm = protein / S,
+    # Convert the ternary proportions to Cartesian coordinates (x, y)
+    x = carbs_norm + 0.5 * protein_norm,
+    y = (sqrt(3) / 2) * protein_norm
+  ) |>
+  ggplot() +
+  # Add the points to the plot
+  geom_point(
+    aes(x = x, y = y, color = .pred_cluster), 
+    size = 0.25,
+    alpha = 0.15
+  ) +
+  # Manually draw the triangle to serve as a guide for the axes
+  geom_path(
+    data = data.frame(
+      x = c(0, 1, 0.5, 0),
+      y = c(0, 0, sqrt(3)/2, 0)
+    ),
+    aes(x = x, y = y),
+    color = "black"
+  ) +
+  # Add labels for the vertices
+  annotate("text", x = 0, y = -0.05, label = "Fat", vjust = 1, size = 2, hjust = 0) +
+  annotate("text", x = 1, y = -0.05, label = "Carbs", vjust = 1, size = 2, hjust = 1) +
+  annotate("text", x = 0.5, y = sqrt(3)/2 + 0.02, label = "Protein", vjust = 0, size = 2) +
+  facet_wrap(~.pred_cluster, nrow = 1) +
+  # Set plot title and adjust theme for a cleaner look
+  labs(
+    title = "Ternary Plot of Recipe Nutritional Content",
+    caption = ""
+  ) +
+  coord_equal() + # Make sure the axes are equal to maintain the triangle shape
+  # theme_void() +   # Remove all axis and background elements
+  theme(
+    legend.position = "none",
+    plot.title.position = "panel",
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter!
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_09_16_tidy_tuesday_recipes.png",
+  device = "png"
+)
+```
