@@ -40,7 +40,7 @@ tt
 Take an initial look at the format of the data available.
 
 ```{r Glimpse}
-tt %>% 
+tt |> 
   map(glimpse)
 ```
 
@@ -50,7 +50,20 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
-chess <- tt$fide_ratings_august
+chess <- tt$fide_ratings_august |>
+  mutate(report_month = "August") |>
+  bind_rows(
+    tt$fide_ratings_september |>
+      mutate(report_month = "September")
+  ) |>
+  mutate(
+    age_bins = cut(
+      2025 - bday,
+      breaks = c(0, 18, 30, 50, 65, 200),
+      labels = c("<18", "18-29", "30-49", "50-64", "65+"),
+      right = FALSE
+    )
+  )
 
 ```
 
@@ -60,8 +73,231 @@ Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
 
+chess |>
+  # mutate(sex = fct_rev(sex)) |>
+  ggplot(aes(rating, fill = sex)) +
+  geom_histogram(
+    alpha = 0.5, 
+    position = "identity", 
+    bins = 30
+  ) +
+  scale_fill_manual(
+    values = c("red", "lightblue"),
+    labels = c("M" = "Male", "F" = "Female")
+  ) +
+  labs(
+    title = "FIDE Chess Ratings Distribution",
+    subtitle = "Distribution of chess ratings by sex",
+    x = "Rating",
+    y = "Count",
+    fill = "Sex"
+  )
 
+chess |>
+  ggplot(aes(x = bday, y = rating, group = bday)) +
+  geom_boxplot() +
+  facet_wrap(~sex) +
+  labs(
+    title = "FIDE Chess Ratings Over Time",
+    subtitle = "Average ratings by country and sex",
+    x = "Year",
+    y = "Average Rating"
+  )
+
+chess |>
+  filter(!is.na(age_bins)) |>
+  ggplot(aes(x = age_bins, y = rating, fill = age_bins)) +
+  geom_violin(
+    show.legend = FALSE,
+    # add median line
+    draw_quantiles = c(0.5)
+  ) +
+  facet_grid(
+    cols = vars(report_month),
+    rows = vars(sex)
+  ) +
+  labs(
+    title = "FIDE Chess Ratings Over Time",
+    subtitle = "Average ratings by country and sex",
+    x = "Age",
+    y = "Average Rating"
+  )
+
+chess |>
+  filter(!is.na(age_bins)) |>
+  count(sex, age_bins, report_month) |>
+  group_by(report_month, sex) |>
+  mutate(
+    total = sum(n),
+    prop = n / total,
+    count_emoji = round(prop * 100)
+  ) |>
+  ungroup() |>
+  ggplot(aes(x = age_bins, y = count_emoji, fill = age_bins)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = paste0(count_emoji, "%")), vjust = -0.5) +
+  facet_grid(
+    cols = vars(report_month),
+    rows = vars(sex)
+  ) +
+  labs(
+    title = "FIDE Chess Players by Age Group",
+    subtitle = "Proportion of chess players by age group and report month",
+    x = "Age Group",
+    y = "Proportion (%)"
+  ) +
+  scale_y_continuous(
+    limits = c(0, 100),
+    breaks = seq(0, 100, by = 10),
+    labels = function(x) paste0(x, "%")
+  )
   
+```
+
+
+```{r}
+# Load necessary libraries
+library(baffle)
+library(withr)
+library(fontawesome)
+library(ggtext)
+
+# Set a font that supports emojis
+# install.packages("extrafont")
+# extrafont::font_import()
+# You may need to run this once to install fonts on your system
+
+waffle(c(30,70))
+
+par(mfrow=c(1, 3))
+waffle(c(25, 75), col=c("red", "gray"))
+waffle(c(25, 75), col=c("blue", "gray"), ncol=5)
+waffle(c(25, 75), col=c("darkgreen", "gray"), nrow=5)
+
+par(mar=c(4,0,0,0))
+cyl = table(mtcars$cyl)
+waffle(cyl, stacked=FALSE, gap=1)
+legend("top", horiz=TRUE, bty="n", inset=0.9, xpd=TRUE,
+    legend=names(cyl), cex=2,
+    fill=palette.colors(length(cyl), "Set 1"), border=NA,
+    title="Number of cylinders\n in 'mtcars'", title.font=2, title.cex=1.5)
+
+# Group by age bucket and sex, then count the number of players
+waffle_data <- chess |>
+  filter(!is.na(age_bins)) |>
+  count(sex, age_bins, report_month) |>
+  group_by(report_month, sex) |>
+  mutate(
+    total = sum(n),
+    prop = n / total,
+    count_emoji = round(prop * 100)
+  ) |>
+  ungroup()
+
+# Define a color palette for the age bins
+age_bin_colors <- c("<18" = "#FF7F00", "18-29" = "#4DAF4A", "30-49" = "#377EB8", "50-64" = "#984EA3", "65+" = "#E41A1C")
+
+# Get unique combinations of sex and month
+plot_data_list <- waffle_data |>
+  group_by(sex, report_month) |>
+  group_split()
+
+# Loop through each data subset to create a waffle chart
+for (data_subset in plot_data_list) {
+  sex_val <- unique(data_subset$sex)
+  month_val <- unique(data_subset$report_month)
+  
+  # The baffle::waffle function accepts a vector of abundancies.
+  # We use the 'n' column for the abundances.
+  abundances <- data_subset$count_emoji
+  names(abundances) <- data_subset$age_bins
+  
+  # Create a filename
+  filename <- paste0("waffle_chart_", sex_val, "_", month_val, ".png")
+  
+  # Open PNG device, create plot, and then close device
+  png(filename, width = 600, height = 600)
+  plot_title <- paste("Report Month:", month_val, "| Sex:", sex_val)
+  baffle::waffle(abundances,
+                #  main = plot_title,
+                 col = age_bin_colors[names(abundances)])
+  dev.off()
+}
+
+# Combine the four PNG files into a 2x2 grid: waffle_chart_F_August.png, waffle_chart_M_August.png, waffle_chart_F_September.png, and waffle_chart_M_September.png
+library(patchwork)
+library(png)
+library(cowplot)
+img1 <- readPNG("waffle_chart_F_August.png")
+img2 <- readPNG("waffle_chart_M_August.png")
+img3 <- readPNG("waffle_chart_F_September.png")
+img4 <- readPNG("waffle_chart_M_September.png")
+
+p_blank_fa <- ggplot(
+    data = tibble(x = c(0,1,2), y = c(0,1,2)),
+    aes(x,y)
+  ) + 
+  theme_void() +
+  ggtitle("Females - August") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(hjust = 0.5, size = 12, face = "bold")
+  )
+p1 <- ggdraw(p_blank_fa) + draw_image(img1, scale = 0.75)
+
+p_blank_fs <- ggplot(
+    data = tibble(x = c(0,1,2), y = c(0,1,2)),
+    aes(x,y)
+  ) + theme_void() + ggtitle("Females - September") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(hjust = 0.5, size = 12, face = "bold")
+  )
+p3 <- ggdraw(p_blank_fs) + draw_image(img3, scale = 0.75)
+
+p_blank_ma <- ggplot(
+    data = tibble(x = c(0,1,2), y = c(0,1,2)),
+    aes(x,y)
+  ) + 
+  theme_void() +
+  ggtitle("Males - August") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(hjust = 0.5, size = 12, face = "bold")
+  )
+p2 <- ggdraw(p_blank_ma) + draw_image(img2, scale = 0.75)
+
+p_blank_ms <- ggplot(
+    data = tibble(x = c(0,1,2), y = c(0,1,2)),
+    aes(x,y)
+  ) + theme_void() + ggtitle("Males - September") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(hjust = 0.5, size = 12, face = "bold")
+  )
+p4 <- ggdraw(p_blank_ms) + draw_image(img4, scale = 0.75)
+
+p_legend <- tibble(
+  age_bins = names(age_bin_colors),
+  colors = age_bin_colors
+) |>
+  ggplot(aes(x = age_bins, y = 1, fill = age_bins)) +
+  geom_tile() +
+  scale_fill_manual(values = age_bin_colors) +
+  geom_text(aes(y = 0.75, label = age_bins), vjust = -0.5) +
+  theme_void() +
+  theme(legend.position = "none")
+
+library(ggtext)
+combined_plot <- (p1 | p3) / (p2 | p4) / p_legend +
+  plot_layout(heights = c(6, 6, 1)) +
+  plot_annotation(
+    title = "FIDE Chess Players by Age Group",
+    subtitle = "Proportion of chess players by age group and report month\nEach square represents 1% of the total players in that group",
+    caption = "Data: FIDE | Chart: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  )
+combined_plot
+
 ```
 
 # Save Image
@@ -72,6 +308,8 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 # This will save your most recent plot
 ggsave(
   filename = "2025_09_23_tidy_tuesday_chess.png",
-  device = "png"
+  device = "png",
+  width = 5,
+  height = 7
 )
 ```
