@@ -1,0 +1,140 @@
+---
+title: "TidyTemplate"
+date: 2025-09-30
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event! Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data. While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format. The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community! As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load Libraries
+
+Check out the {tidyplots} package:
+
+-   <https://jbengler.github.io/tidyplots/>
+-   <https://tidyplots.org/tidyplots-cheatsheet-v1.pdf>
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+
+# install.packages("tidyplots")
+library(tidyplots)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-09-30")
+```
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset. This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+cranes <- tt$cranes |>
+  mutate(
+    month = month(date, label = TRUE),
+    year = year(date)
+  )
+
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+cranes |>
+  tidyplot(x = observations) |>
+  add_histogram() |>
+  adjust_x_axis_title("# of observations") |>
+  remove_y_axis_title() |>
+  add_title("Histogram of Crane Observations") |>
+  add_caption("Source: www.hornborga.com/naturen/transtatistik/")
+
+cranes |>
+  tidyplot(
+    x = date,
+    y = observations,
+    color = weather_disruption
+  ) |>
+  add_data_points() |>
+  remove_x_axis_title() |>
+  adjust_y_axis_title("# of observations") |>
+  adjust_legend_title("Weather Disruption") |>
+  add_title("Crane Observations Over Time") |>
+  add_caption("Source: www.hornborga.com/naturen/transtatistik/")
+
+cranes |>
+  mutate(year = factor(year)) |>
+  tidyplot(
+    x = month,
+    y = observations,
+    color = year
+  ) |>
+  add_curve_fit(alpha = 0.05) |>
+  adjust_y_axis_title("# of observations") |>
+  remove_x_axis_title() |>
+  remove_legend() |>
+  add_title("Crane Observations by Month and Year") |>
+  add_caption("Source: www.hornborga.com/naturen/transtatistik/")
+
+cranes |>
+  mutate(year = factor(year)) |>
+  tidyplot(
+    x = month,
+    y = observations,
+    fill = month,
+    color = month
+  ) |>
+  add_boxplot(show_outliers = FALSE) |>
+  add_data_points_beeswarm(alpha = 0.1) |>
+  remove_legend() |>
+  adjust_y_axis_title("# of observations") |>
+  remove_x_axis_title() |>
+  add_title("Crane Observations by Month") |>
+  add_caption("Source: www.hornborga.com/naturen/transtatistik/")
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter!
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_09_30_tidy_tuesday_cranes.png",
+  device = "png"
+)
+```
