@@ -19,6 +19,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r libraries, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(tidytuesdayR)
+
+theme_set(theme_light())
 ```
 
 # Load the weekly Data
@@ -55,8 +57,59 @@ Explore the data and process it into a nice format for plotting! Access each dat
 
 ```{r Wrangle}
 
+basketball <- tt$euroleague_basketball |>
+  janitor::clean_names()
+
+```
 
 
+# Ellmer package
+
+Try out the {ellmer} package:
+
+- https://ellmer.tidyverse.org/
+
+```{r ellmer}
+
+# Call the following code to add your Google Gemini API key to your R environment
+# usethis::edit_r_environ()
+# GOOGLE_GEMINI_API_KEY="your_api_key_here"
+
+if (FALSE) { # \dontrun{
+
+library(ellmer)
+  
+chat <- chat_google_gemini(
+  api_key = Sys.getenv("GOOGLE_GEMINI_API_KEY")
+)
+
+chat$chat("Tell me three jokes about EuroLeague Basketball")
+
+} # }
+  
+```
+
+
+# Gander package
+
+Try out the {gander} package:
+
+- https://simonpcouch.github.io/gander/
+
+```{r gander}
+
+# Call the following code to to hook gander up with an ellmer chat
+# usethis::edit_r_profile()
+# options(.gander_chat = ellmer::chat_google_gemini())
+
+# In RStudio, navigate to Tools > Modify Keyboard Shortcuts > Search "gander"—we suggest Ctrl+Alt+G (or Ctrl+Cmd+G on macOS).
+
+# Prompt: "Create a bar chart of EuroLeague Basketball Final Four Appearances by Team. Filter out the teams that have not made a final four appearance. Order the teams by number of final four appearances. Include the team country in the y axis label."
+
+basketball
+
+gander::gander_peek()
+  
 ```
 
 
@@ -66,7 +119,22 @@ Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
 
+basketball |>
+  count(country, wt = titles_won, name = "country_titles") |>
+  filter(country_titles > 0)
 
+basketball |>
+  select(team, country, years_of_titles_won) |>
+  separate_longer_delim(
+    cols = years_of_titles_won,
+    delim = ", "
+  ) |>
+  filter(
+    years_of_titles_won != "None",
+    !is.na(years_of_titles_won)
+  ) |>
+  mutate(year = as.integer(years_of_titles_won)) |>
+  view()
   
 ```
 
@@ -77,7 +145,7 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 ```{r}
 # This will save your most recent plot
 ggsave(
-  filename = "My TidyTuesday Plot.png",
+  filename = "2025_10_07_tidy_tuesday_basketball.png",
   device = "png"
 )
 ```
