@@ -1,0 +1,135 @@
+---
+title: "TidyTemplate"
+date: 2025-10-21
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event! Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data. While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format. The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community! As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-10-14")
+```
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset. This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+food_security_raw <- tt$food_security
+
+# Filter for the key indicator: Prevalence of undernourishment (% 3-year average)
+# Filter for major global/regional aggregates to show the trend comparison
+food_security_clean <- food_security_raw %>%
+  filter(Item == "Prevalence of undernourishment (percent) (3-year average)") %>%
+  filter(Area %in% c("World", "Africa", "Southern Asia", "Latin America and the Caribbean")) %>%
+  # Use the end year of the 3-year period for time-series visualization
+  mutate(
+    Year = Year_End,
+    # Convert value to numeric. Replace suppressed values (e.g., '<2.5') with 0 for plotting minima.
+    Value = as.numeric(str_replace_all(Value, "<[[:alnum:].]+", "0"))
+  ) %>%
+  select(Area, Year, Value)
+
+# Preview the cleaned data structure
+glimpse(food_security_clean)
+
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+region_colors <- c(
+  "World" = "#0072B2",
+  "Africa" = "#D55E00",
+  "Southern Asia" = "#009E73",
+  "Latin America and the Caribbean" = "#CC79A7"
+)
+
+food_security_clean %>%
+  # Ensure 'World' is drawn last to be on top of other lines
+  arrange(desc(Area == "World")) %>%
+  ggplot(aes(x = Year, y = Value, color = Area)) +
+  geom_line(aes(linewidth = Area == "World", alpha = Area == "World")) +
+  geom_point(aes(size = Area == "World", alpha = Area == "World")) +
+  scale_y_continuous(
+    limits = c(0, 20), 
+    breaks = seq(0, 20, 5), 
+    expand = expansion(mult = c(0, 0.05)),
+    labels = scales::percent_format(scale = 1)
+  ) +
+  scale_alpha_manual(values = c("TRUE" = 1, "FALSE" = 0.5), guide = "none") +
+  scale_x_continuous(breaks = seq(2007, 2024, 4)) +
+  scale_color_manual(values = region_colors) +
+  scale_linewidth_manual(values = c("TRUE" = 1.8, "FALSE" = 0.8), guide = "none") +
+  scale_size_manual(values = c("TRUE" = 4, "FALSE" = 2), guide = "none") +
+  labs(
+    title = "The Global Reversal: Undernourishment is Rising Again",
+    subtitle = "Prevalence of undernourishment (% of population, 3-year average)",
+    y = "Prevalence",
+    x = "Year (End of 3-Year Period)",
+    caption = "Data: FAO Suite of Food Security Indicators | Visualization by Golden Dome Data Tuesdays"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18),
+    plot.subtitle = element_text(margin = margin(b = 15)),
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+  
+```
+
+## Key Insights:
+
+-   **The Global Trend Reversal:** The global prevalence of undernourishment steadily declined in the early 2000s, falling from approximately $12.3\%$ in 2005-2007 to its lowest point around $8.6\%$ in 2013-2015. However, since then, the trend has reversed. The global rate has steadily increased, reaching about $9.5\%$ by the 2021-2023 period. This indicates a failure to maintain the progress made during the initial decade.
+-   **Africa is the Primary Driver of the Reversal:** Undernourishment rates in Africa remain critically high and show a clear upward trajectory in the post-2010 era. The prevalence has risen from $22.7\%$ (2005-2007) to an estimated peak of $24.8\%$ (2022-2024). This persistent and worsening high rate significantly contributes to the overall rise in the global average.
+-   **Major Regional Disparity in Progress:** While Africa struggles, other high-prevalence regions demonstrated significant success. Southern Asia, for instance, achieved a substantial decrease, moving from $23.1\%$ (2005-2007) to roughly $15.5\%$ (2022-2024). Similarly, Latin America and the Caribbean saw a marked reduction in undernourishment, moving from $8.3\%$ to $5.4\%$ over the same period. The disparity highlights that regional successes exist, but are being overshadowed by crises elsewhere.
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter!
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_10_14_tidy_tuesday_food_security.png",
+  device = "png"
+)
+```
