@@ -1,0 +1,214 @@
+---
+title: "TidyTemplate"
+date: 2025-11-10
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(gt)
+library(gtExtras)
+library(patchwork)
+
+theme_set(theme_light())
+
+tt_caption <- "Data: Loux and Gibson (2018) | Plot: Tony Galvan (@GDataScience1) | #TidyTuesday"
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-11-04")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+flint <- tt$flint_mdeq |>
+  transmute(
+    sample,
+    source = "MDEQ - Unfiltered",
+    lead
+  ) |>
+  bind_rows(
+    tt$flint_mdeq |>
+      filter(!is.na(lead2)) |>
+      transmute(
+        sample,
+        source = "MDEQ - Filtered",
+        lead = lead2
+      )
+  ) |>
+  bind_rows(
+    tt$flint_vt |>
+      transmute(
+        sample,
+        source = "VT",
+        lead
+      )
+  )
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+# create a density area plot by source and is_filtered
+flint |>
+  ggplot(aes(lead, fill = source)) +
+  geom_density(alpha = 0.5) +
+  scale_x_log10() +
+  labs(
+    title = "Density of Lead Levels in Flint Water",
+    x = "Lead Level (ppb)",
+    y = "Density",
+    fill = "Data Source and Filtered Status",
+    caption = tt_caption
+  ) +
+  theme(
+    plot.caption.position = "plot"
+  )
+
+# create a table of summary statistics for the data (mean, median, 90th percentile) with and without the filtered samples using the 538 theme
+flint_summary <- flint |>
+  group_by(source) |>
+  summarise(
+    median_lead = median(lead, na.rm = TRUE),
+    mean_lead = mean(lead, na.rm = TRUE),
+    p90_lead = quantile(lead, 0.9, na.rm = TRUE)
+  ) |>
+  ungroup()
+
+# create a faceted density area plot by source and is_filtered with reference lines for mean, median, and 90th percentile
+flint_plot <- flint |>
+  ggplot(aes(lead)) +
+  geom_density(alpha = 0.5, fill = "gray") +
+  scale_x_log10() +
+  geom_vline(data = flint_summary, aes(xintercept = mean_lead), color = "red", linetype = "dashed") +
+  geom_vline(data = flint_summary, aes(xintercept = median_lead), color = "blue", linetype = "dashed") +
+  geom_vline(data = flint_summary, aes(xintercept = p90_lead), color = "green", linetype = "dashed") +
+  facet_wrap(~source, ncol = 1) +
+  labs(
+    title = "Density of Lead Levels in Flint Water with Summary Statistics",
+    # use the subtitle to explain that the filtered data changed the distribution
+    subtitle = "The filtered samples from MDEQ show a lower density of high lead levels",
+    x = "Lead Level (ppb)",
+    y = "Density",
+    fill = "Data Source",
+    # caption = tt_caption
+  ) +
+  theme(
+    plot.caption.position = "plot",
+    legend.position = "none"
+  )
+
+flint_tab <- flint_summary |>
+  gt() |>
+  gt_theme_538() |>
+  # tab_header(
+  #   title = "Summary Statistics of Lead Levels in Flint Water",
+  #   subtitle = "Grouped by Data Source and Filtered Status"
+  # ) |>
+  fmt_number(
+    columns = c(mean_lead, median_lead, p90_lead),
+    decimals = 2
+  ) |>
+  cols_label(
+    source = "Data Source",
+    mean_lead = "Mean Lead (ppb)",
+    median_lead = "Median Lead (ppb)",
+    p90_lead = "90th Percentile Lead (ppb)"
+  ) |>
+  # add the caption at the bottom
+  tab_source_note(
+    source_note = tt_caption
+  ) |>
+  # color the table column text values to match the plot colors
+  # mean is red; median is blue; 90th percentile is green
+  data_color(
+    columns = c(mean_lead),
+    colors = scales::col_factor(
+      palette = c("red"),
+      domain = NULL
+    )
+  ) |>
+  data_color(
+    columns = c(median_lead),
+    colors = scales::col_factor(
+      palette = c("blue"),
+      domain = NULL
+    )
+  ) |>  data_color(
+    columns = c(p90_lead),
+    colors = scales::col_factor(
+      palette = c("green"),
+      domain = NULL
+    )
+  )
+
+# combine the table and plot into one visualization
+
+flint_dash <- 
+  flint_plot + 
+  wrap_table(flint_tab) + 
+  plot_layout(
+    ncol = 1, heights = c(2,1)
+  )
+
+flint_dash
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_11_04_tidy_tuesday_flint.png",
+  device = "png"
+)
+```
