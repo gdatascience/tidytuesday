@@ -1,0 +1,280 @@
+---
+title: "TidyTemplate"
+date: 2025-11-10
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-11-11")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+tb <- tt$who_tb_data
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+tb |>
+  count(g_whoregion, year, wt = e_inc_num, name = "estimated_cases") |>
+  ggplot(
+    aes(
+      x = year,
+      y = estimated_cases,
+      color = g_whoregion
+    )
+  ) +
+  geom_line(linewidth = 1.2) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  labs(
+    title = "Estimated Tuberculosis Cases by WHO Region",
+    x = "Year",
+    y = "Estimated Cases",
+    color = "WHO Region"
+  )
+
+tb |>
+  group_by(g_whoregion, year) |>
+  summarize(mean_e_inc_100k = mean(e_inc_100k)) |>
+  ungroup() |>
+  mutate(g_whoregion = fct_reorder(g_whoregion, -mean_e_inc_100k)) |>
+  ggplot(
+    aes(
+      x = year,
+      y = mean_e_inc_100k,
+      fill = g_whoregion
+    )
+  ) +
+  geom_col(show.legend = FALSE) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  facet_wrap(~g_whoregion, ncol = 1, scales = "free_y") +
+  labs(
+    title = "Incidence per 100k population",
+    x = "Year",
+    y = "Estimated Cases"
+  )
+
+# use the {gt} package to make a table that contains a spark line for each WHO region showing the trend of incidence per 100k population over time. Order the regions by the mean incidence per 100k population.
+library(gt)
+library(gtExtras)
+
+tb_summary <- tb |>
+  group_by(g_whoregion, year) |>
+  summarize(
+    mean_e_inc_100k = mean(e_inc_100k)
+  ) |>
+  ungroup() |>
+  group_by(g_whoregion) |>
+  summarize(
+    first_inc = first(mean_e_inc_100k),
+    last_inc = last(mean_e_inc_100k),
+    pct_change = (last_inc - first_inc) / first_inc * 100,
+    sparkline = list(mean_e_inc_100k)
+  ) |>
+  ungroup() |>
+  arrange(desc(first_inc))
+
+tb_summary |>
+  gt() |>
+  fmt_number(
+    columns = c(first_inc, last_inc),
+    decimals = 1
+  ) |>
+  fmt_number(
+    columns = c(pct_change),
+    decimals = 1,
+    pattern = "{x}%"
+  ) |>
+  gt_plt_sparkline(
+    column = sparkline,
+    type = "shaded",
+    same_limit = TRUE
+  ) |>
+  cols_label(
+    g_whoregion = "WHO Region",
+    first_inc = "2000",
+    last_inc = "2023",
+    pct_change = "% Change",
+    sparkline = "Trend"
+  ) |>
+  tab_header(
+    title = "Tuberculosis Incidence per 100k Population by WHO Region"
+  )
+
+# Create a table similar to above, but with 3 sections: top for incidence over 100 per 100k, middle for non-HIV mortality per 100k, and bottom for HIV mortality per 100k.
+tb_summary_inc <- tb |>
+  group_by(g_whoregion, year) |>
+  summarize(
+    mean_e_inc_100k = mean(e_inc_100k),
+    mean_e_mort_hiv_100k = mean(e_mort_tbhiv_100k, na.rm = TRUE),
+    mean_e_mort_nhiv_100k = mean(e_mort_exc_tbhiv_100k, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  pivot_longer(
+    cols = c(mean_e_inc_100k, mean_e_mort_hiv_100k, mean_e_mort_nhiv_100k),
+    names_to = "metric",
+    values_to = "value"
+  ) |>
+  group_by(g_whoregion, metric) |>
+  arrange(year) |>
+  summarize(
+    first_value = first(value),
+    last_value = last(value),
+    pct_change = (last_value - first_value) / first_value * 100,
+    sparkline = list(value)
+  ) |>
+  ungroup() |>
+  arrange(metric, desc(first_value))
+
+tb_tab <- tb_summary_inc |>
+  gt() |>
+  fmt_number(
+    columns = c(first_value, last_value),
+    decimals = 1
+  ) |>
+  fmt_number(
+    columns = c(pct_change),
+    decimals = 1,
+    pattern = "{x}%"
+  ) |>
+  gt_plt_sparkline(
+    column = sparkline,
+    type = "default",
+    same_limit = FALSE,
+    label = FALSE,
+    palette = c(
+      "#BB8588", # sparkline color
+      "transparent", # final value color
+      "transparent", # range color low
+      "transparent", # range color high
+      "transparent" # 'type' color (e.g. shading or reference lines)
+    )
+  ) |>
+  cols_label(
+    g_whoregion = "WHO Region",
+    first_value = "2000",
+    last_value = "2023",
+    pct_change = "% Change",
+    sparkline = "Trend"
+  ) |>
+  tab_header(
+    title = "Tuberculosis Metrics by WHO Region"
+  ) |>  
+  tab_row_group(
+    group = "HIV Mortality per 100k",
+    rows = metric == "mean_e_mort_hiv_100k",
+    id = "hiv_mortality"
+  ) |>
+  tab_row_group(
+    group = "Non-HIV Mortality per 100k",
+    rows = metric == "mean_e_mort_nhiv_100k",
+    id = "non_hiv_mortality"
+  ) |>  
+  tab_row_group(
+    group = "Incidence per 100k",
+    rows = metric == "mean_e_inc_100k",
+    id = "incidence"
+  ) |>
+  cols_hide(columns = metric) |>
+  gt_theme_dark() |>
+  tab_style(
+    style = cell_fill(color = "#F4D06F"),
+    locations = cells_row_groups(
+      groups = "hiv_mortality"
+    )
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#65AFFF"),
+    locations = cells_row_groups(
+      groups = "non_hiv_mortality"
+    )
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#7FD8BE"),
+    locations = cells_row_groups(
+      groups = "incidence"
+    )
+  ) |>
+  # add a caption
+  tab_source_note(
+    source_note = "Data Source: {getTBinR} package | Visualization: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) |>
+  # make the caption font smaller
+  tab_style(
+    style = cell_text(size = px(10)),
+    locations = cells_source_notes()
+  )
+
+tb_tab
+
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+# ggsave(
+#   filename = "2025_11_11_tidy_tuesday_tb.png",
+#   device = "png"
+# )
+# Save the {gt} table as a png
+gtsave(
+  tb_tab,
+  filename = "2025_11_11_tidy_tuesday_tb.png"
+)
+```
