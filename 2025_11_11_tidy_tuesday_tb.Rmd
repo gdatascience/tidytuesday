@@ -19,6 +19,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r libraries, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(tidytuesdayR)
+library(gt)
+library(gtExtras)
 
 theme_set(theme_light())
 ```
@@ -108,8 +110,6 @@ tb |>
   )
 
 # use the {gt} package to make a table that contains a spark line for each WHO region showing the trend of incidence per 100k population over time. Order the regions by the mean incidence per 100k population.
-library(gt)
-library(gtExtras)
 
 tb_summary <- tb |>
   group_by(g_whoregion, year) |>
@@ -154,7 +154,41 @@ tb_summary |>
     title = "Tuberculosis Incidence per 100k Population by WHO Region"
   )
 
-# Create a table similar to above, but with 3 sections: top for incidence over 100 per 100k, middle for non-HIV mortality per 100k, and bottom for HIV mortality per 100k.
+tb |>
+  group_by(g_whoregion, year) |>
+  summarize(
+    mean_e_inc_100k = mean(e_inc_100k),
+    mean_e_mort_hiv_100k = mean(e_mort_tbhiv_100k, na.rm = TRUE),
+    mean_e_mort_nhiv_100k = mean(e_mort_exc_tbhiv_100k, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  pivot_longer(
+    cols = c(mean_e_inc_100k, mean_e_mort_hiv_100k, mean_e_mort_nhiv_100k),
+    names_to = "metric",
+    values_to = "value"
+  ) |>
+  mutate(g_whoregion = fct_reorder(g_whoregion, -value)) |>
+  ggplot(
+    aes(
+      x = year,
+      y = value,
+      color = g_whoregion
+    )
+  ) +
+  geom_line(linewidth = 1.2) +
+  facet_grid(
+    rows = vars(metric, g_whoregion),
+    scales = "free_y"
+  ) +
+  labs(
+    title = "Tuberculosis Metrics by WHO Region",
+    x = "Year",
+    y = "Value",
+    color = NULL
+  ) +
+  theme(legend.position = "top")
+
+# Create a table similar to above, but with 3 sections: top for incidence over 100 per 100k, middle for non-HIV mortality per 100k, and bottom for HIV mortality per 100k. Inspired by Bernadett Piros's table on LinkedIn - https://www.linkedin.com/posts/bernadett-piros-5bb265279_tidytuesday-pydytuesday-dataviz-activity-7394443213953998848-ZQHG?utm_source=share&utm_medium=member_desktop&rcm=ACoAAA3HhrkB-80XQX_EFUlxiw0EgIAS5L5tB-8
 tb_summary_inc <- tb |>
   group_by(g_whoregion, year) |>
   summarize(
@@ -180,7 +214,17 @@ tb_summary_inc <- tb |>
   arrange(metric, desc(first_value))
 
 tb_tab <- tb_summary_inc |>
-  gt() |>
+  group_by(
+    case_when(
+      metric == "mean_e_inc_100k" ~ "Incidence per 100k",
+      metric == "mean_e_mort_nhiv_100k" ~ "Non-HIV Mortality per 100k",
+      metric == "mean_e_mort_hiv_100k" ~ "HIV Mortality per 100k"
+    )
+  ) |>
+  gt(
+    rowname_col = "g_whoregion",
+    # groupname_col = "metric"
+  ) |>
   fmt_number(
     columns = c(first_value, last_value),
     decimals = 1
@@ -212,42 +256,9 @@ tb_tab <- tb_summary_inc |>
   ) |>
   tab_header(
     title = "Tuberculosis Metrics by WHO Region"
-  ) |>  
-  tab_row_group(
-    group = "HIV Mortality per 100k",
-    rows = metric == "mean_e_mort_hiv_100k",
-    id = "hiv_mortality"
-  ) |>
-  tab_row_group(
-    group = "Non-HIV Mortality per 100k",
-    rows = metric == "mean_e_mort_nhiv_100k",
-    id = "non_hiv_mortality"
-  ) |>  
-  tab_row_group(
-    group = "Incidence per 100k",
-    rows = metric == "mean_e_inc_100k",
-    id = "incidence"
   ) |>
   cols_hide(columns = metric) |>
   gt_theme_dark() |>
-  tab_style(
-    style = cell_fill(color = "#F4D06F"),
-    locations = cells_row_groups(
-      groups = "hiv_mortality"
-    )
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#65AFFF"),
-    locations = cells_row_groups(
-      groups = "non_hiv_mortality"
-    )
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#7FD8BE"),
-    locations = cells_row_groups(
-      groups = "incidence"
-    )
-  ) |>
   # add a caption
   tab_source_note(
     source_note = "Data Source: {getTBinR} package | Visualization: Tony Galvan (@GDataScience1) | #TidyTuesday"
@@ -256,6 +267,30 @@ tb_tab <- tb_summary_inc |>
   tab_style(
     style = cell_text(size = px(10)),
     locations = cells_source_notes()
+  ) |>
+  # format the group rows with different background colors
+  tab_style(
+    style = cell_fill(color = "#7FD8BE"),
+    locations = cells_row_groups(
+      groups = "Incidence per 100k"
+    )
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#65AFFF"),
+    locations = cells_row_groups(
+      groups = "Non-HIV Mortality per 100k"
+    )
+  ) |>  
+  tab_style(
+    style = cell_fill(color = "#F4D06F"),
+    locations = cells_row_groups(
+      groups = "HIV Mortality per 100k"
+    )
+  ) |>
+  # bold the group rows
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_row_groups()
   )
 
 tb_tab
