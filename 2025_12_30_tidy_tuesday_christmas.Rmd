@@ -1,0 +1,279 @@
+---
+title: "TidyTemplate"
+date: 2026-01-05
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy!
+As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(ggrepel)
+library(tidytext)
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2025-12-30")
+```
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt |> 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting!
+Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+novels <- tt$christmas_novels |>
+  inner_join(
+    tt$christmas_novel_authors, 
+    by = "gutenberg_author_id"
+  ) |>
+  group_by(gutenberg_id, title) |>
+  summarize(
+    authors = paste(unique(author), collapse = "; "),
+    .groups = "drop"
+  ) |>
+  inner_join(
+    tt$christmas_novel_text |> 
+      filter(!is.na(text)) |>
+      mutate(text = str_squish(text)),
+    by = "gutenberg_id"
+  ) |> 
+  mutate(line_id = row_number())
+
+```
+
+# Lexicon
+
+**Defining the "True Meaning" Lexicon:** To improve your analysis, we should expand the lists to catch synonyms and related concepts.
+
+-   Positive (Religious/Spiritual): Added words for the nativity scene (manger, Bethlehem), divinity (sacred, savior, divine), and worship (hymn, bless).
+
+-   Negative (Secular/Santa): Added words associated with the Santa mythos (reindeer, sleigh, stocking) and commercialism (toys).
+
+```{r lexicon}
+# Create a custom lexicon
+true_meaning_lexicon <- tibble(
+  word = c(
+    # YOUR LIST (Religious/Spiritual)
+    "god", "jesus", "christ", "christian", "catholic", "christians", 
+    "catholics", "saint", "holy", "spirit", "angel", "angels", 
+    "pray", "prayer", "church",
+    
+    # IMPROVEMENTS FROM GEMINI (Nativity, Worship, Divinity)
+    "lord", "savior", "saviour", "bible", "scripture", "sacred", 
+    "divine", "worship", "bless", "blessed", "blessing", "miracle", 
+    "nativity", "bethlehem", "manger", "virgin", "mary", "joseph", 
+    "hymn", "soul", "faith", "heaven",
+    
+    # YOUR LIST (Secular - Negative Points)
+    "santa",
+    
+    # IMPROVEMENTS FROM GEMINI (Santa Mythos, Commercialism)
+    "claus", "nick", "kris", "kringle", "reindeer", "sleigh", 
+    "stocking", "stockings", "chimney", "elf", "elves", 
+    "toy", "toys", "present", "presents"
+  ),
+  score = c(
+    # Assign +1 to all religious words
+    rep(1, 37), 
+    # Assign -1 to all secular words
+    rep(-1, 16)
+  )
+)
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+novels |>
+  group_by(title) |>
+  summarize(
+    word_count = str_count(text, boundary("word")) |> sum(),
+    line_count = n(),
+    .groups = "drop"
+  ) |>
+  ggplot(aes(x = line_count, y = word_count)) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue", linetype = "dashed") +
+  geom_point(color = "red", size = 3, alpha = 0.6) +
+  geom_text_repel(
+    aes(label = title),
+    # vjust = -1, 
+    size = 2.5, 
+    max.overlaps = 5
+  ) +
+  scale_x_log10() +
+  scale_y_log10(labels = scales::comma_format()) +
+  labs(
+    title = "Christmas Novels: Line Count vs Word Count",
+    x = "Line Count",
+    y = "Word Count"
+  ) +
+  theme_minimal()
+
+```
+
+```{r Score}
+# 1. Tokenize (break text into words)
+tidy_books <- novels |>
+  unnest_tokens(word, text)
+
+# 2. Calculate the "True Meaning" Score
+novel_scores <- tidy_books |>
+  # Count total words per novel first (for normalization)
+  group_by(title, authors) |>
+  mutate(total_words = n()) |>
+  ungroup() |>
+  # Join with our custom lexicon
+  inner_join(true_meaning_lexicon, by = "word") |>
+  # Sum the scores per novel
+  group_by(title, authors, total_words) |>
+  summarise(
+    raw_score = sum(score),
+    positive_hits = sum(score == 1),
+    negative_hits = sum(score == -1),
+    .groups = "drop"
+  ) |>
+  # Calculate normalized score (points per 1000 words)
+  mutate(normalized_score = (raw_score / total_words) * 1000) |>
+  arrange(desc(normalized_score))
+
+# Display the top 10 "Most Religious" Christmas novels
+print(head(novel_scores, 10))
+```
+
+
+```{r GT}
+library(gt)
+
+novel_tab <- novel_scores |>
+  # slice_max(normalized_score, n = 10) |>
+  select(title, authors, raw_score, total_words, normalized_score, positive_hits, negative_hits) |>
+  gt() |>
+  fmt_number(
+    columns = normalized_score,
+    decimals = 2
+  ) |>
+  cols_label(
+    title = "Novel Title",
+    authors = "Author(s)",
+    raw_score = "Raw Score",
+    total_words = "Total Words",
+    normalized_score = "Normalized Score (per 1000 words)",
+    positive_hits = "Positive Hits",
+    negative_hits = "Negative Hits"
+  ) |>
+  tab_header(
+    title = "Top 10 'Most Religious' Christmas Novels",
+    subtitle = "Based on 'True Meaning' Lexicon Score"
+  )
+
+novel_tab
+
+```
+
+
+```{r plot_scores}
+
+novel_scores |>
+  mutate(
+    title = paste0(title, " (", authors, ")"),
+    title = str_wrap(title, width = 70),
+    title = fct_reorder(title, normalized_score)
+  ) |>
+  ggplot(aes(x = normalized_score, y = title, color = normalized_score > 0)) +
+  # geom_col() +
+  # 1. The Stick (Segment)
+  geom_segment(aes(x = 0, xend = normalized_score, 
+                   y = title, yend = title), 
+               # color = "gray70"
+               ) +
+  
+  # 2. The Candy (Point)
+  geom_point(size = 3.5) +
+  labs(
+    title = "'Christmas' novels from Project Gutenberg",
+    subtitle = "The 'True Meaning' of Christmas Score",
+    x = "Net Score (per 1,000 words)",
+    y = NULL,
+    color = "Meaning Leans:",
+    caption = "Source: Project Gutenberg via the {gutenbergr} R package | Analysis: Tony Galvan | #TidyTuesday"
+  ) +
+  scale_color_manual(values = c("TRUE" = "darkgreen", "FALSE" = "firebrick"), 
+                    labels = c("Secular/Santa", "Religious/Holy")) +
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5),
+    plot.caption.position = "plot",
+    plot.caption = element_text(size = 8, hjust = 0.5),
+    axis.text.y = element_text(size = 5),
+    axis.text.x = element_text(size = 8),
+    axis.title.x = element_text(size = 10),
+    # remove vertical grid lines
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
+
+```
+
+
+# Save Image
+
+Save your image for sharing.
+Be sure to use the `#TidyTuesday` hashtag in your post on twitter!
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2025_12_30_tidy_tuesday_christmas.png",
+  device = "png"
+)
+
+# Save the gt table as an image
+gtsave(
+  novel_tab,
+  filename = "2025_12_30_tidy_tuesday_christmas_table.png"
+)
+```
