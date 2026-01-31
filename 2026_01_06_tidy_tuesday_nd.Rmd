@@ -1,0 +1,221 @@
+---
+title: "TidyTemplate"
+date: 2026-01-05
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+# library(tidytuesdayR)
+library(scales)
+library(patchwork)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+# tt <- tt_load("2026-01-06")
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+# tt
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+# tt %>% 
+#   map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set. The data was downloaded from - https://datausa.io/profile/university/university-of-notre-dame
+
+```{r Wrangle}
+
+tuition <- read_csv("~/Downloads/tuition.csv") |>
+  rename(tuition = `State Tuition`) |>
+  left_join(
+    read_csv("~/Downloads/net_price.csv") |>
+      transmute(
+        University,
+        Year,
+        net_price = `Median Average Net Price Grant Or Scholarship Aid`
+      ),
+    by = c("University", "Year")
+  ) |>
+  janitor::clean_names() |>
+  mutate(
+    grants_and_loans = tuition - net_price
+  ) |>
+  filter(!university_id %in% c("139755", "15", "DOC"))
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+# Combine the three plots telling the story about the Pathways to Notre Dame" initiative. This means the university offers a no-loan financial aid policy, covering full demonstrated need with grants, scholarships, and work-study, eliminating student loans from aid packages for admitted students, supported by need-blind admissions for all students. This commitment ensures affordability for low- and middle-income families, making a Notre Dame education debt-free for many.
+
+# 1. Tuition Costs Plot
+p1 <- tuition |>
+  ggplot(
+    aes(
+      x = factor(year),
+      y = tuition,
+      color = university,
+      linewidth = university == "University of Notre Dame",
+      group = university
+    )
+  ) +
+  geom_line() +
+  scale_y_continuous(labels = dollar_format()) +
+  scale_linewidth_manual(
+    values = c(`TRUE` = 1.5, `FALSE` = 0.5),
+    guide = "none"
+  ) +
+  scale_color_manual(
+    values = c(
+      "University of Notre Dame" = "navy",
+      "Georgetown University" = "gray80",
+      "Case Western Reserve University" = "lightblue",
+      "Emory University" = "gold",
+      "Northeastern University" = "red"
+    )
+  ) +
+  labs(
+    title = "Tuition Costs Over Time",
+    x = NULL, # Remove x-axis label for top plots to reduce clutter
+    y = "Tuition ($)",
+    color = "University"
+  ) +
+  theme_minimal()
+
+# 2. Net Price Plot
+p2 <- tuition |>
+  ggplot(
+    aes(
+      x = factor(year),
+      y = net_price,
+      color = university,
+      linewidth = university == "University of Notre Dame",
+      group = university
+    )
+  ) +
+  geom_line() +
+  scale_y_continuous(labels = dollar_format()) +
+  scale_linewidth_manual(
+    values = c(`TRUE` = 1.5, `FALSE` = 0.5),
+    guide = "none"
+  ) +
+  scale_color_manual(
+    values = c(
+      "University of Notre Dame" = "navy",
+      "Georgetown University" = "gray80",
+      "Case Western Reserve University" = "lightblue",
+      "Emory University" = "gold",
+      "Northeastern University" = "red"
+    )
+  ) +
+  labs(
+    title = "Net Price Over Time",
+    x = NULL,
+    y = "Net Price ($)",
+    color = "University"
+  ) +
+  theme_minimal()
+
+# 3. Grants and Loans Plot
+p3 <- tuition |>
+  ggplot(
+    aes(
+      x = factor(year),
+      y = grants_and_loans,
+      color = university,
+      linewidth = university == "University of Notre Dame",
+      group = university
+    )
+  ) +
+  geom_line() +
+  scale_y_continuous(labels = dollar_format()) +
+  scale_linewidth_manual(
+    values = c(`TRUE` = 1.5, `FALSE` = 0.5),
+    guide = "none"
+  ) +
+  scale_color_manual(
+    values = c(
+      "University of Notre Dame" = "navy",
+      "Georgetown University" = "gray80",
+      "Case Western Reserve University" = "lightblue",
+      "Emory University" = "gold",
+      "Northeastern University" = "red"
+    )
+  ) +
+  labs(
+    title = "Grants and Loans Over Time",
+    x = "Year",
+    y = "Grants/Loans ($)",
+    color = "University"
+  ) +
+  theme_minimal()
+
+# Combine plots using patchwork
+combined_plot <- (p1 / p2 / p3) + 
+  plot_layout(guides = "collect") + # One legend for all plots
+  plot_annotation(
+    title = "Pathways to Notre Dame: A Commitment to Debt-Free Education",
+    subtitle = "By eliminating student loans and covering full demonstrated need through grants and scholarships,\nNotre Dame ensures affordability regardless of rising tuition costs.",
+    caption = "Data Source: University Financial Records | *Highlighted line represents University of Notre Dame",
+    theme = theme(
+      plot.title = element_text(size = 16, face = "bold", color = "navy"),
+      plot.subtitle = element_text(size = 11)
+    )
+  )
+
+# Display the combined plot
+combined_plot
+
+```
+
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+# This will save your most recent plot
+ggsave(
+  filename = "2026_01_06_tidy_tuesday_nd.png",
+  device = "png"
+)
+```
