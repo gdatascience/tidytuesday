@@ -1,0 +1,134 @@
+---
+title: "2026 Pinewood Derby"
+format: html
+---
+
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(gt)
+library(gtExtras)
+library(gtsummary)
+theme_set(theme_light())
+```
+
+## Load the data
+```{r}
+
+derby_path <- "~/Downloads"
+derby_file <- file.path(derby_path, "derbynet.xlsx")
+
+roster <- read_excel(derby_file, sheet = "Roster") |>
+    clean_names() |>
+    select(car_number, first_name, last_name, den)
+
+results <- read_excel(derby_file, sheet = "Results") |>
+    clean_names() |>
+    mutate(
+        completed = ymd_hms(completed, tz = "UTC"),
+        completed = with_tz(completed, tzone = "America/Los_Angeles")
+    ) |>
+    select(heat, lane, car_number, finish_place, completed)
+
+standings <- read_excel(derby_file, sheet = "Standings", skip = 2) |>
+    clean_names() |>
+    transmute(
+        car_number,
+        total_points = total_points_1st_4,
+        place,
+        best,
+        worst
+    )
+
+```
+
+
+## Create a table of the final standings with images of the scouts and their cars
+
+```{r}
+
+scout_path <- file.path(derby_path, "racers", "0-cropped")
+car_path <- file.path(derby_path, "cars", "0-cropped")
+
+derby_gt <- standings |>
+    left_join(roster, by = "car_number") |>
+    mutate(
+        scout_image = paste0(last_name, "-", first_name, ".jpg"),
+        car_image = scout_image
+    ) |>
+    arrange(desc(total_points)) |>
+    select(place, car_number, scout_image, car_image, first_name, last_name, den, total_points, place, best, worst) |>
+    gt() |>
+    tab_header(
+        title = "2026 Pinewood Derby Standings",
+        subtitle = "Final standings after all heats"
+    ) |>
+    cols_label(
+        car_number = "Car Number",
+        scout_image = "Scout Image",
+        car_image = "Car Image",
+        first_name = "First Name",
+        last_name = "Last Name",
+        den = "Den",
+        total_points = "Total Points",
+        place = "Place",
+        best = "Best Finish",
+        worst = "Worst Finish"
+    ) |>
+    text_transform(
+        locations = cells_body(columns = scout_image),
+        fn = function(x) {
+            local_image(
+                filename = file.path(scout_path, x),
+                height = 100
+            )
+        }
+    ) |>
+    text_transform(
+        locations = cells_body(columns = car_image),
+        fn = function(x) {
+            local_image(
+                filename = file.path(car_path, x),
+                height = 100
+            )
+        }
+    ) |>
+    tab_source_note(
+        source_note = "Source: DerbyNet.org | Created by Anthony Galvan"
+    ) |>
+    tab_style(
+        style = list(
+            cell_text(weight = "bold", size = "large")
+        ),
+        locations = cells_column_labels(columns = everything())
+    ) |>
+    gt_theme_guardian()
+
+derby_gt
+
+```
+
+## Save the table
+
+```{r}
+
+gtsave(
+  derby_gt, 
+  "2026_02_07_pinewood_derby.png"
+)
+
+```
+
+## Use a model to see if there is a lane bias
+
+```{r}
+
+lm <- lm(finish_place ~ lane, data = results)
+
+tbl_lm <- lm |>
+  tbl_regression()
+
+tbl_lm
+```
