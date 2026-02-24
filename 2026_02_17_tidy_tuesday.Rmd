@@ -1,0 +1,316 @@
+---
+title: "New Zealand Sheep and Farm Data"
+date: 2026-02-24
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be "tamed", it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other's work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2026-02-17")
+```
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt %>% 
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+sheep <- tt$dataset
+
+# Data overview
+cat("Dataset dimensions:", nrow(sheep), "rows x", ncol(sheep), "columns\n")
+cat("Year range:", min(sheep$year_ended_june), "to", max(sheep$year_ended_june), "\n")
+cat("Number of unique measures:", n_distinct(sheep$measure), "\n")
+```
+
+# Exploratory Data Analysis
+
+## Dataset Structure
+
+```{r structure}
+# Check for missing values
+cat("Missing values:\n")
+colSums(is.na(sheep))
+
+# Summary statistics
+summary(sheep)
+```
+
+## Sheep-Related Measures
+
+```{r sheep_measures}
+# Filter for sheep-related measures
+sheep_data <- sheep %>%
+  filter(str_detect(measure, "Sheep|Ewe|Ram|Wether|Hogget|Lamb"))
+
+cat("Sheep-related measures (", n_distinct(sheep_data$measure), "):\n")
+unique(sheep_data$measure)
+```
+
+## Total Sheep Over Time
+
+```{r total_sheep_trend}
+# Analyze total sheep population over time
+total_sheep <- sheep %>%
+  filter(measure == "Total Sheep") %>%
+  arrange(year_ended_june)
+
+cat("Total sheep statistics:\n")
+summary(total_sheep$value)
+
+# Peak year
+peak_year <- total_sheep %>%
+  filter(value == max(value))
+
+cat("\nPeak sheep population:", comma(peak_year$value), "in", peak_year$year_ended_june, "\n")
+
+# Recent year
+recent_year <- total_sheep %>%
+  filter(year_ended_june == max(year_ended_june))
+
+cat("Most recent year (", recent_year$year_ended_june, "):", comma(recent_year$value), "\n")
+```
+
+## Breeding Ewes Analysis
+
+```{r breeding_ewes}
+# Analyze breeding ewes
+breeding_ewes <- sheep %>%
+  filter(str_detect(measure, "Breeding Ewes")) %>%
+  arrange(year_ended_june)
+
+cat("Breeding ewe measures:\n")
+unique(breeding_ewes$measure)
+
+# Summary by measure
+breeding_summary <- breeding_ewes %>%
+  group_by(measure) %>%
+  summarise(
+    min_value = min(value),
+    max_value = max(value),
+    mean_value = mean(value),
+    years = n()
+  )
+
+print(breeding_summary)
+```
+
+## Lambs Marked/Tailed
+
+```{r lambs}
+# Analyze lamb production
+lambs <- sheep %>%
+  filter(str_detect(measure, "Lamb")) %>%
+  arrange(year_ended_june)
+
+cat("Lamb-related measures:\n")
+unique(lambs$measure)
+
+# Total lambs over time
+total_lambs <- lambs %>%
+  filter(measure == "Total Lambs Marked and/or Tailed")
+
+if(nrow(total_lambs) > 0) {
+  cat("\nTotal lambs statistics:\n")
+  summary(total_lambs$value)
+}
+```
+
+## Farm Area Trends
+
+```{r farm_area}
+# Analyze farm area
+farm_area <- sheep %>%
+  filter(measure == "Total Area of Farms") %>%
+  arrange(year_ended_june)
+
+cat("Farm area statistics (hectares):\n")
+summary(farm_area$value)
+
+# Calculate change over time
+if(nrow(farm_area) > 1) {
+  first_year <- farm_area %>% slice(1)
+  last_year <- farm_area %>% slice(n())
+  
+  change <- last_year$value - first_year$value
+  pct_change <- (change / first_year$value) * 100
+  
+  cat("\nChange from", first_year$year_ended_june, "to", last_year$year_ended_june, ":\n")
+  cat("Absolute change:", comma(change), "hectares\n")
+  cat("Percent change:", round(pct_change, 1), "%\n")
+}
+```
+
+## Other Livestock Comparison
+
+```{r other_livestock}
+# Compare sheep with other livestock
+livestock_measures <- c("Total Sheep", "Total Cattle", "Total Pigs", "Total Deer", "Total goats")
+
+livestock_data <- sheep %>%
+  filter(measure %in% livestock_measures) %>%
+  group_by(measure) %>%
+  summarise(
+    min_value = min(value),
+    max_value = max(value),
+    mean_value = mean(value),
+    latest_year = max(year_ended_june),
+    latest_value = value[year_ended_june == max(year_ended_june)][1]
+  ) %>%
+  arrange(desc(latest_value))
+
+print(livestock_data)
+```
+
+## Crop Production
+
+```{r crops}
+# Analyze crop yields
+crop_yields <- sheep %>%
+  filter(str_detect(measure, "yield")) %>%
+  group_by(measure) %>%
+  summarise(
+    years_available = n(),
+    mean_yield = mean(value),
+    max_yield = max(value)
+  ) %>%
+  arrange(desc(mean_yield))
+
+cat("Crop yield measures:\n")
+print(crop_yields)
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+# Plot 1: Total Sheep Population Over Time
+total_sheep %>%
+  ggplot(aes(x = year_ended_june, y = value)) +
+  geom_line(color = "#2E7D32", size = 1.2) +
+  geom_point(color = "#2E7D32", size = 2) +
+  scale_y_continuous(labels = comma_format()) +
+  labs(
+    title = "New Zealand Sheep Population (1935-2024)",
+    subtitle = "Total number of sheep over time",
+    x = "Year Ended June",
+    y = "Number of Sheep",
+    caption = "Data Source: TidyTuesday | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(size = 12),
+    axis.title = element_text(face = "bold")
+  )
+```
+
+```{r viz2}
+# Plot 2: Breeding Ewes vs Total Sheep
+breeding_vs_total <- sheep %>%
+  filter(measure %in% c("Total Sheep", "Breeding Ewes 2 Tooth and Over put to Ram")) %>%
+  select(year_ended_june, measure, value)
+
+breeding_vs_total %>%
+  ggplot(aes(x = year_ended_june, y = value, color = measure)) +
+  geom_line(size = 1.1) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_color_manual(values = c("#1976D2", "#388E3C")) +
+  labs(
+    title = "Total Sheep vs Breeding Ewes in New Zealand",
+    subtitle = "Comparison of total sheep population and breeding ewes (1935-2024)",
+    x = "Year Ended June",
+    y = "Number",
+    color = "Measure",
+    caption = "Data Source: TidyTuesday | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(size = 11),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold")
+  )
+```
+
+```{r viz3}
+# Plot 3: Livestock Comparison (Recent Year)
+livestock_recent <- sheep %>%
+  filter(
+    measure %in% c("Total Sheep", "Total Cattle", "Total Pigs", "Total Deer"),
+    year_ended_june == max(year_ended_june)
+  )
+
+livestock_recent %>%
+  mutate(measure = str_remove(measure, "Total ")) %>%
+  ggplot(aes(x = reorder(measure, value), y = value, fill = measure)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_continuous(labels = comma_format()) +
+  scale_fill_brewer(palette = "Set2") +
+  coord_flip() +
+  labs(
+    title = "Livestock Populations in New Zealand",
+    subtitle = paste("Year ended June", max(livestock_recent$year_ended_june)),
+    x = NULL,
+    y = "Number of Animals",
+    caption = "Data Source: TidyTuesday | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    axis.title = element_text(face = "bold")
+  )
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r save}
+# This will save your most recent plot
+ggsave(
+  filename = "2026_02_17_tidy_tuesday_sheep.png",
+  device = "png",
+  width = 10,
+  height = 6,
+  dpi = 300
+)
+```
