@@ -1,0 +1,293 @@
+---
+title: "Science Foundation Ireland Grants"
+date: 2026-03-02
+output: html_document
+---
+
+# TidyTuesday
+
+Join the Data Science Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be "tamed", it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other's work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(lubridate)
+
+theme_set(theme_light())
+```
+
+# Load the weekly Data
+
+Download the weekly data and make available in the `tt` object.
+
+```{r Load}
+tt <- tt_load("2026-02-24")
+```
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+tt
+```
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+tt |>
+  map(glimpse)
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+# Get the grants data
+grants <- tt$sfi_grants
+
+# In 2013, SFI shifted from basic research to applied research focused on
+# industrial applications due to economic recession (Irish Times, 2018)
+# Source: https://www.irishtimes.com/news/science/funding-priorities-of-science-foundation-ireland-need-re-balancing-1.3388727
+
+# Categorize programmes based on actual programme names in the data
+# Basic Research: Individual investigator awards, fellowships, research frontiers
+# Applied Research: Centres, industry partnerships, strategic programmes
+viz_data <- grants |>
+  mutate(
+    year = year(start_date),
+    research_type = case_when(
+      # Basic Research - Individual investigator-led research
+      programme_name %in% c(
+        "Principal Investigator Programme",
+        "Investigator Programme",
+        "Research Frontiers Programme",
+        "Frontiers for the Future",
+        "Starting Investigator Research Grant",
+        "Research Professorship Programme",
+        "Stokes Professorship & Lectureship Programme",
+        "Career Development Award",
+        "President of Ireland Young Researcher Award",
+        "President of Ireland Future Research Leaders Programme",
+        "Royal Society University Research Fellowship",
+        "ERC Support Programme",
+        "ERC Development Programme",
+        "Fellowship Programme"
+      ) ~ "Basic Research",
+      
+      # Applied Industrial Research - Centres, partnerships, industry focus
+      programme_name %in% c(
+        "Research Centres Programme",
+        "Centres for Science Engineering and Technology",
+        "Strategic Research Cluster Programme",
+        "Strategic Partnership Programme",
+        "Spokes Programme",
+        "Technology Innovation Development Award",
+        "Industry Fellowship Programme",
+        "Industry RD&I Fellowship Programme",
+        "Industry Research Partnership",
+        "Centres for Research Training (CRT) Programme",
+        "Co-Centre Programme",
+        "National Challenge Fund"
+      ) ~ "Applied Industrial Research",
+      
+      # Infrastructure and support (separate category)
+      programme_name %in% c(
+        "Research Infrastructure Programme",
+        "Infrastructural Support",
+        "Equipment Call"
+      ) ~ "Infrastructure & Support",
+      
+      # Everything else
+      TRUE ~ "Other Programmes"
+    )
+  ) |>
+  filter(!is.na(year), year >= 2000, year <= 2024) |>
+  group_by(year, research_type) |>
+  summarise(
+    total_funding = sum(current_total_commitment, na.rm = TRUE),
+    n_grants = n(),
+    .groups = "drop"
+  )
+
+# Show the categorization summary
+grants |>
+  mutate(
+    research_type = case_when(
+      programme_name %in% c(
+        "Principal Investigator Programme",
+        "Investigator Programme",
+        "Research Frontiers Programme",
+        "Frontiers for the Future",
+        "Starting Investigator Research Grant",
+        "Research Professorship Programme",
+        "Stokes Professorship & Lectureship Programme",
+        "Career Development Award",
+        "President of Ireland Young Researcher Award",
+        "President of Ireland Future Research Leaders Programme",
+        "Royal Society University Research Fellowship",
+        "ERC Support Programme",
+        "ERC Development Programme",
+        "Fellowship Programme"
+      ) ~ "Basic Research",
+      programme_name %in% c(
+        "Research Centres Programme",
+        "Centres for Science Engineering and Technology",
+        "Strategic Research Cluster Programme",
+        "Strategic Partnership Programme",
+        "Spokes Programme",
+        "Technology Innovation Development Award",
+        "Industry Fellowship Programme",
+        "Industry RD&I Fellowship Programme",
+        "Industry Research Partnership",
+        "Centres for Research Training (CRT) Programme",
+        "Co-Centre Programme",
+        "National Challenge Fund"
+      ) ~ "Applied Industrial Research",
+      programme_name %in% c(
+        "Research Infrastructure Programme",
+        "Infrastructural Support",
+        "Equipment Call"
+      ) ~ "Infrastructure & Support",
+      TRUE ~ "Other Programmes"
+    )
+  ) |>
+  group_by(research_type) |>
+  summarise(
+    n_grants = n(),
+    total_funding = sum(current_total_commitment, na.rm = TRUE),
+    pct_of_total = total_funding / sum(grants$current_total_commitment, na.rm = TRUE) * 100
+  ) |>
+  arrange(desc(total_funding))
+```
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize, fig.width=12, fig.height=8}
+# Focus on Basic vs Applied research only for clearer story
+viz_data_focused <- viz_data |>
+  filter(research_type %in% c("Basic Research", "Applied Industrial Research"))
+
+# Create an area chart showing the shift from basic to applied research
+viz_data_focused |>
+  ggplot(aes(x = year, y = total_funding / 1e6, fill = research_type)) +
+  geom_area(alpha = 0.85, position = "stack") +
+  geom_vline(
+    xintercept = 2013,
+    linetype = "dashed",
+    color = "white",
+    linewidth = 1.2
+  ) +
+  annotate(
+    "text",
+    x = 2013,
+    y = max(aggregate(
+      total_funding ~ year,
+      viz_data_focused,
+      sum
+    )$total_funding) / 1e6 * 0.92,
+    label = "2013\nPolicy Shift",
+    hjust = 0.5,
+    vjust = 1,
+    size = 4.5,
+    fontface = "bold",
+    color = "white"
+  ) +
+  scale_y_continuous(
+    labels = label_dollar(prefix = "€", suffix = "M"),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  scale_x_continuous(
+    breaks = seq(2000, 2024, 2),
+    expand = c(0, 0)
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Basic Research" = "#2E86AB",
+      "Applied Industrial Research" = "#A23B72"
+    ),
+    name = "Research Type"
+  ) +
+  labs(
+    title = "Ireland's Research Pivot: From Basic Science to Industry",
+    subtitle = paste0(
+      "After 2013, Science Foundation Ireland dramatically shifted ",
+      "funding priorities toward applied industrial\nresearch in ",
+      "response to economic recession, fundamentally changing the ",
+      "research landscape"
+    ),
+    x = NULL,
+    y = "Annual Grant Commitments",
+    caption = paste0(
+      "Data: Science Foundation Ireland | ",
+      "Context: Irish Times (2018) | ",
+      "DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+    )
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 20,
+      margin = margin(b = 8)
+    ),
+    plot.subtitle = element_text(
+      size = 11,
+      color = "gray30",
+      margin = margin(b = 20),
+      lineheight = 1.3
+    ),
+    plot.caption = element_text(
+      size = 9,
+      color = "gray50",
+      hjust = 0,
+      margin = margin(t = 20)
+    ),
+    legend.position = c(0.15, 0.85),
+    legend.title = element_text(face = "bold", size = 13),
+    legend.text = element_text(size = 11),
+    legend.background = element_rect(
+      fill = "white",
+      color = "gray80",
+      linewidth = 0.5
+    ),
+    legend.margin = margin(8, 8, 8, 8),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(color = "gray90"),
+    plot.margin = margin(20, 20, 20, 20),
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA)
+  )
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter!
+
+```{r}
+# Save the visualization
+ggsave(
+  filename = "2026_02_24_tidy_tuesday_sfi_grants.png",
+  device = "png",
+  width = 12,
+  height = 8,
+  dpi = 300,
+  bg = "white"
+)
+```
