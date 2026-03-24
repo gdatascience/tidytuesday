@@ -55,6 +55,28 @@ ggsave(
 gtsave(table_object, "filename.png")
 ```
 
+## Console/Terminal R Execution
+
+Each `Rscript -e '...'` call starts a fresh R process — packages, data, and objects do not persist between calls. To avoid redundant work:
+
+### Cache Data Locally
+On the first run, save downloaded data to a local `.rds` file. On subsequent runs, read from the cache instead of re-downloading.
+
+```r
+# First run: download and cache
+tt <- tt_load("YYYY-MM-DD")
+saveRDS(tt, "tt_cache.rds")
+
+# Subsequent runs: load from cache
+tt <- readRDS("tt_cache.rds")
+```
+
+### Minimize Repeated Setup
+- Only load the packages you actually need for each exploratory command
+- If a script only needs `dplyr` and `readr`, don't load all of `tidyverse`
+- Group related exploratory queries into a single `Rscript -e '...'` call rather than running many small ones
+- Clean up cache files (e.g., `tt_cache.rds`) when the analysis is complete
+
 ## Project Configuration
 - Encoding: UTF-8
 - Indentation: 2 spaces (no tabs)

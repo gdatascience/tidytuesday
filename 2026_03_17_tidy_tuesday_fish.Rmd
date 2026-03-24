@@ -176,9 +176,11 @@ norway_map <- norway_counties %>%
 ```{r plot-map, fig.width=8, fig.height=8, dpi=300}
 p_map <- ggplot(norway_map) +
   geom_sf(aes(fill = avg_median), color = "white", linewidth = 0.4) +
-  geom_sf_text(
+  geom_sf_label(
     aes(label = paste0(data_region, "\n", sprintf("%.2f%%", avg_median))),
-    size = 2.5, color = "white", fontface = "bold"
+    size = 2.5, fontface = "bold",
+    color = "#1A1A2E", fill = alpha("white", 0.75),
+    linewidth = 0
   ) +
   scale_fill_gradient(
     low = "#F9E79F", high = "#B03A2E",
@@ -192,10 +194,14 @@ p_map <- ggplot(norway_map) +
   ) +
   theme_void() +
   theme(
-    plot.title = element_text(face = "bold", size = 14),
-    plot.subtitle = element_text(color = "grey30", size = 9),
+    plot.background = element_rect(fill = "#1B2A4A", color = NA),
+    panel.background = element_rect(fill = "#1B2A4A", color = NA),
+    plot.title = element_text(face = "bold", size = 14, color = "white"),
+    plot.subtitle = element_text(color = "grey70", size = 9),
     plot.caption = element_text(size = 7, color = "grey50"),
-    legend.position = "right"
+    legend.position = "right",
+    legend.text = element_text(color = "white"),
+    legend.title = element_text(color = "white")
   )
 
 p_map
