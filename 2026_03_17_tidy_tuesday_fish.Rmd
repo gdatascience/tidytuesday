@@ -1,0 +1,299 @@
+---
+title: "Norwegian Salmon: The Rising Tide of Unexplained Losses"
+date: 2026-03-24
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+Norway is the world's largest producer of farmed Atlantic salmon. Every month, millions of fish are lost — to death, disease, discards, escapes, and causes that defy easy classification. The Norwegian Veterinary Institute tracks these losses through its [Laksetap](https://apps.vetinst.no/laksetap/) monitoring system, and this week's [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) dataset gives us a window into six years of that data (2020–2025).
+
+What I found surprised me. The headline isn't just about how many fish die — it's about a growing category of losses that nobody seems to be able to explain.
+
+```{r libraries}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(patchwork)
+library(sf)
+
+sf_use_s2(FALSE)
+theme_set(theme_light())
+```
+
+```{r load-data}
+tt <- tt_load("2026-03-17")
+
+monthly_losses <- tt$monthly_losses_data
+monthly_mortality <- tt$monthly_mortality_data
+```
+
+## The Scale of It All
+
+Let's start with the raw numbers. At the national level, Norway loses roughly **4 to 7 million salmon per month**. The vast majority — around 85% — are classified simply as "dead." But the remaining 15% tells a more interesting story.
+
+```{r yearly-summary}
+yearly_summary <- monthly_losses %>%
+  filter(geo_group == "country", species == "salmon") %>%
+  mutate(year = year(date)) %>%
+  group_by(year) %>%
+  summarise(
+    total_losses = sum(losses) / 1e6,
+    pct_dead = sum(dead) / sum(losses) * 100,
+    pct_discarded = sum(discarded) / sum(losses) * 100,
+    pct_other = sum(other) / sum(losses) * 100,
+    .groups = "drop"
+  )
+
+yearly_summary
+```
+
+Look at the `pct_other` column. In 2020, "other" losses accounted for about 8% of all salmon losses. By 2024 and 2025, that figure had nearly doubled to ~15%. Meanwhile, the share classified as "dead" dropped from 87% to 81% — not because fewer fish are dying, but because more losses are being bucketed into this opaque "other" category.
+
+What's driving that shift? The data doesn't say. But it's a question worth asking.
+
+## Where the Fish Are Lost
+
+To see the full picture, let's look at how these loss types stack up month by month over the entire time period.
+
+```{r wrangle-losses}
+salmon_losses_long <- monthly_losses %>%
+  filter(geo_group == "country", species == "salmon") %>%
+  select(date, dead, discarded, escaped, other) %>%
+  pivot_longer(cols = c(dead, discarded, escaped, other),
+               names_to = "loss_type", values_to = "count") %>%
+  mutate(
+    loss_type = factor(loss_type,
+                       levels = c("dead", "other", "discarded", "escaped"),
+                       labels = c("Dead", "Other", "Discarded", "Escaped")),
+    count_millions = count / 1e6
+  )
+```
+
+```{r plot-losses, fig.width=10, fig.height=5, dpi=300}
+loss_colors <- c("Dead" = "#B03A2E", "Other" = "#F39C12",
+                 "Discarded" = "#2E86C1", "Escaped" = "#27AE60")
+
+p_losses <- salmon_losses_long %>%
+  ggplot(aes(x = date, y = count_millions, fill = loss_type)) +
+  geom_area(alpha = 0.85) +
+  scale_fill_manual(values = loss_colors) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(labels = comma_format()) +
+  labs(
+    title = "Monthly Salmon Losses by Type",
+    subtitle = "The amber 'Other' band has been steadily growing since 2023",
+    x = NULL, y = "Fish (millions)", fill = "Loss Type",
+    caption = "Data Source: Norwegian Veterinary Institute (Laksetap) | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "grey30"),
+    plot.caption = element_text(size = 7, color = "grey50")
+  )
+
+p_losses
+```
+
+The amber band is hard to miss. Starting around mid-2023, "other" losses began claiming a visibly larger share of the total — and they haven't come back down.
+
+## The Rhythm of Mortality
+
+Beyond the raw counts, the Norwegian Veterinary Institute also publishes a median monthly mortality rate — the percentage of fish in a facility that die in a given month — along with the interquartile range across facilities.
+
+This metric reveals something the loss counts alone can't: a strong seasonal pattern.
+
+```{r wrangle-mortality}
+salmon_mortality <- monthly_mortality %>%
+  filter(geo_group == "country", species == "salmon")
+```
+
+```{r plot-mortality, fig.width=10, fig.height=4, dpi=300}
+p_mortality <- salmon_mortality %>%
+  ggplot(aes(x = date)) +
+  geom_ribbon(aes(ymin = q1, ymax = q3), fill = "#B03A2E", alpha = 0.2) +
+  geom_line(aes(y = median), color = "#B03A2E", linewidth = 1) +
+  geom_smooth(aes(y = median), method = "loess", se = FALSE,
+              color = "#1A1A2E", linetype = "dashed", linewidth = 0.7) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(
+    title = "National Median Monthly Mortality Rate",
+    subtitle = "Shaded band shows the interquartile range across facilities; dashed line is the overall trend",
+    x = NULL, y = "Mortality Rate (%)",
+    caption = "Data Source: Norwegian Veterinary Institute (Laksetap) | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "grey30"),
+    plot.caption = element_text(size = 7, color = "grey50")
+  )
+
+p_mortality
+```
+
+Every year follows the same beat: mortality climbs through the cold winter months (peaking around January–March), then drops to its lowest point in summer (June–July) before rising again. The dashed trend line shows that, on average, the overall level has remained fairly stable — but the seasonal swings are relentless.
+
+The wide IQR band tells us something else: there's enormous variation between facilities. Some farms consistently run mortality rates 2–3x the national median, while others stay well below it.
+
+## Mapping the Aquaculture Coast
+
+Those national numbers mask a lot of regional variation. Norwegian salmon farming is concentrated along the western and northern coastline, stretching from Rogaland in the south to Finnmark in the far north. To understand where mortality is highest, it helps to see the geography.
+
+```{r load-map}
+norway_counties <- st_read(
+  "https://raw.githubusercontent.com/robhop/fylker-og-kommuner/master/Fylker-L.geojson",
+  quiet = TRUE
+) %>%
+  st_make_valid() %>%
+  mutate(data_region = case_when(
+    str_detect(fylkesnavn, "Agder") ~ "Agder & Rogaland",
+    str_detect(fylkesnavn, "Rogaland") ~ "Agder & Rogaland",
+    str_detect(fylkesnavn, "Finnmark") ~ "Finnmark",
+    str_detect(fylkesnavn, "Troms -") ~ "Troms",
+    str_detect(fylkesnavn, "Vestland") ~ "Vestland",
+    str_detect(fylkesnavn, "Møre og Romsdal") ~ "Møre og Romsdal",
+    str_detect(fylkesnavn, "Trøndelag") ~ "Trøndelag",
+    str_detect(fylkesnavn, "Nordland") ~ "Nordland",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(data_region)) %>%
+  group_by(data_region) %>%
+  summarise(geometry = st_union(geometry), .groups = "drop")
+
+# Join 2025 mortality data to the map
+county_mortality_2025 <- monthly_mortality %>%
+  filter(geo_group == "county", species == "salmon", year(date) == 2025) %>%
+  group_by(region) %>%
+  summarise(avg_median = mean(median), .groups = "drop")
+
+norway_map <- norway_counties %>%
+  left_join(county_mortality_2025, by = c("data_region" = "region"))
+```
+
+```{r plot-map, fig.width=8, fig.height=8, dpi=300}
+p_map <- ggplot(norway_map) +
+  geom_sf(aes(fill = avg_median), color = "white", linewidth = 0.4) +
+  geom_sf_text(
+    aes(label = paste0(data_region, "\n", sprintf("%.2f%%", avg_median))),
+    size = 2.5, color = "white", fontface = "bold"
+  ) +
+  scale_fill_gradient(
+    low = "#F9E79F", high = "#B03A2E",
+    name = "Avg. Median\nMortality (%)"
+  ) +
+  coord_sf(xlim = c(3, 32), ylim = c(57, 72)) +
+  labs(
+    title = "2025 Salmon Mortality by County",
+    subtitle = "Coastal counties from Rogaland to Finnmark — the heart of Norwegian aquaculture",
+    caption = "Data Source: Norwegian Veterinary Institute (Laksetap) | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "grey30", size = 9),
+    plot.caption = element_text(size = 7, color = "grey50"),
+    legend.position = "right"
+  )
+
+p_map
+```
+
+The gradient tells the story at a glance: the mid-coast counties of Møre og Romsdal and Trøndelag run the hottest, while the far-north counties of Troms and Nordland are the coolest. Let's put some numbers behind that.
+
+## Not All Counties Are Equal
+
+Zooming in from the national level to individual counties reveals stark regional differences — and diverging trends.
+
+```{r wrangle-county}
+county_mortality <- monthly_mortality %>%
+  filter(geo_group == "county", species == "salmon") %>%
+  mutate(year = year(date)) %>%
+  group_by(region, year) %>%
+  summarise(avg_median = mean(median), .groups = "drop")
+
+county_order <- county_mortality %>%
+  filter(year == 2025) %>%
+  arrange(avg_median) %>%
+  pull(region)
+```
+
+```{r plot-county, fig.width=10, fig.height=4, dpi=300}
+p_county <- county_mortality %>%
+  mutate(region = factor(region, levels = county_order)) %>%
+  ggplot(aes(x = factor(year), y = region, fill = avg_median)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = sprintf("%.2f", avg_median)),
+            color = "white", fontface = "bold", size = 3.5) +
+  scale_fill_gradient(low = "#F9E79F", high = "#B03A2E",
+                      name = "Avg. Median\nMortality (%)") +
+  labs(
+    title = "Average Median Mortality Rate by County",
+    subtitle = "Møre og Romsdal and Trøndelag are trending upward; Troms and Nordland have improved",
+    x = NULL, y = NULL,
+    caption = "Data Source: Norwegian Veterinary Institute (Laksetap) | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "grey30"),
+    plot.caption = element_text(size = 7, color = "grey50"),
+    panel.grid = element_blank(),
+    panel.border = element_blank()
+  )
+
+p_county
+```
+
+Two counties stand out:
+
+- **Møre og Romsdal** has nearly doubled its average mortality rate from 0.46% in 2020 to 0.91% in 2025 — the highest in the country.
+- **Trøndelag** has been on a steady climb, reaching 0.74% in 2025.
+
+On the other end, **Troms** and **Nordland** — both in northern Norway — have seen meaningful improvement, dropping to 0.37–0.38% by 2025. Whether that's due to colder waters, different farming practices, or something else entirely is a question for the fish health experts.
+
+## The Full Picture
+
+Bringing all three perspectives together — the composition of losses, the seasonal mortality rhythm, and the regional disparities — paints a picture of an industry under pressure from multiple directions.
+
+```{r combined-plot, fig.width=12, fig.height=10, dpi=300}
+combined <- p_losses / p_mortality / p_county +
+  plot_annotation(
+    title = "Norwegian Farmed Salmon: The Rising Tide of Unexplained Losses",
+    subtitle = str_wrap(paste0(
+      "Norway loses millions of farmed salmon every month. While death remains the dominant cause, ",
+      "the 'Other' category has nearly doubled from ~8% to ~15% of all losses since 2023. ",
+      "Mortality follows a persistent seasonal rhythm, and regional disparities are widening."
+    ), 130),
+    caption = "Data Source: Norwegian Veterinary Institute (Laksetap) | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday",
+    theme = theme(
+      plot.title = element_text(face = "bold", size = 16, hjust = 0),
+      plot.subtitle = element_text(size = 10, color = "grey30", hjust = 0),
+      plot.caption = element_text(size = 8, color = "grey50")
+    )
+  )
+
+combined
+```
+
+## What's Next?
+
+This analysis only scratches the surface. The Laksetap dataset includes additional tables beyond what's shared here — including data on specific causes of death and treatment events. A few threads worth pulling:
+
+- **What exactly is "other"?** The near-doubling of this category deserves investigation. Is it a reclassification issue, or are new types of losses emerging?
+- **Why the regional divergence?** Møre og Romsdal's worsening trend vs. Troms's improvement could point to localized environmental or operational factors.
+- **Rainbow trout vs. salmon.** This analysis focused on salmon, but the dataset includes rainbow trout data that may tell a different story.
+
+The Norwegian government has set a goal of pushing for lower mortality in aquaculture. Based on this data, there's still a long way to go — and the growing share of unexplained losses suggests the challenge may be getting harder to measure, not easier.
+
+```{r save-image}
+ggsave(
+  filename = "2026_03_17_tidy_tuesday_fish.png",
+  plot = combined,
+  device = "png",
+  width = 12,
+  height = 10,
+  dpi = 300
+)
+```
