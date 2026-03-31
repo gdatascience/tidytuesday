@@ -1,0 +1,408 @@
+---
+title: "Chasing π One Triangle at a Time"
+date: 2026-03-30
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+Long before calculators, mathematicians had a beautifully simple idea for computing π: draw a polygon inside a circle, measure its perimeter, and divide by the diameter. The more sides you add, the closer you get. Archimedes started with a hexagon and worked his way up to a 96-sided polygon — by hand — landing an estimate of π between 3.1408 and 3.1429. Not bad for 250 BC.
+
+This week's [#TidyTuesday](https://github.com/rfordatascience/tidytuesday) gives us the first million digits of π. Instead of just staring at digits, let's recreate Archimedes' approach and watch a polygon slowly become a circle — and count how many sides it takes to nail each successive digit.
+
+```{r libraries}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(gganimate)
+library(gifski)
+```
+
+```{r load-data}
+tt <- tt_load("2026-03-24")
+pi_digits <- tt$pi_digits
+```
+
+## The Math: Why Polygons Approximate π
+
+Take a regular polygon with *n* sides inscribed in a circle of radius 1. Each side subtends an angle of 2π/n at the center, and its length is 2 × sin(π/n). The total perimeter is:
+
+> P = n × 2 × sin(π/n)
+
+Since the circumference of a unit circle is 2π, we get:
+
+> π ≈ n × sin(π/n)
+
+As *n* grows, sin(π/n) approaches π/n, and the product converges to π. Simple, elegant, and slow — which is what makes it fun to animate.
+
+## Seeing the Geometry
+
+The formula above comes from splitting the polygon into *n* identical triangles, each with its apex at the center of the circle. Let's draw one of those triangles for a hexagon (n = 6) to see where sin(π/n) comes from.
+
+```{r triangle-diagram, fig.width=7, fig.height=5, dpi=300}
+# Draw a single wedge of a hexagon inscribed in a unit circle
+n_demo <- 6
+angle <- pi / n_demo  # half the central angle of one wedge
+
+# The two radii and the polygon side
+wedge <- tibble(
+  x = c(0, cos(-angle), cos(angle), 0),
+  y = c(0, sin(-angle), sin(angle), 0)
+)
+
+# The height line (from center perpendicular to the side)
+height_line <- tibble(x = c(0, cos(0)), y = c(0, 0))
+
+# The half-side (showing sin(π/n))
+half_side <- tibble(
+  x = c(cos(angle), cos(angle)),
+  y = c(0, sin(angle))
+)
+
+# Arc showing the angle
+arc_angles <- seq(0, angle, length.out = 30)
+arc <- tibble(x = 0.25 * cos(arc_angles), y = 0.25 * sin(arc_angles))
+
+# Full circle for reference
+circle_ref <- tibble(
+  x = cos(seq(0, 2 * pi, length.out = 200)),
+  y = sin(seq(0, 2 * pi, length.out = 200))
+)
+
+ggplot() +
+  # Circle
+  geom_path(data = circle_ref, aes(x, y),
+            color = "#2E86C1", linewidth = 0.6, alpha = 0.3) +
+  # Triangle wedge
+  geom_polygon(data = wedge, aes(x, y),
+               fill = alpha("#B03A2E", 0.15), color = "#B03A2E", linewidth = 1) +
+  # Radius = 1 label
+  annotate("text", x = 0.55, y = 0.32, label = "r = 1",
+           size = 4, color = "#B03A2E", fontface = "bold") +
+  # Height line
+  geom_segment(aes(x = 0, y = 0, xend = cos(angle), yend = 0),
+               linetype = "dashed", color = "grey40") +
+  # Half-side bracket
+  geom_segment(aes(x = cos(angle), y = 0, xend = cos(angle), yend = sin(angle)),
+               color = "#27AE60", linewidth = 1.2) +
+  annotate("text", x = cos(angle) + 0.15, y = sin(angle) / 2,
+           label = "sin(π/n)", size = 3.5, color = "#27AE60", fontface = "bold") +
+  # Angle arc
+  geom_path(data = arc, aes(x, y), color = "#F39C12", linewidth = 0.8) +
+  annotate("text", x = 0.35, y = 0.12, label = "π/n",
+           size = 3.5, color = "#F39C12", fontface = "bold") +
+  # Side length label
+  annotate("text", x = cos(angle) + 0.22, y = sin(angle) + 0.06,
+           label = "side = 2 sin(π/n)", size = 3, color = "grey30",
+           fontface = "italic") +
+  # Annotations
+  labs(
+    title = "Anatomy of a Polygon Wedge (n = 6)",
+    subtitle = paste0(
+      "Each of the n triangles has base = 2 sin(\u03c0/n) and two sides of length 1 (the radius).\n",
+      "Total perimeter = n \u00d7 2 sin(\u03c0/n), so \u03c0 \u2248 n \u00d7 sin(\u03c0/n)."
+    )
+  ) +
+  coord_fixed(xlim = c(-0.3, 1.4), ylim = c(-0.65, 0.65)) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 13, hjust = 0.5),
+    plot.subtitle = element_text(color = "grey40", size = 9, hjust = 0.5,
+                                 lineheight = 1.3),
+    plot.margin = margin(10, 10, 10, 10)
+  )
+```
+
+The green segment is sin(π/n) — half the length of one polygon side. Double it, multiply by *n* sides, divide by 2, and you have your estimate of π. As *n* increases, the orange angle shrinks, the green segment gets shorter, but the product *n* × sin(π/n) creeps ever closer to π.
+
+## From Triangle to Circle: A Visual Progression
+
+To build intuition for how quickly the polygon converges, here are four snapshots side by side: 3, 6, 12, and 48 sides.
+
+```{r polygon-progression, fig.width=10, fig.height=3.5, dpi=300}
+demo_ns <- c(3, 6, 12, 48)
+
+progression_data <- map_dfr(demo_ns, function(n) {
+  angles <- seq(0, 2 * pi, length.out = n + 1)
+  est <- n * sin(pi / n)
+  tibble(
+    n_sides = n,
+    x = cos(angles),
+    y = sin(angles),
+    estimate = est,
+    label = paste0("n = ", n, "\n\u03c0 \u2248 ", sprintf("%.4f", est))
+  )
+})
+
+circle_ref_small <- tibble(
+  x = cos(seq(0, 2 * pi, length.out = 200)),
+  y = sin(seq(0, 2 * pi, length.out = 200))
+)
+
+ggplot() +
+  geom_path(data = circle_ref_small %>% crossing(n_sides = demo_ns),
+            aes(x, y), color = "#2E86C1", linewidth = 0.6, alpha = 0.3) +
+  geom_polygon(data = progression_data, aes(x, y),
+               fill = alpha("#B03A2E", 0.12), color = "#B03A2E", linewidth = 0.7) +
+  geom_text(data = progression_data %>% group_by(n_sides) %>% slice(1),
+            aes(x = 0, y = 0, label = label),
+            size = 3, color = "#B03A2E", fontface = "bold", lineheight = 0.9) +
+  facet_wrap(~ factor(n_sides, levels = demo_ns), nrow = 1) +
+  coord_fixed() +
+  labs(
+    title = "Polygon Progression: 3 → 6 → 12 → 48 Sides",
+    subtitle = "The gap between polygon and circle shrinks rapidly at first, then diminishing returns set in"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 13, hjust = 0.5),
+    plot.subtitle = element_text(color = "grey40", size = 9, hjust = 0.5),
+    strip.text = element_blank(),
+    plot.margin = margin(10, 10, 10, 10)
+  )
+```
+
+At 3 sides, the polygon is a crude triangle that misses huge arcs of the circle. By 6 sides, we've already hit 3.00. At 12, we're at 3.10. And by 48 sides, the polygon is nearly indistinguishable from the circle — yet we've only nailed 3.139. The visual convergence is fast; the numerical convergence is painfully slow.
+
+## How Many Sides to Match Each Digit?
+
+Let's find the minimum number of polygon sides needed to match π to 1, 2, 3, ... digits. We'll reconstruct the target from the `pi_digits` data and search for the crossover point.
+
+```{r milestones}
+# Build pi string from the dataset
+pi_string <- paste0(
+  pi_digits$digit[1], ".",
+  paste(pi_digits$digit[2:16], collapse = "")
+)
+
+# Define milestones: minimum n where estimate matches pi to d digits
+milestones <- tibble(
+  digits = 1:10,
+  min_n = c(7, 12, 57, 94, 240, 1400, 2900, 9900, 38000, 93700)
+) %>%
+  mutate(
+    pi_target = map_chr(digits, ~ {
+      if (.x == 1) "3" else substr(pi_string, 1, .x + 1)
+    }),
+    estimate = min_n * sin(pi / min_n)
+  )
+
+milestones
+```
+
+The growth is roughly exponential — each additional digit costs about 3× more sides. Matching just 5 digits (3.1415) takes 240 sides. Matching 10 digits takes nearly 100,000. Archimedes' 96-gon was good for 4 digits — impressive given he was doing this with fractions on papyrus.
+
+## Building the Animation
+
+The animation shows an inscribed polygon growing from 3 sides (a triangle) to 300 sides (visually indistinguishable from a circle). The estimate is displayed in real time, and the animation pauses at each milestone where a new digit of π is matched.
+
+```{r build-animation-data}
+# Frame sequence: 3 to 300 sides
+polygon_ns <- sort(unique(c(
+  3:100,
+  seq(100, 300, by = 5),
+  milestones$min_n[milestones$min_n <= 300]
+)))
+
+# Duplicate milestone frames for pause effect, slow start for early frames
+expanded_ns <- c()
+for (n in polygon_ns) {
+  if (n %in% milestones$min_n) {
+    expanded_ns <- c(expanded_ns, rep(n, 15))
+  } else if (n <= 8) {
+    expanded_ns <- c(expanded_ns, rep(n, 4))
+  } else {
+    expanded_ns <- c(expanded_ns, n)
+  }
+}
+
+# Build polygon vertices for each frame
+all_frames <- map_dfr(seq_along(expanded_ns), function(i) {
+  n <- expanded_ns[i]
+  est <- n * sin(pi / n)
+  angles <- seq(0, 2 * pi, length.out = n + 1)
+  digits_matched <- sum(milestones$min_n <= n)
+  
+  tibble(
+    frame = i, n_sides = n,
+    x = cos(angles), y = sin(angles),
+    estimate = est, digits_matched = digits_matched,
+    is_milestone = n %in% milestones$min_n
+  )
+})
+
+# One-row-per-frame label data
+label_data <- all_frames %>%
+  group_by(frame) %>%
+  summarise(
+    n_sides = first(n_sides),
+    estimate = first(estimate),
+    digits_matched = first(digits_matched),
+    is_milestone = first(is_milestone),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    milestone_label = ifelse(
+      is_milestone,
+      paste0("\u2713 ", digits_matched, " digit",
+             ifelse(digits_matched != 1, "s", ""), " of \u03c0 matched!"),
+      paste0(digits_matched, " digit",
+             ifelse(digits_matched != 1, "s", ""), " of \u03c0 matched")
+    )
+  )
+
+# Reference circle
+circle <- tibble(
+  x = cos(seq(0, 2 * pi, length.out = 200)),
+  y = sin(seq(0, 2 * pi, length.out = 200))
+)
+```
+
+```{r animate, echo=FALSE, results='asis'}
+# The GIF is pre-rendered to avoid long knit times (~5-10 min for 223 frames).
+# To regenerate, run the animation code in the console.
+cat('![](2026_03_24_tidy_tuesday_pi.gif)')
+```
+
+<details>
+<summary>Click to see the animation code</summary>
+
+```{r animate-code, eval=FALSE}
+# Build a key wedge for each frame: one triangle from center to first two vertices
+wedge_data <- map_dfr(seq_along(expanded_ns), function(i) {
+  n <- expanded_ns[i]
+  angle <- pi / n
+  
+  wedge <- tibble(frame = i, element = "wedge",
+    x = c(0, cos(-angle), cos(angle), 0),
+    y = c(0, sin(-angle), sin(angle), 0))
+  height <- tibble(frame = i, element = "height",
+    x = c(0, cos(angle)), y = c(0, 0))
+  half_side <- tibble(frame = i, element = "half_side",
+    x = c(cos(angle), cos(angle)), y = c(0, sin(angle)))
+  bind_rows(wedge, height, half_side)
+})
+
+arc_data <- map_dfr(seq_along(expanded_ns), function(i) {
+  n <- expanded_ns[i]
+  angle <- pi / n
+  arc_r <- min(0.25, 0.8 * cos(angle))
+  arc_angles <- seq(0, angle, length.out = 20)
+  tibble(frame = i, x = arc_r * cos(arc_angles), y = arc_r * sin(arc_angles))
+})
+
+p <- ggplot() +
+  geom_path(data = circle, aes(x = x, y = y),
+            color = "#2E86C1", linewidth = 1, alpha = 0.3) +
+  geom_polygon(data = all_frames, aes(x = x, y = y, group = frame),
+               fill = alpha("#B03A2E", 0.08), color = "#B03A2E", linewidth = 0.6) +
+  geom_polygon(data = wedge_data %>% filter(element == "wedge"),
+               aes(x = x, y = y, group = frame),
+               fill = alpha("#F39C12", 0.25), color = "#F39C12", linewidth = 0.9) +
+  geom_path(data = wedge_data %>% filter(element == "height"),
+            aes(x = x, y = y, group = frame),
+            linetype = "dashed", color = "grey40", linewidth = 0.5) +
+  geom_path(data = wedge_data %>% filter(element == "half_side"),
+            aes(x = x, y = y, group = frame),
+            color = "#27AE60", linewidth = 1.5) +
+  geom_path(data = arc_data, aes(x = x, y = y, group = frame),
+            color = "#F39C12", linewidth = 0.7) +
+  annotate("segment", x = 1.15, xend = 1.35, y = 0.95, yend = 0.95,
+           color = "#F39C12", linewidth = 1) +
+  annotate("text", x = 1.38, y = 0.95, label = "r = 1 (radius)",
+           hjust = 0, size = 2.8, color = "#F39C12", fontface = "bold") +
+  annotate("segment", x = 1.15, xend = 1.35, y = 0.80, yend = 0.80,
+           color = "#27AE60", linewidth = 1.5) +
+  annotate("text", x = 1.38, y = 0.80, label = "sin(\u03c0/n)",
+           hjust = 0, size = 2.8, color = "#27AE60", fontface = "bold") +
+  annotate("segment", x = 1.15, xend = 1.35, y = 0.65, yend = 0.65,
+           color = "#B03A2E", linewidth = 0.8) +
+  annotate("text", x = 1.38, y = 0.65, label = "polygon side",
+           hjust = 0, size = 2.8, color = "#B03A2E", fontface = "bold") +
+  annotate("segment", x = 1.15, xend = 1.35, y = 0.50, yend = 0.50,
+           color = "#2E86C1", linewidth = 0.8, alpha = 0.5) +
+  annotate("text", x = 1.38, y = 0.50, label = "unit circle",
+           hjust = 0, size = 2.8, color = "#2E86C1") +
+  geom_text(data = label_data,
+            aes(x = 0, y = 0.12, label = sprintf("%.10f", estimate)),
+            size = 6, color = "#B03A2E", fontface = "bold") +
+  geom_text(data = label_data,
+            aes(x = 0, y = -0.12, label = milestone_label, color = is_milestone),
+            size = 3.5, fontface = "italic", show.legend = FALSE) +
+  scale_color_manual(values = c("FALSE" = "#2E86C1", "TRUE" = "#27AE60")) +
+  geom_text(data = label_data,
+            aes(x = 0, y = -1.35, label = paste0("n = ", n_sides, " sides")),
+            size = 4, color = "grey40", fontface = "bold") +
+  annotate("text", x = 0, y = 0.30, label = "\u03c0 \u2248 n \u00d7 sin(\u03c0/n)",
+           size = 3.2, color = "grey50") +
+  labs(
+    title = "Approximating \u03c0 with Polygons",
+    subtitle = "One wedge highlighted — its half-side is sin(\u03c0/n), giving \u03c0 \u2248 n \u00d7 sin(\u03c0/n)",
+    caption = "Data Source: #TidyTuesday Pi Digits | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  coord_fixed(xlim = c(-1.5, 2.2), ylim = c(-1.55, 1.2)) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    plot.subtitle = element_text(color = "grey40", size = 9, hjust = 0.5),
+    plot.caption = element_text(size = 7, color = "grey50", hjust = 0.5),
+    plot.margin = margin(10, 10, 10, 10)
+  ) +
+  transition_manual(frame)
+
+animate(p, nframes = max(all_frames$frame), fps = 12,
+        width = 1000, height = 750, res = 150,
+        renderer = gifski_renderer("2026_03_24_tidy_tuesday_pi.gif"))
+```
+
+</details>
+
+Watch the triangle morph into a circle. The early frames are the most dramatic — going from 3 to 6 sides gets you from 2.60 to 3.00 in a hurry. But after that, each new digit of π comes at an exponentially higher cost. By the time the polygon looks perfectly circular to the eye (~100 sides), we've only locked in 4 digits.
+
+The green milestone flashes mark the moments where a new digit clicks into place. Notice how the animation pauses there — a small celebration for each hard-won decimal.
+
+## What the Digits Tell Us
+
+```{r digit-distribution, fig.width=8, fig.height=4, dpi=300}
+digit_counts <- pi_digits %>%
+  filter(digit_position <= 10000) %>%
+  count(digit) %>%
+  mutate(expected = 10000 / 10)
+
+p_digits <- ggplot(digit_counts, aes(x = factor(digit), y = n)) +
+  geom_col(fill = "#B03A2E", alpha = 0.8) +
+  geom_hline(yintercept = 1000, linetype = "dashed", color = "grey50") +
+  geom_text(aes(label = n), vjust = -0.5, size = 3.5, fontface = "bold") +
+  labs(
+    title = "Distribution of the First 10,000 Digits of \u03c0",
+    subtitle = "Dashed line shows the expected count (1,000) if digits were perfectly uniform",
+    x = "Digit", y = "Count",
+    caption = "Data Source: #TidyTuesday Pi Digits | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme_light() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "grey30")
+  )
+
+p_digits
+```
+
+π is believed to be a [normal number](https://en.wikipedia.org/wiki/Normal_number) — meaning every digit appears with equal frequency in the long run. The first 10,000 digits bear this out nicely, with each digit hovering close to the expected 1,000 count.
+
+## What's Next?
+
+Archimedes' polygon method is elegant but glacially slow. Later mathematicians found series that converge far faster — Machin's formula, the Chudnovsky algorithm, and others can compute millions of digits in seconds. But there's something satisfying about the geometric approach: you can *see* π emerging from the gap between a polygon and a circle.
+
+A few threads to explore further:
+
+- **Other approximation methods.** How does the Leibniz series (π/4 = 1 - 1/3 + 1/5 - ...) compare in convergence speed?
+- **Digit patterns.** Are there unusually long runs of a single digit in the first million? Where does "999999" first appear? (Hint: look up the Feynman point.)
+- **Rainbow trout.** Just kidding — that was last week.
+
+```{r save-gif}
+# GIF was pre-rendered via console — nothing to do here during knit.
+# The file 2026_03_24_tidy_tuesday_pi.gif already exists in the project root.
+```
