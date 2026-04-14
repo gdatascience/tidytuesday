@@ -62,13 +62,20 @@ Each `Rscript -e '...'` call starts a fresh R process — packages, data, and ob
 ### Cache Data Locally
 On the first run, save downloaded data to a local `.rds` file. On subsequent runs, read from the cache instead of re-downloading.
 
+**IMPORTANT**: Always store cache files in the week's specs folder (`.kiro/specs/YYYY_MM_DD_tidy_tuesday_topic/`), never in the repo root. This keeps temporary data out of the git repository.
+
 ```r
+# Define cache path in the specs folder
+cache_dir <- ".kiro/specs/YYYY_MM_DD_tidy_tuesday_topic"
+cache_path <- file.path(cache_dir, "tt_cache.rds")
+
 # First run: download and cache
 tt <- tt_load("YYYY-MM-DD")
-saveRDS(tt, "tt_cache.rds")
+if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+saveRDS(tt, cache_path)
 
 # Subsequent runs: load from cache
-tt <- readRDS("tt_cache.rds")
+tt <- readRDS(cache_path)
 ```
 
 ### Minimize Repeated Setup
@@ -76,6 +83,7 @@ tt <- readRDS("tt_cache.rds")
 - If a script only needs `dplyr` and `readr`, don't load all of `tidyverse`
 - Group related exploratory queries into a single `Rscript -e '...'` call rather than running many small ones
 - Clean up cache files (e.g., `tt_cache.rds`) when the analysis is complete
+- Never leave `.rds` cache files in the repo root — always use the specs folder
 
 ## Project Configuration
 - Encoding: UTF-8

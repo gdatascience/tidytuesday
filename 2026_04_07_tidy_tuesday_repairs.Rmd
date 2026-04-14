@@ -1,0 +1,638 @@
+---
+title: "Can We Predict If Your Broken Gadget Will Be Fixed?"
+date: 2026-04-14
+output: html_document
+---
+
+Every year, thousands of people carry their broken toasters, cracked phones, and torn jeans to community repair cafés — volunteer-run events where skilled fixers try to breathe new life into discarded items. But not everything can be saved. Some gadgets walk out the door humming again; others leave in the same sorry state they arrived.
+
+This week's TidyTuesday dataset contains **178,749 repair attempts** from **448 repair cafés** across **25 countries**, spanning 2015 to 2026. The big question: can the words people use to describe a problem actually predict whether the item gets fixed? We built a machine learning model to find out.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r libraries}
+library(tidyverse)
+library(tidytuesdayR)
+library(tidytext)
+library(tidymodels)
+library(textrecipes)
+library(scales)
+library(cowplot)
+library(magick)
+
+theme_set(theme_light())
+```
+
+```{r load-data}
+cache_path <- ".kiro/specs/2026_04_07_tidy_tuesday_repairs/tt_cache.rds"
+
+if (file.exists(cache_path)) {
+  tt <- readRDS(cache_path)
+} else {
+  tt <- tt_load("2026-04-07")
+  saveRDS(tt, cache_path)
+}
+
+repairs <- tt$repairs
+repairs_text <- tt$repairs_text
+```
+
+## The Repair Café Movement Is Growing Fast
+
+Before we dive into modeling, let's look at the scale of this movement. Repair cafés have exploded in popularity — the number of logged repair attempts has grown from just 28 in 2015 to over **45,000 in 2025**.
+
+```{r growth-over-time}
+repairs_by_year <- repairs %>%
+  mutate(year = year(repair_date)) %>%
+  filter(year >= 2017, year <= 2025) %>%
+  count(year)
+
+ggplot(repairs_by_year, aes(x = year, y = n)) +
+  geom_col(fill = "#2E86AB", width = 0.7) +
+  geom_text(aes(label = comma(n)), vjust = -0.5, size = 3.5, fontface = "bold") +
+  scale_x_continuous(breaks = 2017:2025) +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Repair Cafés Are Booming",
+    subtitle = "Annual repair attempts logged worldwide, 2017–2025",
+    x = NULL, y = "Repair Attempts",
+    caption = "Data Source: Open Repair Alliance | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  )
+```
+
+The dip in 2020–2021 is no mystery — COVID shut down in-person events globally. But the rebound has been remarkable, with volumes nearly tripling from pre-pandemic levels.
+
+## What Gets Brought In — and What Gets Fixed?
+
+Overall, **63% of items are fully repaired**, with another **13% partially fixed**. But the success rate varies wildly by category. Textiles and hand tools are almost always fixable, while electronics and computers are a coin flip.
+
+```{r repair-rates-by-category}
+cat_rates <- repairs %>%
+  filter(!is.na(category), !is.na(repaired)) %>%
+  mutate(
+    outcome = case_when(
+      repaired %in% c("yes", "ja") ~ "Repaired",
+      repaired == "half" ~ "Partial",
+      repaired == "no" ~ "Not Repaired"
+    ),
+    outcome = factor(outcome, levels = c("Repaired", "Partial", "Not Repaired"))
+  ) %>%
+  count(category, outcome) %>%
+  group_by(category) %>%
+  mutate(
+    total = sum(n),
+    pct = n / total
+  ) %>%
+  ungroup() %>%
+  filter(total >= 100)
+
+cat_order <- cat_rates %>%
+  filter(outcome == "Repaired") %>%
+  arrange(pct) %>%
+  pull(category)
+
+ggplot(
+  cat_rates %>% mutate(category = factor(category, levels = cat_order)),
+  aes(x = pct, y = category, fill = outcome)
+) +
+  geom_col(position = "stack") +
+  scale_x_continuous(labels = percent, expand = expansion(mult = c(0, 0.02))) +
+  scale_fill_manual(values = c("Repaired" = "#2E86AB", "Partial" = "#F6AE2D", "Not Repaired" = "#E84855")) +
+  labs(
+    title = "Textiles Are Easy Fixes; Electronics Are a Gamble",
+    subtitle = "Repair outcomes by product category (categories with 100+ attempts)",
+    x = "Share of Repair Attempts", y = NULL, fill = NULL,
+    caption = "Data Source: Open Repair Alliance | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(legend.position = "top")
+```
+
+Textiles lead at **92% repaired** — a torn seam or missing button is straightforward work. On the other end, display/sound equipment and computers hover around **46%**. The complexity of modern electronics makes them harder to crack open and diagnose.
+
+## Can Words Predict Repair Success?
+
+Here's where it gets interesting. When people bring items to a repair café, volunteers log a description of the problem and the defect found. We combined these text fields and fed them into a **lasso logistic regression** model to see if the language alone can predict whether an item gets repaired.
+
+```{r prepare-ml-data}
+set.seed(42)
+
+df <- repairs %>%
+  left_join(repairs_text, by = "repair_id", relationship = "many-to-many") %>%
+  distinct(repair_id, .keep_all = TRUE) %>%
+  mutate(
+    was_repaired = case_when(
+      repaired %in% c("yes", "ja") ~ "repaired",
+      repaired %in% c("no", "half") ~ "not_repaired",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(was_repaired)) %>%
+  mutate(
+    combined_text = paste(
+      coalesce(problem_description, ""),
+      coalesce(defect_found, "")
+    ),
+    category = factor(coalesce(category, "Unknown"))
+  ) %>%
+  filter(nchar(trimws(combined_text)) > 5) %>%
+  select(repair_id, was_repaired, combined_text, category)
+
+df$was_repaired <- factor(df$was_repaired, levels = c("repaired", "not_repaired"))
+```
+
+We use all **`r comma(nrow(df))`** records with text descriptions, split 75/25 into training and test sets, then tokenize the text into TF-IDF features alongside the product category.
+
+```{r train-model}
+split <- initial_split(df, prop = 0.75, strata = was_repaired)
+train <- training(split)
+test <- testing(split)
+
+rec <- recipe(was_repaired ~ combined_text + category, data = train) %>%
+  step_tokenize(combined_text) %>%
+  step_stopwords(combined_text) %>%
+  step_tokenfilter(combined_text, max_tokens = 500) %>%
+  step_tfidf(combined_text) %>%
+  step_dummy(category) %>%
+  step_zv(all_predictors()) %>%
+  step_normalize(all_predictors())
+
+lasso_spec <- logistic_reg(penalty = 0.01, mixture = 1) %>%
+  set_engine("glmnet")
+
+wf <- workflow() %>%
+  add_recipe(rec) %>%
+  add_model(lasso_spec)
+
+fit <- fit(wf, data = train)
+```
+
+```{r evaluate-model}
+preds <- predict(fit, test, type = "prob") %>%
+  bind_cols(predict(fit, test)) %>%
+  bind_cols(test %>% select(was_repaired))
+
+acc <- accuracy(preds, truth = was_repaired, estimate = .pred_class)
+auc_val <- roc_auc(preds, truth = was_repaired, .pred_repaired)
+```
+
+The model achieves **`r percent(acc$.estimate, accuracy = 0.1)` accuracy** and an **AUC of `r round(auc_val$.estimate, 3)`** — well above the 50% baseline for balanced classes. The text people use to describe problems genuinely carries signal about whether the fix will succeed.
+
+## The Language of Fixable vs. Unfixable
+
+The lasso model zeroes out irrelevant features, leaving us with the words that matter most. Let's look at what language predicts success versus failure.
+
+```{r extract-coefficients}
+model_engine <- extract_fit_engine(fit)
+coefs <- coef(model_engine, s = 0.01)
+coef_df <- data.frame(
+  term = rownames(coefs),
+  estimate = as.vector(coefs[, 1])
+) %>%
+  filter(term != "(Intercept)", estimate != 0) %>%
+  mutate(
+    word = str_remove(term, "tfidf_combined_text_") %>%
+      str_remove("category_"),
+    clean_term = str_replace_all(word, "\\.", " / "),
+    direction = if_else(estimate > 0, "Predicts Repair", "Predicts Failure")
+  ) %>%
+  arrange(desc(abs(estimate)))
+```
+
+```{r top-words-plot, fig.width=10, fig.height=7}
+top_words <- coef_df %>%
+  filter(str_detect(term, "tfidf_")) %>%
+  slice_head(n = 20) %>%
+  mutate(clean_term = fct_reorder(clean_term, abs(estimate)))
+
+ggplot(top_words, aes(x = abs(estimate), y = clean_term, fill = direction)) +
+  geom_col() +
+  scale_fill_manual(values = c("Predicts Repair" = "#2E86AB", "Predicts Failure" = "#E84855")) +
+  labs(
+    title = "What Words Predict Whether Your Gadget Gets Fixed?",
+    subtitle = "Top 20 text features from a lasso logistic regression model",
+    x = "Absolute Coefficient (Importance)", y = NULL, fill = NULL,
+    caption = "Data Source: Open Repair Alliance | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(legend.position = "top")
+```
+
+Words like **"motor"** and **"element"** predict successful repairs — these point to identifiable, replaceable components. Meanwhile, **"blunt"** (dull blades that can't be resharpened) and **"los"** (Dutch for "loose," suggesting structural issues) predict failure. The word **"snoer"** (Dutch for "cord") also signals trouble — frayed power cords on older appliances are often not worth the safety risk.
+
+## Lost in Translation? Decoding the Multilingual Signal
+
+Here's the thing — this dataset spans **25 countries**, and the repair descriptions are written in Dutch, French, German, Spanish, and English. Our lasso model picked up on words from all of these languages, but the top-words plot above is hard to interpret if you don't speak Dutch. Let's fix that.
+
+We built a translation lookup for every non-English word the model selected and re-labeled the chart. Now the story becomes much clearer.
+
+```{r translate-top-words, fig.width=10, fig.height=9}
+# Translation lookup for non-English words in the model
+translations <- tribble(
+  ~word,                ~english,              ~lang,
+  "los",               "loose",               "NL",
+  "niet",              "not",                 "NL",
+  "snoer",             "cord",                "NL",
+  "bot",               "blunt/dull",          "NL",
+  "vuil",              "dirty",               "NL",
+  "printplaat",        "circuit board",       "NL",
+  "zat",               "was stuck",           "NL",
+  "draad",             "wire",                "NL",
+  "lang",              "long/slow",           "NL",
+  "stekker",           "plug",                "NL",
+  "gevonden",          "found",               "NL",
+  "laadt",             "charges",             "NL",
+  "contacten",         "contacts",            "NL",
+  "accu",              "battery",             "NL",
+  "meer",              "more",                "NL",
+  "doorgebrand",       "burned out",          "NL",
+  "waarschijnlijk",    "probably",            "NL",
+  "verwarmingselement","heating element",     "NL",
+  "onbekend",          "unknown",             "NL",
+  "schoongemaakt",     "cleaned",             "NL",
+  "vervuild",          "contaminated",        "NL",
+  "vast",              "stuck",               "NL",
+  "kabel",             "cable",               "NL",
+  "versleten",         "worn out",            "NL",
+  "elektronica",       "electronics",         "NL",
+  "vervangen",         "replaced",            "NL",
+  "maar",              "but",                 "NL",
+  "schakelaar",        "switch",              "NL",
+  "losse",             "loose (adj.)",        "NL",
+  "ketting",           "chain",               "NL",
+  "draadbreuk",        "wire break",          "NL",
+  "voeding",           "power supply",        "NL",
+  "goed",              "good",                "NL",
+  "oplader",           "charger",             "NL",
+  "eraf",              "off (it)",            "NL",
+  "komt",              "comes",               "NL",
+  "zit",               "sits/is stuck",       "NL",
+  "kabelbreuk",        "cable break",         "NL",
+  "pomp",              "pump",                "NL",
+  "band",              "belt/band",           "NL",
+  "fil",               "wire",                "FR",
+  "nettoyage",         "cleaning",            "FR",
+  "carte",             "board/card",          "FR",
+  "moteur",            "motor",               "FR",
+  "résistance",       "resistor",            "FR",
+  "mais",              "but",                 "FR",
+  "pas",               "not/step",            "FR",
+  "ne",                "not",                 "FR",
+  "und",               "and",                 "DE",
+  "trafo",             "transformer",         "DE"
+)
+
+# Annotate the full coefficient table with translations
+coef_annotated <- coef_df %>%
+  left_join(translations, by = "word") %>%
+  mutate(
+    is_foreign = !is.na(lang),
+    label = case_when(
+      !is.na(english) ~ paste0(english, " [", lang, ": ", word, "]"),
+      TRUE ~ word
+    )
+  )
+
+# Plot top 30 words with translations
+top30 <- coef_annotated %>%
+  slice_head(n = 30) %>%
+  mutate(label = fct_reorder(label, abs(estimate)))
+
+ggplot(top30, aes(x = abs(estimate), y = label, fill = direction)) +
+  geom_col() +
+  geom_text(
+    data = top30 %>% filter(is_foreign),
+    aes(x = abs(estimate) + 0.002, label = paste0("(", lang, ")")),
+    hjust = 0, size = 3, color = "#888888"
+  ) +
+  scale_fill_manual(values = c("Predicts Repair" = "#2E86AB", "Predicts Failure" = "#E84855")) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.12))) +
+  labs(
+    title = "The Multilingual Vocabulary of Repair",
+    subtitle = "Top 30 model features with non-English words translated to English",
+    x = "Absolute Coefficient (Importance)", y = NULL, fill = NULL,
+    caption = "Data Source: Open Repair Alliance | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(legend.position = "top")
+```
+
+Now the patterns jump out. The model learned the same concepts across languages:
+
+- **Fixable signals**: "circuit board" (NL: *printplaat*), "motor," "heating element" (NL: *verwarmingselement*), "charges" (NL: *laadt*), "battery" (NL: *accu*) — these all point to **identifiable, replaceable components**. If a volunteer can name the broken part, they can probably swap it out.
+- **Failure signals**: "dirty" (NL: *vuil*), "cord" (NL: *snoer*), "wire" (NL: *draad*, FR: *fil*), "plug" (NL: *stekker*), "loose" (NL: *los*), "contacts" (NL: *contacten*) — these describe **diffuse electrical problems** that are harder to isolate and often indicate deeper damage.
+- **The sharpening dead-end**: "blunt" and "sharpening" both predict failure. Dull blades brought to repair cafés often can't be resharpened with the tools on hand.
+
+The Dutch dominance makes sense — the Netherlands has **90,839 logged repairs**, more than any other country. The repair café movement was literally [founded in Amsterdam in 2009](https://repaircafe.org/en/about/), so Dutch volunteers have been logging data the longest.
+
+## The Final Verdict: The Words That Fix (and Fail) Your Gadgets
+
+Let's bring it all together with a single visualization that tells the whole story — which words in a repair description signal hope, and which signal doom?
+
+```{r final-viz, fig.width=14, fig.height=12, dpi=300}
+# Repair Café brand palette (from repaircafe.org)
+rc_navy   <- "#2D2E82"
+rc_orange <- "#ED6A42"
+rc_bg     <- "#F2F2FF"
+rc_dark   <- "#1C1C57"
+rc_light  <- "#E8E8FF"
+
+# Prepare the logo: add navy background to the transparent PNG
+logo_path <- ".kiro/specs/2026_04_07_tidy_tuesday_repairs/rc_logo.png"
+logo_branded_path <- ".kiro/specs/2026_04_07_tidy_tuesday_repairs/rc_logo_branded.png"
+
+logo_raw <- image_read(logo_path)
+logo_info <- image_info(logo_raw)
+navy_bg <- image_blank(logo_info$width, logo_info$height, color = rc_navy)
+logo_branded <- image_composite(navy_bg, logo_raw, operator = "over")
+logo_branded <- image_border(logo_branded, color = rc_navy, geometry = "40x20")
+image_write(logo_branded, logo_branded_path)
+
+# Build the final dataset: top translated words, signed by direction
+final_words <- coef_annotated %>%
+  filter(str_detect(term, "tfidf_")) %>%
+  slice_head(n = 30) %>%
+  mutate(
+    signed_est = if_else(direction == "Predicts Repair", abs(estimate), -abs(estimate)),
+    display_label = case_when(
+      !is.na(english) & word != english ~ paste0(word, " (", lang, ": ", english, ")"),
+      TRUE ~ word
+    ),
+    display_label = fct_reorder(display_label, signed_est),
+    bar_color = if_else(direction == "Predicts Repair", rc_navy, rc_orange),
+    # Decide: all labels go outside the bar
+    label_x = if_else(signed_est > 0, signed_est + 0.004, signed_est - 0.004),
+    label_hjust = if_else(signed_est > 0, 0, 1),
+    label_color = bar_color
+  )
+
+# Custom Repair Café theme
+theme_repaircafe <- theme_minimal(base_size = 13) +
+  theme(
+    text = element_text(family = "Helvetica Neue", color = rc_dark),
+    plot.background = element_rect(fill = rc_bg, color = NA),
+    panel.background = element_rect(fill = rc_bg, color = NA),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = rc_light, linewidth = 0.4),
+    plot.title = element_text(
+      size = 22, face = "bold", color = rc_dark,
+      margin = margin(b = 12), hjust = 0.5
+    ),
+    plot.title.position = "plot",
+    plot.subtitle = element_text(
+      size = 11.5, color = "#555577", lineheight = 1.3,
+      margin = margin(t = 4, b = 8), hjust = 0.5
+    ),
+    plot.caption = element_text(
+      size = 9, color = "#8888AA", hjust = 0.5,
+      margin = margin(t = 12)
+    ),
+    plot.margin = margin(10, 20, 12, 10),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.x = element_text(size = 10, color = "#555577"),
+    axis.title.x = element_text(size = 11, color = "#555577", margin = margin(t = 8)),
+    legend.position = "none"
+  )
+
+n_words <- nrow(final_words)
+
+base_plot <- ggplot(final_words, aes(x = signed_est, y = display_label)) +
+  # Bars
+  geom_col(aes(fill = bar_color), width = 0.7) +
+  scale_fill_identity() +
+  # Word labels outside the bars
+  geom_text(
+    aes(x = label_x, label = display_label,
+        hjust = label_hjust, color = label_color),
+    size = 3.5, fontface = "bold", family = "Helvetica Neue"
+  ) +
+  scale_color_identity() +
+  # Coefficient values inside the bars, near the end
+  geom_text(
+    aes(
+      x = signed_est - if_else(signed_est > 0, 0.004, -0.004),
+      label = sprintf("%+.3f", signed_est),
+      hjust = if_else(signed_est > 0, 1, 0)
+    ),
+    color = "white", size = 2.7, family = "Helvetica Neue"
+  ) +
+  # Zero line
+  geom_vline(xintercept = 0, linewidth = 0.7, color = rc_dark) +
+  # Direction labels above the data
+  annotate(
+    "label", x = 0.08, y = n_words + 1.5,
+    label = "SIGNALS FIXABLE -->",
+    fill = rc_navy, color = "white",
+    family = "Helvetica Neue",
+    size = 3.8, fontface = "bold",
+    label.padding = unit(0.5, "lines"),
+    label.r = unit(0.3, "lines")
+  ) +
+  annotate(
+    "label", x = -0.08, y = n_words + 1.5,
+    label = "<-- SIGNALS FAILURE",
+    fill = rc_orange, color = "white",
+    family = "Helvetica Neue",
+    size = 3.8, fontface = "bold",
+    label.padding = unit(0.5, "lines"),
+    label.r = unit(0.3, "lines")
+  ) +
+  scale_x_continuous(
+    breaks = seq(-0.15, 0.15, 0.05),
+    labels = function(x) sprintf("%+.2f", x),
+    expand = expansion(mult = c(0.12, 0.12))
+  ) +
+  scale_y_discrete(expand = expansion(add = c(0.5, 2.5))) +
+  labs(
+    title = "The Words That Predict Whether Your Gadget Gets Fixed",
+    subtitle = paste0(
+      "Lasso logistic regression on ", comma(nrow(df)), " multilingual repair descriptions from 25 countries\n",
+      "AUC = ", round(auc_val$.estimate, 2),
+      " | Accuracy = ", percent(acc$.estimate, accuracy = 0.1),
+      " | Non-English words shown as: word (translation)"
+    ),
+    x = "Model Coefficient (Predictive Strength)",
+    y = NULL,
+    caption = "Data Source: Open Repair Alliance via TidyTuesday | Languages: NL = Dutch, FR = French, DE = German, EN = English | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme_repaircafe
+
+# Stack logo above the main plot
+logo_strip <- ggdraw() +
+  draw_image(logo_branded_path, x = 0.5, y = 0.5, width = 0.22,
+             hjust = 0.5, vjust = 0.5) +
+  theme(plot.background = element_rect(fill = rc_bg, color = NA))
+
+p <- plot_grid(
+  logo_strip,
+  base_plot,
+  ncol = 1,
+  rel_heights = c(0.06, 0.94)
+)
+
+p
+```
+
+## What's Next?
+
+This analysis only scratches the surface. A few open threads worth pulling:
+
+- **Beyond bag-of-words**: We translated the model's top features, but a true multilingual embedding model (e.g., multilingual BERT) could capture semantic meaning across languages simultaneously — likely pushing accuracy well past 70%.
+- **Repairability scores**: The dataset includes a 0–10 repairability rating. Could we build a model that predicts this continuous score, giving manufacturers feedback on design choices?
+- **The economics of repair**: With estimated production years available, we could study whether newer products are harder or easier to fix — a direct test of the "planned obsolescence" hypothesis.
+
+The repair café movement is a quiet revolution. Every fixed toaster is a small act of defiance against throwaway culture. And as this data shows, the odds are in your favor — bring your broken stuff, and more often than not, it'll walk out the door working again.
+
+```{r save-image, include=FALSE}
+# Full desktop version saved to specs folder only (not repo root)
+ggsave(
+  filename = ".kiro/specs/2026_04_07_tidy_tuesday_repairs/2026_04_07_tidy_tuesday_repairs_full.png",
+  plot = p,
+  device = "png",
+  width = 14,
+  height = 12,
+  dpi = 300,
+  bg = "#F2F2FF"
+)
+```
+
+Here's a mobile-friendly version of the same chart — fewer words, bigger text, designed to be readable on a phone screen.
+
+```{r mobile-viz, fig.width=9, fig.height=9, dpi=300}
+# Mobile version: top 10 words, larger fonts, two-line labels for translations
+mobile_words <- coef_annotated %>%
+  filter(str_detect(term, "tfidf_")) %>%
+  slice_head(n = 10) %>%
+  mutate(
+    signed_est = if_else(direction == "Predicts Repair", abs(estimate), -abs(estimate)),
+    display_label = case_when(
+      !is.na(english) & word != english ~ paste0(word, "\n(", english, ")"),
+      TRUE ~ word
+    ),
+    display_label = fct_reorder(display_label, signed_est),
+    bar_color = if_else(direction == "Predicts Repair", rc_navy, rc_orange),
+    label_x = if_else(signed_est > 0, signed_est + 0.004, signed_est - 0.004),
+    label_hjust = if_else(signed_est > 0, 0, 1),
+    label_color = bar_color
+  )
+
+n_mobile <- nrow(mobile_words)
+
+theme_mobile <- theme_minimal(base_size = 16) +
+  theme(
+    text = element_text(family = "Helvetica Neue", color = rc_dark),
+    plot.background = element_rect(fill = rc_bg, color = NA),
+    panel.background = element_rect(fill = rc_bg, color = NA),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = rc_light, linewidth = 0.4),
+    plot.title = element_text(
+      size = 18, face = "bold", color = rc_dark,
+      margin = margin(b = 10), hjust = 0.5
+    ),
+    plot.title.position = "plot",
+    plot.subtitle = element_text(
+      size = 12, color = "#555577", lineheight = 1.3,
+      margin = margin(t = 2, b = 10), hjust = 0.5
+    ),
+    plot.caption = element_text(
+      size = 9, color = "#8888AA", hjust = 0.5,
+      margin = margin(t = 10)
+    ),
+    plot.margin = margin(10, 15, 10, 10),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.x = element_text(size = 12, color = "#555577"),
+    axis.title.x = element_text(size = 13, color = "#555577", margin = margin(t = 8)),
+    legend.position = "none"
+  )
+
+mobile_base <- ggplot(mobile_words, aes(x = signed_est, y = display_label)) +
+  geom_col(aes(fill = bar_color), width = 0.85) +
+  scale_fill_identity() +
+  # Word labels outside — with lineheight for two-line labels
+  geom_text(
+    aes(x = label_x, label = display_label,
+        hjust = label_hjust, color = label_color),
+    size = 4.2, fontface = "bold", family = "Helvetica Neue",
+    lineheight = 0.85
+  ) +
+  scale_color_identity() +
+  # Coefficient values inside
+  geom_text(
+    aes(
+      x = signed_est - if_else(signed_est > 0, 0.004, -0.004),
+      label = sprintf("%+.3f", signed_est),
+      hjust = if_else(signed_est > 0, 1, 0)
+    ),
+    color = "white", size = 3.5, family = "Helvetica Neue"
+  ) +
+  geom_vline(xintercept = 0, linewidth = 0.8, color = rc_dark) +
+  annotate(
+    "label", x = 0.08, y = n_mobile + 1,
+    label = "FIXABLE -->",
+    fill = rc_navy, color = "white",
+    family = "Helvetica Neue",
+    size = 4.5, fontface = "bold",
+    label.padding = unit(0.5, "lines"),
+    label.r = unit(0.3, "lines")
+  ) +
+  annotate(
+    "label", x = -0.08, y = n_mobile + 1,
+    label = "<-- FAILURE",
+    fill = rc_orange, color = "white",
+    family = "Helvetica Neue",
+    size = 4.5, fontface = "bold",
+    label.padding = unit(0.5, "lines"),
+    label.r = unit(0.3, "lines")
+  ) +
+  scale_x_continuous(
+    breaks = seq(-0.15, 0.15, 0.05),
+    labels = function(x) sprintf("%+.2f", x),
+    expand = expansion(mult = c(0.18, 0.18))
+  ) +
+  scale_y_discrete(expand = expansion(add = c(0.5, 2))) +
+  labs(
+    title = "Words That Predict If Your Gadget Gets Fixed",
+    subtitle = paste0(
+      "Top 10 lasso model features | AUC = ", round(auc_val$.estimate, 2),
+      " | Accuracy = ", percent(acc$.estimate, accuracy = 0.1)
+    ),
+    x = "Coefficient",
+    y = NULL,
+    caption = "Data: Open Repair Alliance | Translations from Dutch | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme_mobile
+
+# Stack logo above
+mobile_logo <- ggdraw() +
+  draw_image(logo_branded_path, x = 0.5, y = 0.5, width = 0.35,
+             hjust = 0.5, vjust = 0.5) +
+  theme(plot.background = element_rect(fill = rc_bg, color = NA))
+
+p_mobile <- plot_grid(
+  mobile_logo,
+  mobile_base,
+  ncol = 1,
+  rel_heights = c(0.06, 0.94)
+)
+
+p_mobile
+```
+
+```{r save-mobile}
+ggsave(
+  filename = "2026_04_07_tidy_tuesday_repairs.png",
+  plot = p_mobile,
+  device = "png",
+  width = 9,
+  height = 9,
+  dpi = 300,
+  bg = "#F2F2FF"
+)
+```
+
+```{r cleanup, include=FALSE}
+if (file.exists("ml_results.rds")) file.remove("ml_results.rds")
+```
