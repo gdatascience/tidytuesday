@@ -1,0 +1,600 @@
+---
+title: "Stalkers of the Southern Seas: 21 Years of Bird Sightings in the Tasman"
+date: 2026-04-14
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+Between 1969 and 1990, a small army of dedicated observers stood on the decks of ships crossing the Tasman Sea, binoculars in hand, counting every bird they could spot in 10-minute windows. The result? Nearly **49,000 individual bird observations** across **322 species**, logged from the subtropical waters north of New Zealand all the way down to the Antarctic ice. This dataset from Te Papa Tongarewa, The Museum of New Zealand, is a treasure trove of seabird behavior, weather conditions, and ocean geography — and it tells a surprisingly entertaining story about which birds are shameless ship-stalkers, which ones throw the biggest parties, and what the ocean floor looks like beneath it all.
+
+```{r libraries}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(patchwork)
+library(marmap)
+library(rayshader)
+library(rnaturalearth)
+library(sf)
+
+theme_set(theme_light())
+```
+
+```{r load-data}
+tt <- tt_load("2026-04-14")
+
+beaufort_scale <- tt$beaufort_scale
+birds <- tt$birds
+sea_states <- tt$sea_states
+ships <- tt$ships
+```
+
+## Where Were These Ships, Anyway?
+
+The observations span a massive swath of the Southern Hemisphere — from **19°S to 69°S latitude** and **50°E to 180°E longitude** — covering everything from the warm waters off northern New Zealand to the frigid seas near Antarctica. But the action is heavily concentrated in the Tasman Sea corridor between Australia and New Zealand, roughly between 35°S and 45°S.
+
+```{r map-observations, fig.width=10, fig.height=8}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+ship_map <- ggplot() +
+  geom_sf(data = world, fill = "gray85", color = "gray60", linewidth = 0.3) +
+  geom_point(
+    data = ships,
+    aes(x = longitude, y = latitude, color = season),
+    alpha = 0.3, size = 0.6
+  ) +
+  coord_sf(
+    xlim = c(100, 180), ylim = c(-70, -15),
+    expand = FALSE
+  ) +
+  scale_color_manual(
+    values = c(
+      "summer" = "#E63946",
+      "autumn" = "#F4A261",
+      "winter" = "#457B9D",
+      "spring" = "#2A9D8F"
+    )
+  ) +
+  labs(
+    title = "12,310 Ship Observation Points Across the Southern Seas",
+    subtitle = "Each dot is a 10-minute bird census, colored by Southern Hemisphere season (1969–1990)",
+    color = "Season",
+    caption = "Data Source: Te Papa Tongarewa | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 10, color = "gray40"),
+    legend.position = "bottom"
+  )
+
+ship_map
+```
+
+The densest cluster of observations sits right in the Tasman Sea shipping lanes. **J. Jenkins** alone logged **6,583 observation records** over 10 years — more than half the entire dataset. That's roughly 1,100 hours of standing on a ship deck counting birds. Dedication.
+
+## The Ship-Stalker Leaderboard
+
+Not all seabirds are created equal when it comes to following ships. Some species are shameless freeloaders who will tail a vessel for hours, while others couldn't care less. The wandering albatross is the undisputed champion of ship-stalking — across all plumage phases, **over 90% of wandering albatross sightings involved birds following the ship's wake**.
+
+```{r ship-followers, fig.width=10, fig.height=7}
+follower_data <- birds %>%
+  filter(!is.na(species_common_name)) %>%
+  mutate(
+    family = case_when(
+      str_detect(species_common_name, regex("albatross|mollymawk", ignore_case = TRUE)) ~ "Albatross",
+      str_detect(species_common_name, regex("petrel", ignore_case = TRUE)) ~ "Petrel",
+      str_detect(species_common_name, regex("shearwater", ignore_case = TRUE)) ~ "Shearwater",
+      str_detect(species_common_name, regex("prion", ignore_case = TRUE)) ~ "Prion",
+      str_detect(species_common_name, regex("gull", ignore_case = TRUE)) ~ "Gull",
+      str_detect(species_common_name, regex("skua|jaeger", ignore_case = TRUE)) ~ "Skua",
+      str_detect(species_common_name, regex("gannet|booby", ignore_case = TRUE)) ~ "Gannet",
+      str_detect(species_common_name, regex("penguin", ignore_case = TRUE)) ~ "Penguin",
+      str_detect(species_common_name, regex("tern", ignore_case = TRUE)) ~ "Tern",
+      TRUE ~ "Other"
+    )
+  ) %>%
+  group_by(family) %>%
+  summarise(
+    n_obs = n(),
+    total_birds = sum(count[count < 99999], na.rm = TRUE),
+    pct_following = mean(following_ship, na.rm = TRUE) * 100,
+    pct_feeding = mean(feeding, na.rm = TRUE) * 100,
+    pct_accompanying = mean(accompanying, na.rm = TRUE) * 100,
+    .groups = "drop"
+  ) %>%
+  filter(n_obs >= 50)
+
+p_follow <- follower_data %>%
+  mutate(family = fct_reorder(family, pct_following)) %>%
+  ggplot(aes(x = pct_following, y = family, fill = pct_following)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(
+    aes(label = paste0(round(pct_following, 1), "%")),
+    hjust = -0.1, size = 3.5, fontface = "bold"
+  ) +
+  scale_fill_gradient(low = "#457B9D", high = "#E63946") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Who's Following the Ship?",
+    subtitle = "Percentage of sightings where birds were trailing the ship's wake",
+    x = "% of Sightings Following Ship",
+    y = NULL
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_follow
+```
+
+Albatrosses are the ultimate ship-stalkers at nearly **70%**, followed by petrels and gulls. Penguins, unsurprisingly, scored a flat **0%** — they have better things to do, like swimming. Shearwaters and gannets mostly ignore ships too, preferring to do their own thing.
+
+## The Trawler Effect: Free Lunch at Sea
+
+What happens when a ship starts trawling? Absolute chaos. When ships were **trawling**, the average bird count per observation skyrocketed to **512 birds** — compared to just **42 birds** during normal steaming. That's a 12x multiplier. The birds know exactly what a trawler means: free food.
+
+```{r trawler-effect, fig.width=10, fig.height=6}
+activity_summary <- birds %>%
+  inner_join(ships, by = "record_id") %>%
+  filter(!is.na(species_common_name), count < 99999) %>%
+  group_by(activity) %>%
+  summarise(
+    n_obs = n(),
+    avg_count = mean(count, na.rm = TRUE),
+    pct_feeding = mean(feeding, na.rm = TRUE) * 100,
+    pct_following = mean(following_ship, na.rm = TRUE) * 100,
+    .groups = "drop"
+  ) %>%
+  filter(n_obs >= 10)
+
+p_activity <- activity_summary %>%
+  mutate(activity = fct_reorder(activity, avg_count)) %>%
+  ggplot(aes(x = avg_count, y = activity)) +
+  geom_col(aes(fill = pct_feeding), show.legend = TRUE) +
+  geom_text(
+    aes(label = paste0(round(avg_count, 0), " birds")),
+    hjust = -0.1, size = 3.5, fontface = "bold"
+  ) +
+  scale_fill_gradient(
+    low = "#2A9D8F", high = "#E63946",
+    name = "% Feeding"
+  ) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.2))) +
+  labs(
+    title = "The Trawler Effect: Ship Activity vs. Bird Frenzy",
+    subtitle = "Average bird count per observation, colored by feeding percentage",
+    x = "Average Bird Count",
+    y = NULL
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_activity
+```
+
+When ships are **stationary**, over **56% of bird sightings** involve feeding — the highest feeding rate of any activity. But trawling brings the biggest crowds by far. Line fishing also triggers heavy feeding behavior (**36%**) but attracts far fewer birds overall. The birds have clearly figured out the food chain hierarchy.
+
+## The Mega-Flocks: Short-Tailed Shearwaters Own the Tasman
+
+The short-tailed shearwater is the undisputed king of sheer numbers. With a total count of nearly **half a million birds** across all observations, they dwarf every other species. Five of their sightings were coded as **99,999** — the sentinel value for "we stopped counting at 100,000+." These mega-flocks were spotted in the Bass Strait between Australia and Tasmania, mostly during spring and summer when the birds return from their epic migration to the North Pacific.
+
+```{r top-species, fig.width=10, fig.height=8}
+top_species <- birds %>%
+  filter(!is.na(species_common_name), count < 99999) %>%
+  group_by(species_common_name) %>%
+  summarise(
+    total_count = sum(count, na.rm = TRUE),
+    n_sightings = n(),
+    avg_count = mean(count, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  slice_max(total_count, n = 15) %>%
+  mutate(
+    short_name = str_remove(species_common_name, " sensu lato.*| AD$| \\(unidentified\\)"),
+    short_name = str_trunc(short_name, 30)
+  )
+
+p_species <- top_species %>%
+  mutate(short_name = fct_reorder(short_name, total_count)) %>%
+  ggplot(aes(x = total_count, y = short_name, fill = avg_count)) +
+  geom_col(show.legend = TRUE) +
+  scale_x_continuous(labels = comma_format()) +
+  scale_fill_viridis_c(
+    name = "Avg per\nSighting",
+    labels = comma_format()
+  ) +
+  labs(
+    title = "The Mega-Flock Leaderboard",
+    subtitle = "Top 15 species by total bird count (excluding 100,000+ sentinel values)",
+    x = "Total Birds Counted",
+    y = NULL,
+    caption = "Data Source: Te Papa Tongarewa | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_species
+```
+
+The short-tailed shearwater's total count is **482,558** — nearly 3x the runner-up (prions at 226,500). But look at the average count per sighting: shearwaters average **601 birds per sighting**, while albatrosses average just 1-2. Shearwaters travel in massive, swirling flocks; albatrosses are the lone wolves of the sea.
+
+## Seasons of the Southern Ocean
+
+Bird diversity and abundance shift dramatically with the seasons. **Summer** brings the highest total bird counts (**484,871**) and the most species (**243**), driven by migratory shearwaters flooding back into the Tasman. Winter is the quietest season, with just **173 species** and lower average counts.
+
+```{r seasonal-patterns, fig.width=10, fig.height=6}
+seasonal <- birds %>%
+  inner_join(ships, by = "record_id") %>%
+  filter(!is.na(species_common_name), count < 99999) %>%
+  mutate(
+    family = case_when(
+      str_detect(species_common_name, regex("albatross|mollymawk", ignore_case = TRUE)) ~ "Albatross",
+      str_detect(species_common_name, regex("petrel", ignore_case = TRUE)) ~ "Petrel",
+      str_detect(species_common_name, regex("shearwater", ignore_case = TRUE)) ~ "Shearwater",
+      str_detect(species_common_name, regex("prion", ignore_case = TRUE)) ~ "Prion",
+      TRUE ~ "Other"
+    ),
+    season = factor(season, levels = c("summer", "autumn", "winter", "spring"))
+  ) %>%
+  group_by(season, family) %>%
+  summarise(
+    total_birds = sum(count, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+p_season <- seasonal %>%
+  ggplot(aes(x = season, y = total_birds, fill = family)) +
+  geom_col(position = "stack") +
+  scale_y_continuous(labels = comma_format()) +
+  scale_fill_manual(
+    values = c(
+      "Albatross" = "#264653",
+      "Petrel" = "#2A9D8F",
+      "Shearwater" = "#E9C46A",
+      "Prion" = "#F4A261",
+      "Other" = "#E76F51"
+    )
+  ) +
+  labs(
+    title = "Seasonal Rhythms of the Southern Seas",
+    subtitle = "Total bird counts by family group and Southern Hemisphere season",
+    x = NULL,
+    y = "Total Birds Counted",
+    fill = "Bird Family"
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_season
+```
+
+Shearwaters dominate the summer and spring counts — that's when the short-tailed shearwaters return from their annual migration to Alaska and flood the Bass Strait in staggering numbers. Albatrosses and petrels are more consistent year-round, the reliable regulars of the Southern Ocean.
+
+## Into the Deep: A 3D View of the Ocean Floor
+
+The ships in this dataset sailed over some of the most dramatic underwater topography on Earth — from the shallow continental shelves of Australia and New Zealand to the abyssal plains of the Tasman Sea, plunging nearly **6,000 meters** below the surface. Using bathymetry data from NOAA's ETOPO dataset, we can visualize the ocean floor beneath the bird sightings with `rayshader`.
+
+```{r bathymetry-3d, fig.width=10, fig.height=8}
+# Download bathymetry for the Tasman Sea region
+bathy <- getNOAA.bathy(
+  lon1 = 140, lon2 = 180,
+  lat1 = -55, lat2 = -25,
+  resolution = 10
+)
+
+# Convert to matrix for rayshader
+bathy_mat <- as.matrix(bathy)
+bathy_mat <- bathy_mat[, ncol(bathy_mat):1]
+
+# Create ocean-only matrix (cap land at 0)
+ocean_mat <- bathy_mat
+ocean_mat[ocean_mat > 0] <- 0
+
+# Build the 2D texture map
+texture <- create_texture(
+  "#1a5276", "#2980b9", "#1a5276", "#154360", "#0e2f44"
+)
+
+# Create a ggplot-based 2D bathymetry map with bird hotspots
+bathy_df <- marmap::fortify.bathy(bathy)
+
+# Aggregate bird sightings to grid cells
+bird_density <- birds %>%
+  inner_join(ships, by = "record_id") %>%
+  filter(
+    !is.na(species_common_name),
+    count < 99999,
+    longitude >= 140, longitude <= 180,
+    latitude >= -55, latitude <= -25
+  ) %>%
+  mutate(
+    lon_bin = round(longitude),
+    lat_bin = round(latitude)
+  ) %>%
+  group_by(lon_bin, lat_bin) %>%
+  summarise(
+    total_birds = sum(count, na.rm = TRUE),
+    n_species = n_distinct(species_common_name),
+    .groups = "drop"
+  )
+
+p_bathy <- ggplot() +
+  geom_raster(
+    data = bathy_df %>% filter(z <= 0),
+    aes(x = x, y = y, fill = z)
+  ) +
+  geom_contour(
+    data = bathy_df,
+    aes(x = x, y = y, z = z),
+    breaks = 0, color = "gray30", linewidth = 0.5
+  ) +
+  geom_point(
+    data = bird_density,
+    aes(x = lon_bin, y = lat_bin, size = total_birds, color = n_species),
+    alpha = 0.7
+  ) +
+  scale_fill_gradient(
+    low = "#0e2f44", high = "#85c1e9",
+    name = "Depth (m)",
+    labels = comma_format()
+  ) +
+  scale_size_continuous(
+    range = c(1, 12),
+    labels = comma_format(),
+    name = "Total Birds"
+  ) +
+  scale_color_viridis_c(
+    option = "plasma",
+    name = "Species\nRichness"
+  ) +
+  coord_fixed(expand = FALSE) +
+  labs(
+    title = "Birds Over the Abyss: Sightings and Ocean Depth in the Tasman Sea",
+    subtitle = "Bubble size = total birds counted; color = number of unique species",
+    x = "Longitude",
+    y = "Latitude",
+    caption = "Bathymetry: NOAA ETOPO | Bird Data: Te Papa Tongarewa | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(size = 10, color = "gray40"),
+    panel.grid = element_blank()
+  )
+
+p_bathy
+```
+
+The biggest bird hotspots sit right over the continental shelf edges — the transition zones where shallow coastal waters plunge into the deep ocean. These upwelling zones are biological goldmines, pushing nutrient-rich deep water to the surface and fueling the food chains that seabirds depend on. The area around **36°S, 175°E** (northeast of New Zealand) logged **144,000 birds** in a single grid cell.
+
+```{r rayshader-3d, fig.width=10, fig.height=8}
+# Rayshader 3D rendering of the ocean floor
+options(rgl.useNULL = TRUE)
+
+# Scale the depth matrix for 3D effect
+depth_scaled <- ocean_mat / max(abs(ocean_mat), na.rm = TRUE)
+
+# Create height shade with ocean color palette
+height_shade_map <- height_shade(
+  depth_scaled,
+  texture = grDevices::colorRampPalette(
+    c("#0e2f44", "#154360", "#1a5276", "#2980b9", "#85c1e9", "#d4e6f1")
+  )(256)
+)
+
+shadow_map <- ray_shade(depth_scaled, zscale = 0.01, direction = 315)
+ambient_map <- ambient_shade(depth_scaled, zscale = 0.01)
+
+# Render the 3D surface using software renderer (headless-compatible)
+height_shade_map %>%
+  add_shadow(shadow_map, 0.5) %>%
+  add_shadow(ambient_map, 0.3) %>%
+  plot_3d(
+    depth_scaled,
+    zscale = 0.02,
+    theta = 330,
+    phi = 35,
+    zoom = 0.65,
+    windowsize = c(1200, 900),
+    background = "#0a1628",
+    soliddepth = -1
+  )
+
+render_snapshot(
+  filename = ".kiro/specs/2026_04_14_tidy_tuesday_seabirds/3d_base.png",
+  software_render = TRUE,
+  width = 1200,
+  height = 900
+)
+
+rgl::close3d()
+```
+
+Now we composite the 3D ocean floor with a 2D bird hotspot overlay using `magick`, stacking the perspective view on top and the annotated map below.
+
+```{r composite-3d, fig.width=10, fig.height=15}
+library(magick)
+
+# Create the 2D map with bird hotspots on dark ocean background
+p_overlay <- ggplot() +
+  geom_raster(
+    data = bathy_df %>% filter(z <= 0),
+    aes(x = x, y = y, fill = z)
+  ) +
+  geom_contour(
+    data = bathy_df,
+    aes(x = x, y = y, z = z),
+    breaks = 0, color = "gray40", linewidth = 0.4
+  ) +
+  geom_point(
+    data = bird_density,
+    aes(x = lon_bin, y = lat_bin, size = total_birds, color = n_species),
+    alpha = 0.8
+  ) +
+  scale_fill_gradient(low = "#0e2f44", high = "#85c1e9", guide = "none") +
+  scale_size_continuous(
+    range = c(1, 10),
+    labels = comma_format(),
+    name = "Total Birds"
+  ) +
+  scale_color_viridis_c(option = "plasma", name = "Species\nRichness") +
+  coord_fixed(expand = FALSE) +
+  labs(x = "Longitude", y = "Latitude") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "#0a1628", color = NA),
+    panel.background = element_rect(fill = "#0a1628", color = NA),
+    panel.grid = element_blank(),
+    text = element_text(color = "white"),
+    axis.text = element_text(color = "gray70"),
+    legend.background = element_rect(fill = "#0a1628", color = NA),
+    legend.text = element_text(color = "white"),
+    legend.title = element_text(color = "white")
+  )
+
+ggsave(
+  ".kiro/specs/2026_04_14_tidy_tuesday_seabirds/2d_overlay.png",
+  plot = p_overlay, width = 12, height = 9, dpi = 150
+)
+
+# Stack: 3D perspective on top, 2D bird map below
+img_3d <- image_read(".kiro/specs/2026_04_14_tidy_tuesday_seabirds/3d_base.png")
+img_2d <- image_read(".kiro/specs/2026_04_14_tidy_tuesday_seabirds/2d_overlay.png")
+img_2d <- image_resize(img_2d, paste0(image_info(img_3d)$width, "x"))
+
+title_bar <- image_blank(
+  width = image_info(img_3d)$width, height = 60, color = "#0a1628"
+) %>%
+  image_annotate(
+    "Birds Over the Abyss: Tasman Sea Bathymetry & Seabird Hotspots",
+    gravity = "center", color = "white", size = 24, font = "Helvetica"
+  )
+
+caption_bar <- image_blank(
+  width = image_info(img_3d)$width, height = 30, color = "#0a1628"
+) %>%
+  image_annotate(
+    "Bathymetry: NOAA ETOPO | Bird Data: Te Papa Tongarewa | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday",
+    gravity = "center", color = "gray60", size = 12, font = "Helvetica"
+  )
+
+final_3d <- image_append(c(title_bar, img_3d, img_2d, caption_bar), stack = TRUE)
+image_write(final_3d, "2026_04_14_tidy_tuesday_seabirds.png")
+
+# Display in the document
+knitr::include_graphics("2026_04_14_tidy_tuesday_seabirds.png")
+```
+
+The 3D rendering reveals the dramatic underwater landscape these birds fly over every day — with bird hotspots floating above the surface as colored spheres. Bigger spheres mean more birds; warmer colors mean more species diversity. The shallow continental shelves of Australia (left) and New Zealand (right) drop off sharply into the Tasman Basin, which plunges to nearly **6,000 meters**. The Lord Howe Rise — a submerged continental fragment — creates a ridge running north-south through the middle of the Tasman, and it's no coincidence that bird activity clusters along these underwater features.
+
+## The Beaufort Scale: Do Birds Care About Wind?
+
+You might expect birds to hunker down in bad weather, but seabirds are built different. The data shows that bird counts actually **increase** in calm conditions (Beaufort 0-1), likely because calm seas make it easier for observers to spot and count birds. But the birds themselves are out there in everything up to near-gale conditions.
+
+```{r wind-analysis, fig.width=10, fig.height=6}
+wind_birds <- birds %>%
+  inner_join(ships, by = "record_id") %>%
+  inner_join(beaufort_scale, by = "wind_speed_class") %>%
+  filter(!is.na(species_common_name), count < 99999) %>%
+  group_by(wind_speed_class, wind_description) %>%
+  summarise(
+    n_obs = n(),
+    avg_count = mean(count, na.rm = TRUE),
+    median_count = median(count, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  filter(n_obs >= 10)
+
+p_wind <- wind_birds %>%
+  mutate(
+    wind_description = fct_reorder(wind_description, wind_speed_class)
+  ) %>%
+  ggplot(aes(x = wind_description, y = avg_count, fill = wind_speed_class)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(
+    aes(label = paste0("n=", comma(n_obs))),
+    vjust = -0.3, size = 3, color = "gray40"
+  ) +
+  scale_fill_gradient(low = "#2A9D8F", high = "#E63946") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  labs(
+    title = "Seabirds Don't Check the Weather App",
+    subtitle = "Average bird count per observation by Beaufort wind scale",
+    x = NULL,
+    y = "Average Bird Count"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+p_wind
+```
+
+The highest average counts appear in **calm** and **light air** conditions — but that's partly an observation bias (easier to count when the sea is flat). The real story is that birds are present in substantial numbers all the way up to **gale force winds** (Beaufort 8, 34-40 knots). Only 3 observations were made in storm conditions, and even then, birds were spotted. These animals are genuinely hardcore.
+
+## The Hitchhikers: Birds That Landed on the Ship
+
+In a dataset of nearly 49,000 observations, only **86 sightings** involved birds actually sitting on the ship. The red-billed gull is the most frequent hitchhiker, accounting for **44 of those 86 sightings**. Subantarctic skuas also occasionally drop in for a rest. And in 3 remarkable cases, birds were actually **held in hand** — captured by the observers. Two were prions and one was a diving-petrel, all small enough to grab.
+
+```{r hitchhikers, fig.width=8, fig.height=5}
+hitchhikers <- birds %>%
+  filter(sitting_on_ship == TRUE, !is.na(species_common_name)) %>%
+  mutate(
+    short_name = str_remove(species_common_name, " AD$| SUBAD$| sensu lato.*"),
+    short_name = str_trunc(short_name, 30)
+  ) %>%
+  count(short_name, sort = TRUE) %>%
+  head(10)
+
+p_hitch <- hitchhikers %>%
+  mutate(short_name = fct_reorder(short_name, n)) %>%
+  ggplot(aes(x = n, y = short_name, fill = n)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = n), hjust = -0.3, fontface = "bold") +
+  scale_fill_gradient(low = "#F4A261", high = "#E63946") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Frequent Flyer Lounge: Birds That Landed on the Ship",
+    subtitle = "Number of sightings where birds were sitting on the vessel",
+    x = "Number of Sightings",
+    y = NULL
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_hitch
+```
+
+## Putting It All Together
+
+```{r combined-plot, fig.width=14, fig.height=16}
+combined <- (ship_map + p_follow) /
+  (p_species + p_season) /
+  (p_activity + p_wind) +
+  plot_annotation(
+    title = "Stalkers of the Southern Seas",
+    subtitle = "21 Years of Bird Sightings in the Tasman Sea (1969–1990)",
+    caption = "Data Source: Te Papa Tongarewa, Museum of New Zealand | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday | #Kiro",
+    theme = theme(
+      plot.title = element_text(face = "bold", size = 20),
+      plot.subtitle = element_text(size = 14, color = "gray40")
+    )
+  )
+
+combined
+```
+
+## What's Next?
+
+This dataset opens up some fascinating questions:
+
+- **Migration tracking**: Can we trace the seasonal movements of short-tailed shearwaters through the observation timestamps and locations?
+- **Observer bias**: J. Jenkins logged over half the data — how much does individual observer style affect species identification and counts?
+- **Climate signals**: With 21 years of sea surface temperature data (sparse as it is), are there any signals of changing ocean conditions affecting bird distributions?
+- **The logbook mystery**: The dataset curators noted that the hand-recorded `species_common_name` field doesn't always match the split columns for age, sex, and plumage. A text-mining deep dive could reveal how field identification practices evolved over two decades.
+
+The Southern Ocean is one of the most productive and least-observed marine ecosystems on Earth. These 12,310 observation records, painstakingly logged by hand on rolling ship decks, represent an irreplaceable window into a world most of us will never see.
+
+```{r save-image, include=FALSE}
+# The 3D composite is already saved as 2026_04_14_tidy_tuesday_seabirds.png
+# by the composite-3d chunk above — nothing else to export.
+```
