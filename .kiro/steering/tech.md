@@ -85,6 +85,41 @@ tt <- readRDS(cache_path)
 - Clean up cache files (e.g., `tt_cache.rds`) when the analysis is complete
 - Never leave `.rds` cache files in the repo root — always use the specs folder
 
+### Temporary & Scratch Files
+**NEVER use `.kiro_tmp/` or any other temp directory in the repo root.** All temporary files — build logs, intermediate images, render output, scratch data — must go in the week's specs folder:
+
+```
+.kiro/specs/YYYY_MM_DD_tidy_tuesday_topic/
+```
+
+This includes:
+- Redirected command output (build logs, test results)
+- Intermediate images used during compositing (e.g., `_base.png` before adding a logo)
+- Any file that is not the final `.Rmd`, `.qmd`, or `.png` deliverable
+
+The **only files that should be written to the repo root** for a given week are:
+- The analysis file: `YYYY_MM_DD_tidy_tuesday_topic.Rmd` (or `.qmd`)
+- The final output image: `YYYY_MM_DD_tidy_tuesday_topic.png` (or `.gif`)
+
+Everything else stays in `.kiro/specs/`, including:
+- Rendered HTML files (render to the specs folder using `output_dir` parameter)
+- Shiny apps (store in `.kiro/specs/YYYY_MM_DD_tidy_tuesday_topic/app/`)
+- Downloaded assets (logos, images, external data files)
+- Redirected command output (build logs, test results)
+- Intermediate images used during compositing
+
+### Rendering Rmd/qmd Files
+Always render HTML output into the specs folder, not the repo root:
+
+```r
+rmarkdown::render(
+  "YYYY_MM_DD_tidy_tuesday_topic.Rmd",
+  output_dir = ".kiro/specs/YYYY_MM_DD_tidy_tuesday_topic"
+)
+```
+
+This keeps the repo root clean — only the `.Rmd` and final `.png` belong there.
+
 ## Project Configuration
 - Encoding: UTF-8
 - Indentation: 2 spaces (no tabs)

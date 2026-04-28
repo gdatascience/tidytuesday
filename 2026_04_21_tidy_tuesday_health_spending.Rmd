@@ -1,0 +1,665 @@
+---
+title: "The $10.6 Trillion Check: Who Pays for the World's Health Care?"
+date: 2026-04-21
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+In 2023, the world spent **$10.6 trillion** on health care. That's roughly the GDP of Japan and Germany combined — just to keep humans alive and functioning. But here's the kicker: one country alone accounts for nearly **44% of that total**. The United States spends more on health care than the next **18 countries combined**. Meanwhile, in Armenia, **80.5% of health spending** comes directly out of people's pockets. No insurance safety net, no government backstop — just you and your wallet at the doctor's office.
+
+This week's TidyTuesday dataset comes from the [WHO Global Health Expenditure Database (GHED)](https://apps.who.int/nha/database), tracking how 195 countries fund their health systems from 2000 to 2023. It's organized into three datasets: aggregate spending by source, financing schemes (who channels the money), and spending purpose (what it's spent on). Let's dig in.
+
+```{r libraries}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(patchwork)
+
+theme_set(theme_light())
+```
+
+```{r load-data}
+tt <- tt_load("2026-04-21")
+
+health_spending <- tt$health_spending
+financing_schemes <- tt$financing_schemes
+spending_purpose <- tt$spending_purpose
+```
+
+## The US Health Spending Machine
+
+Let's start with the elephant in the room. The US spent **$4.63 trillion** on health care in 2023 — and that number has been climbing relentlessly since 2000. Even adjusted for inflation (constant 2023 dollars), US health spending has more than doubled in 23 years. The COVID-19 pandemic caused a visible spike in 2020, but spending barely dipped afterward.
+
+```{r us-spending-trend, fig.width=10, fig.height=6}
+us_trend <- health_spending %>%
+  filter(iso3_code == "USA", indicator_code == "che_usd2023") %>%
+  mutate(value_t = value / 1e12)
+
+p_us_trend <- ggplot(us_trend, aes(x = year, y = value_t)) +
+  geom_area(fill = "#2171b5", alpha = 0.3) +
+  geom_line(color = "#2171b5", linewidth = 1.2) +
+  geom_point(
+    data = us_trend %>% filter(year %in% c(2000, 2020, 2023)),
+    color = "#c51b8a", size = 3
+  ) +
+  geom_text(
+    data = us_trend %>% filter(year %in% c(2000, 2020, 2023)),
+    aes(label = paste0("$", round(value_t, 1), "T")),
+    vjust = -1, fontface = "bold", size = 4
+  ) +
+  scale_y_continuous(
+    labels = dollar_format(suffix = "T"),
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title = "The Unstoppable Rise of US Health Spending",
+    subtitle = "Current health expenditure in constant 2023 US dollars (2000–2023)",
+    x = NULL,
+    y = "Total Health Spending",
+    caption = "Data Source: WHO GHED | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+p_us_trend
+```
+
+From **$2.2 trillion** in 2000 to **$4.6 trillion** in 2023 — that's a **115% increase** in real terms. The COVID bump in 2020 pushed spending to $4.6T, it dipped slightly in 2021-2022, then roared back. For context, the entire continent of Africa spent about **$200 billion** on health care in 2023. The US spends that much roughly every **16 days**.
+
+## The $4.6 Trillion Club of One
+
+How does the US compare to the rest of the world? It takes the next **18 countries combined** — including China, Germany, Japan, the UK, France, Canada, Brazil, Italy, Australia, South Korea, Spain, Russia, India, the Netherlands, Switzerland, Mexico, Belgium, and Argentina — to match what the US spends alone.
+
+```{r us-vs-world, fig.width=10, fig.height=7}
+top_spenders <- health_spending %>%
+  filter(indicator_code == "che_usd2023", year == 2023) %>%
+  arrange(desc(value)) %>%
+  head(20) %>%
+  mutate(
+    value_b = value / 1e9,
+    is_us = country_name == "United States of America",
+    short_name = case_when(
+      country_name == "United States of America" ~ "United States",
+      country_name == "United Kingdom of Great Britain and Northern Ireland" ~ "United Kingdom",
+      country_name == "Republic of Korea" ~ "South Korea",
+      country_name == "Netherlands (Kingdom of the)" ~ "Netherlands",
+      country_name == "Russian Federation" ~ "Russia",
+      TRUE ~ country_name
+    )
+  )
+
+p_top_spenders <- top_spenders %>%
+  mutate(short_name = fct_reorder(short_name, value_b)) %>%
+  ggplot(aes(x = value_b, y = short_name, fill = is_us)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(
+    aes(label = paste0("$", round(value_b, 0), "B")),
+    hjust = -0.05, size = 3.2, fontface = "bold"
+  ) +
+  scale_fill_manual(values = c("TRUE" = "#c51b8a", "FALSE" = "#6baed6")) +
+  scale_x_continuous(
+    labels = dollar_format(suffix = "B"),
+    expand = expansion(mult = c(0, 0.2))
+  ) +
+  labs(
+    title = "The $4.6 Trillion Club Has Exactly One Member",
+    subtitle = "Top 20 countries by total health spending (constant 2023 US$)",
+    x = "Total Health Spending",
+    y = NULL
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+p_top_spenders
+```
+
+The US bar is almost comically long compared to everyone else. China comes in second at **$1.09 trillion** — less than a quarter of US spending. Germany, Japan, and the UK cluster around $370–530 billion. The gap between #1 and #2 is larger than the entire health budget of Germany.
+
+## Who's Paying Out of Pocket? The Pain Index
+
+Here's where it gets personal. In some countries, the government or insurance picks up most of the tab. In others, you're on your own. The **out-of-pocket (OOP) percentage** measures how much of a country's health spending comes directly from households — no insurance, no government reimbursement, just cash at the point of care.
+
+```{r oop-extremes, fig.width=12, fig.height=7}
+oop_2023 <- financing_schemes %>%
+  filter(indicator_code == "hf3_che", year == 2023) %>%
+  arrange(desc(value))
+
+# Top 15 highest and lowest
+oop_high <- oop_2023 %>% head(15) %>% mutate(group = "Highest OOP %")
+oop_low <- oop_2023 %>% tail(15) %>% arrange(value) %>% mutate(group = "Lowest OOP %")
+
+oop_extremes <- bind_rows(oop_high, oop_low) %>%
+  mutate(
+    short_name = case_when(
+      country_name == "United Kingdom of Great Britain and Northern Ireland" ~ "United Kingdom",
+      country_name == "Micronesia (Federated States of)" ~ "Micronesia",
+      country_name == "Syrian Arab Republic" ~ "Syria",
+      TRUE ~ country_name
+    )
+  )
+
+p_oop <- oop_extremes %>%
+  mutate(short_name = fct_reorder(short_name, value)) %>%
+  ggplot(aes(x = value, y = short_name, fill = group)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(
+    aes(label = paste0(round(value, 1), "%")),
+    hjust = -0.1, size = 3, fontface = "bold"
+  ) +
+  facet_wrap(~group, scales = "free_y") +
+  scale_fill_manual(values = c("Highest OOP %" = "#e34a33", "Lowest OOP %" = "#31a354")) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.2))) +
+  labs(
+    title = "The Out-of-Pocket Pain Index",
+    subtitle = "Household out-of-pocket payments as % of total health spending (2023)",
+    x = "Out-of-Pocket %",
+    y = NULL,
+    caption = "Data Source: WHO GHED | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "gray40"),
+    strip.text = element_text(face = "bold", size = 12)
+  )
+
+p_oop
+```
+
+**Armenia leads the world** at 80.5% out-of-pocket — meaning for every dollar spent on health care, 81 cents comes straight from someone's savings. Bangladesh (79.3%), Turkmenistan (77.4%), and Afghanistan (77.1%) aren't far behind. On the flip side, **Tuvalu** has essentially zero OOP spending (0.04%), and several Pacific Island nations and Nordic countries keep OOP below 10%. The difference between these two worlds is staggering.
+
+## The Great OOP Shift: Winners and Losers Since 2000
+
+Some countries have dramatically reduced their out-of-pocket burden over the past two decades, while others have gone in the wrong direction. The **Maldives** pulled off the most impressive transformation — dropping from **63% OOP in 2000 to 18% in 2023**, a 45-percentage-point swing. Meanwhile, **Mongolia** went from 18.5% to 48.8%, nearly tripling its OOP burden.
+
+```{r oop-change, fig.width=12, fig.height=7}
+oop_change <- financing_schemes %>%
+  filter(indicator_code == "hf3_che", year %in% c(2000, 2023)) %>%
+  pivot_wider(
+    id_cols = c(country_name, iso3_code),
+    names_from = year,
+    values_from = value,
+    names_prefix = "y"
+  ) %>%
+  filter(!is.na(y2000), !is.na(y2023)) %>%
+  mutate(change = y2023 - y2000) %>%
+  arrange(change)
+
+# Top 10 improvers and decliners
+improvers <- oop_change %>% head(10) %>% mutate(direction = "Decreased (Improved)")
+decliners <- oop_change %>% tail(10) %>% mutate(direction = "Increased (Worsened)")
+
+oop_shifts <- bind_rows(improvers, decliners)
+
+p_oop_shift <- oop_shifts %>%
+  mutate(country_name = fct_reorder(country_name, change)) %>%
+  ggplot(aes(x = change, y = country_name, fill = direction)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(
+    aes(label = paste0(ifelse(change > 0, "+", ""), round(change, 1), " pp")),
+    hjust = ifelse(oop_shifts$change > 0, -0.1, 1.1),
+    size = 3, fontface = "bold"
+  ) +
+  geom_vline(xintercept = 0, linewidth = 0.8) +
+  scale_fill_manual(values = c("Decreased (Improved)" = "#31a354", "Increased (Worsened)" = "#e34a33")) +
+  scale_x_continuous(expand = expansion(mult = c(0.15, 0.15))) +
+  labs(
+    title = "The Great OOP Shift: 2000 → 2023",
+    subtitle = "Change in out-of-pocket spending as % of total health expenditure (percentage points)",
+    x = "Change in OOP % (percentage points)",
+    y = NULL
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+p_oop_shift
+```
+
+The Maldives, Côte d'Ivoire, and Cyprus are the standout success stories — all cutting OOP by more than 35 percentage points. India also made significant progress, dropping from 71.7% to 43.9%. On the other end, Mongolia, Turkmenistan, and Yemen saw their populations shouldering dramatically more of the health care bill. These shifts reflect real policy choices: expanding insurance coverage, building public health systems, or — in the case of the decliners — often the collapse of government health infrastructure.
+
+## Government vs. Private vs. Aid: The Funding Triangle
+
+Every country's health system sits somewhere in a triangle between three funding sources: **domestic government spending**, **domestic private spending** (including insurance and OOP), and **external aid**. Rich countries barely register any external aid. Poor countries can depend on it for over half their health budget.
+
+```{r funding-triangle, fig.width=12, fig.height=8}
+# Select interesting countries across the spectrum
+showcase_countries <- c(
+  "United States of America", "Germany", "Japan", "Brazil",
+  "India", "Nigeria", "China", "South Africa",
+  "Malawi", "Rwanda", "Mozambique", "Indonesia"
+)
+
+funding_mix <- health_spending %>%
+  filter(
+    unit == "% of current health expenditure",
+    year == 2023,
+    country_name %in% showcase_countries
+  ) %>%
+  mutate(
+    source = case_when(
+      str_detect(expenditure_type, "Government") ~ "Government",
+      str_detect(expenditure_type, "Private") ~ "Private",
+      str_detect(expenditure_type, "External") ~ "External Aid",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(source)) %>%
+  mutate(
+    short_name = case_when(
+      country_name == "United States of America" ~ "United States",
+      TRUE ~ country_name
+    )
+  )
+
+p_funding <- funding_mix %>%
+  mutate(
+    short_name = fct_reorder(short_name, value * (source == "Government"), .fun = max),
+    source = factor(source, levels = c("Government", "Private", "External Aid"))
+  ) %>%
+  ggplot(aes(x = value, y = short_name, fill = source)) +
+  geom_col(position = "stack") +
+  scale_fill_manual(
+    values = c(
+      "Government" = "#2171b5",
+      "Private" = "#fc8d59",
+      "External Aid" = "#78c679"
+    )
+  ) +
+  scale_x_continuous(labels = percent_format(scale = 1)) +
+  labs(
+    title = "The Funding Triangle: Who Pays for Health Care?",
+    subtitle = "Health spending by source as % of total current health expenditure (2023)",
+    x = "% of Current Health Expenditure",
+    y = NULL,
+    fill = "Funding Source",
+    caption = "Data Source: WHO GHED | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "gray40"),
+    legend.position = "bottom"
+  )
+
+p_funding
+```
+
+Japan's government covers **84.8%** of health spending — the highest among major economies. Germany is close at **79.1%**. The US sits at **54%** government-funded, which might surprise people who think of American health care as "private" — Medicare, Medicaid, and the VA are massive. Nigeria is the outlier: only **14.3%** government-funded, with **74.4%** coming from private sources (mostly out-of-pocket). Malawi and Mozambique depend on external aid for over half their health budgets.
+
+## What Are We Actually Spending On?
+
+The spending purpose data (available from 2016 onward) reveals what health dollars actually buy. Globally, **curative care** dominates at a median of **53.5%** of spending. **Preventive care** gets a median of just **3.2%**. That's a 17:1 ratio of treating sickness versus preventing it.
+
+```{r spending-purpose, fig.width=12, fig.height=7}
+purpose_2023 <- spending_purpose %>%
+  filter(
+    unit == "% of current health expenditure",
+    year == 2023
+  ) %>%
+  group_by(spending_purpose) %>%
+  summarise(
+    mean_pct = mean(value, na.rm = TRUE),
+    median_pct = median(value, na.rm = TRUE),
+    n_countries = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(mean_pct))
+
+p_purpose <- purpose_2023 %>%
+  mutate(
+    short_purpose = str_remove(spending_purpose, " \\(.*\\)"),
+    short_purpose = str_remove(short_purpose, " not elsewhere.*"),
+    short_purpose = fct_reorder(short_purpose, mean_pct)
+  ) %>%
+  ggplot(aes(x = mean_pct, y = short_purpose)) +
+  geom_col(fill = "#6baed6") +
+  geom_point(aes(x = median_pct), color = "#c51b8a", size = 3) +
+  geom_text(
+    aes(label = paste0(round(mean_pct, 1), "%")),
+    hjust = -0.1, size = 3.5, fontface = "bold"
+  ) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Where Does the Money Go?",
+    subtitle = "Average (bars) and median (pink dots) spending by purpose as % of CHE (2023)",
+    x = "% of Current Health Expenditure",
+    y = NULL
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+p_purpose
+```
+
+**Curative care** eats up over half of health budgets worldwide — that's hospitals, doctor visits, surgeries, and treatments. **Medical goods** (drugs, devices) take another 18%. **Preventive care** — vaccines, screenings, public health campaigns — averages just 5.6%. The gap between the mean and median for preventive care tells an interesting story: a few countries invest heavily in prevention, pulling the average up, but most countries barely invest at all.
+
+## The COVID Spending Shock
+
+The pandemic left a visible mark on global health spending. Total worldwide spending jumped from **$9.43 trillion in 2019** to **$10.1 trillion in 2020** — a 7% increase in a single year. But the money didn't flow evenly.
+
+```{r covid-impact, fig.width=12, fig.height=7}
+# Government share change around COVID
+covid_gov <- health_spending %>%
+  filter(
+    indicator_code == "gghed_che",
+    year %in% c(2019, 2020, 2021)
+  ) %>%
+  pivot_wider(
+    id_cols = c(country_name, iso3_code),
+    names_from = year,
+    values_from = value,
+    names_prefix = "y"
+  ) %>%
+  filter(!is.na(y2019), !is.na(y2020)) %>%
+  mutate(
+    change_2020 = y2020 - y2019,
+    change_2021 = y2021 - y2019
+  )
+
+p_covid <- covid_gov %>%
+  ggplot(aes(x = y2019, y = change_2020)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_point(alpha = 0.5, color = "#2171b5", size = 2) +
+  geom_smooth(method = "loess", se = TRUE, color = "#c51b8a", linewidth = 1) +
+  labs(
+    title = "The COVID Government Spending Surge",
+    subtitle = "Change in government share of health spending (2019 → 2020, percentage points)",
+    x = "Government Share in 2019 (% of CHE)",
+    y = "Change in Government Share (pp)",
+    caption = "Data Source: WHO GHED | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+p_covid
+```
+
+Countries where the government already paid a large share of health costs saw relatively small changes during COVID. But countries with **lower government shares** — often developing nations — saw the biggest swings. Some governments stepped up massively, increasing their share by 10+ percentage points. Others saw their share drop as private and external spending surged to fill gaps. The pandemic was a stress test for health financing systems, and not everyone passed.
+
+## The Aid Dependency Trap
+
+For some countries, external aid isn't a supplement — it's the foundation. **Micronesia** depends on foreign aid for **71.5%** of its health spending. **Malawi** (65.5%), **South Sudan** (62.3%), and **Mozambique** (57.7%) aren't far behind. What happens when that aid dries up?
+
+```{r aid-dependency, fig.width=10, fig.height=7}
+aid_dep <- health_spending %>%
+  filter(indicator_code == "ext_che", year == 2023) %>%
+  arrange(desc(value)) %>%
+  head(20) %>%
+  mutate(
+    short_name = case_when(
+      country_name == "Micronesia (Federated States of)" ~ "Micronesia",
+      country_name == "United Republic of Tanzania" ~ "Tanzania",
+      country_name == "Central African Republic" ~ "Central African Rep.",
+      country_name == "Sao Tome and Principe" ~ "São Tomé",
+      country_name == "Democratic Republic of the Congo" ~ "DR Congo",
+      TRUE ~ country_name
+    )
+  )
+
+p_aid <- aid_dep %>%
+  mutate(short_name = fct_reorder(short_name, value)) %>%
+  ggplot(aes(x = value, y = short_name, fill = value)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(
+    aes(label = paste0(round(value, 1), "%")),
+    hjust = -0.1, size = 3.2, fontface = "bold"
+  ) +
+  scale_fill_gradient(low = "#78c679", high = "#005a32") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "The Aid Dependency Trap",
+    subtitle = "External aid as % of total health spending (2023) — Top 20 most aid-dependent countries",
+    x = "External Aid as % of CHE",
+    y = NULL
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+p_aid
+```
+
+These are overwhelmingly Sub-Saharan African nations and Pacific Island states. When more than half your health budget comes from foreign donors, your health system is only as stable as those donors' political priorities. A shift in US foreign policy, a European budget crisis, or donor fatigue could leave millions without access to basic care.
+
+## Preventive Care: The Neglected Stepchild
+
+Remember that 17:1 ratio of curative to preventive spending? Let's look at which countries actually invest in prevention — and which ones are all treatment, no prevention.
+
+```{r prevention-vs-cure, fig.width=12, fig.height=8}
+prev_cure <- spending_purpose %>%
+  filter(
+    unit == "% of current health expenditure",
+    year == 2023,
+    spending_purpose %in% c("Curative care", "Preventive care")
+  ) %>%
+  select(country_name, iso3_code, spending_purpose, value) %>%
+  pivot_wider(names_from = spending_purpose, values_from = value) %>%
+  filter(!is.na(`Curative care`), !is.na(`Preventive care`))
+
+# Highlight interesting countries
+highlight <- c("USA", "GBR", "DEU", "JPN", "IND", "NGA", "BRA", "CHN", "NZL", "CUB", "RWA")
+
+p_prev_cure <- prev_cure %>%
+  mutate(is_highlight = iso3_code %in% highlight) %>%
+  ggplot(aes(x = `Curative care`, y = `Preventive care`)) +
+  geom_point(
+    data = . %>% filter(!is_highlight),
+    alpha = 0.3, color = "gray60", size = 2
+  ) +
+  geom_point(
+    data = . %>% filter(is_highlight),
+    color = "#c51b8a", size = 3.5
+  ) +
+  ggrepel::geom_text_repel(
+    data = . %>% filter(is_highlight),
+    aes(label = iso3_code),
+    fontface = "bold", size = 3.5, color = "#c51b8a",
+    max.overlaps = 20
+  ) +
+  geom_smooth(method = "lm", se = TRUE, color = "#2171b5", linewidth = 0.8, alpha = 0.2) +
+  labs(
+    title = "Cure vs. Prevent: The Global Trade-Off",
+    subtitle = "Curative care vs. preventive care spending as % of CHE (2023)",
+    x = "Curative Care (% of CHE)",
+    y = "Preventive Care (% of CHE)",
+    caption = "Data Source: WHO GHED | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+p_prev_cure
+```
+
+There's a weak negative relationship — countries that spend more on curative care tend to spend less on prevention, and vice versa. **New Zealand** stands out as a prevention champion, while the **US** spends heavily on curative care (66.8%) but only **3.7%** on prevention. Cuba, often cited as a model for preventive health, shows up with a relatively high prevention share. Rwanda, despite being a low-income country, has built a health system that prioritizes prevention.
+
+## Building a Shiny App: Explore the Data Yourself
+
+Static charts can only tell part of the story. With 195 countries, 24 years of data, and three different datasets, there are thousands of stories hiding in this data. So I built a **Shiny app** that lets you explore it interactively.
+
+The app uses Kiro to scaffold the structure: a sidebar with country selectors, year range sliders, and dataset toggles, plus a main panel with reactive visualizations that update as you change the controls. The key design decisions:
+
+- **Country comparison mode**: Select up to 6 countries and see their spending trends side by side
+- **Indicator selector**: Switch between absolute spending (USD) and relative shares (% of CHE)
+- **Financing breakdown**: See how each country's funding mix has evolved over time
+- **Spending purpose radar**: Compare what countries prioritize (curative vs. preventive vs. medical goods)
+
+The Shiny app lives in the `.kiro/specs/2026_04_21_tidy_tuesday_health_spending/app/` directory. Run it with `shiny::runApp(".kiro/specs/2026_04_21_tidy_tuesday_health_spending/app")` in R.
+
+## What's Next?
+
+This dataset raises more questions than it answers:
+
+- **Does spending more actually improve outcomes?** Pairing this data with life expectancy, infant mortality, or disease burden data could reveal whether the US gets its money's worth.
+- **The insurance gap**: The financing schemes data shows voluntary insurance vs. compulsory schemes — which model produces better financial protection for households?
+- **Climate and health spending**: As climate-related health crises increase, will we see preventive care spending finally rise?
+- **The AI effect**: Will AI-driven diagnostics and telemedicine shift the curative-to-preventive ratio in the coming decade?
+
+The world spends $10.6 trillion a year on health care, and the distribution of that money — who pays, how it's channeled, and what it buys — shapes whether people live or die, go bankrupt or stay solvent, get vaccinated or wait until they're sick. The numbers are in the spreadsheet. The stories are in the gaps between them.
+
+```{r social-media-image, fig.width=10, fig.height=10}
+# Square, mobile-friendly social media image using WHO brand identity
+# WHO Blue: #009CDE | Dark navy: #00205B | Light blue: #F0F7FB
+library(showtext)
+library(magick)
+
+# Load Roboto Condensed (close match to WHO's Frutiger-based typography)
+font_add_google("Roboto Condensed", "roboto_cond")
+font_add_google("Roboto", "roboto")
+showtext_auto()
+# CRITICAL: match showtext DPI to ggsave DPI so font sizes render correctly
+showtext_opts(dpi = 300)
+
+# WHO brand palette
+who_blue      <- "#009CDE"
+who_dark      <- "#00205B"
+who_light_bg  <- "#F0F7FB"
+who_accent    <- "#E56A54"  # warm red for high-OOP countries
+who_mid       <- "#5EB1E0"  # mid-range blue
+who_safe      <- "#00843D"  # green for low-OOP reference countries
+
+# Build the data
+oop_all <- financing_schemes %>%
+  filter(indicator_code == "hf3_che", year == 2023) %>%
+  arrange(desc(value)) %>%
+  mutate(
+    short_name = case_when(
+      country_name == "Syrian Arab Republic" ~ "Syria",
+      country_name == "Micronesia (Federated States of)" ~ "Micronesia",
+      country_name == "United States of America" ~ "United States",
+      country_name == "United Kingdom of Great Britain and Northern Ireland" ~ "United Kingdom",
+      country_name == "Equatorial Guinea" ~ "Eq. Guinea",
+      TRUE ~ country_name
+    ),
+    rank = row_number()
+  )
+
+# Top 15 highest OOP + 3 reference countries
+oop_top15 <- oop_all %>% head(15)
+reference <- c("United States of America", "Germany", "Japan")
+oop_ref <- oop_all %>% filter(country_name %in% reference, rank > 15)
+
+oop_plot_data <- bind_rows(
+  oop_top15 %>% mutate(group = "high"),
+  oop_ref %>% mutate(group = "reference")
+) %>%
+  mutate(
+    bar_fill = case_when(
+      group == "reference" ~ who_safe,
+      value >= 70 ~ who_accent,
+      value >= 55 ~ "#E8956A",
+      value >= 40 ~ who_mid,
+      TRUE ~ who_blue
+    ),
+    label_color = if_else(value >= 40, "white", who_dark)
+  )
+
+p_social <- oop_plot_data %>%
+  mutate(short_name = fct_reorder(short_name, value)) %>%
+  ggplot(aes(x = value, y = short_name, fill = bar_fill)) +
+  geom_col(show.legend = FALSE, width = 0.72) +
+  geom_text(
+    aes(
+      label = paste0(round(value, 1), "%"),
+      color = label_color,
+      hjust = if_else(value >= 25, 1.08, -0.15)
+    ),
+    size = 5.5, fontface = "bold", family = "roboto_cond",
+    show.legend = FALSE
+  ) +
+  scale_fill_identity() +
+  scale_color_identity() +
+  scale_x_continuous(
+    expand = expansion(mult = c(0, 0.02)),
+    limits = c(0, 90),
+    breaks = seq(0, 80, 20),
+    labels = paste0(seq(0, 80, 20), "%")
+  ) +
+  labs(
+    title = "The Out-of-Pocket Pain Index",
+    subtitle = paste0(
+      "In Armenia, 81\u00a2 of every health dollar comes straight from\n",
+      "people\u2019s wallets. In Japan and Germany, it\u2019s about 11\u00a2.\n",
+      "Household out-of-pocket payments as % of health spending, 2023"
+    ),
+    x = NULL,
+    y = NULL,
+    caption = "Data: WHO Global Health Expenditure Database (GHED) | Viz: Tony Galvan (@GDataScience1) | #TidyTuesday | #Kiro"
+  ) +
+  theme_minimal(base_size = 16, base_family = "roboto") +
+  theme(
+    plot.title = element_text(
+      family = "roboto_cond", face = "bold", size = 28,
+      color = who_dark, margin = margin(t = 5, b = 6)
+    ),
+    plot.subtitle = element_text(
+      family = "roboto", size = 14, color = "gray30",
+      lineheight = 1.35, margin = margin(b = 18)
+    ),
+    plot.caption = element_text(
+      family = "roboto", size = 10, color = "gray50",
+      lineheight = 1.3, margin = margin(t = 14),
+      hjust = 0
+    ),
+    axis.text.y = element_text(
+      family = "roboto_cond", size = 14, color = who_dark
+    ),
+    axis.text.x = element_text(
+      family = "roboto", size = 12, color = "gray45"
+    ),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "#DCE9F1", linewidth = 0.4),
+    plot.background = element_rect(fill = who_light_bg, color = NA),
+    panel.background = element_rect(fill = who_light_bg, color = NA),
+    plot.margin = margin(20, 18, 12, 8)
+  )
+
+# Save the ggplot base at 300 DPI (matching showtext_opts)
+base_path <- ".kiro/specs/2026_04_21_tidy_tuesday_health_spending/base_plot.png"
+ggsave(
+  filename = base_path,
+  plot = p_social,
+  width = 10,
+  height = 10,
+  device = "png",
+  dpi = 300
+)
+
+showtext_auto(FALSE)
+
+# Composite: add WHO logo in the top-right corner using magick
+img <- image_read(base_path)
+logo <- image_read(".kiro/specs/2026_04_21_tidy_tuesday_health_spending/who_logo.png")
+
+# Scale logo to ~14% of image width
+img_info <- image_info(img)
+logo_width <- round(img_info$width * 0.14)
+logo <- image_scale(logo, paste0(logo_width, "x"))
+
+# Position in top-right with padding
+logo_info <- image_info(logo)
+x_offset <- img_info$width - logo_info$width - round(img_info$width * 0.02)
+y_offset <- round(img_info$height * 0.015)
+
+final <- image_composite(img, logo, offset = paste0("+", x_offset, "+", y_offset))
+image_write(final, "2026_04_21_tidy_tuesday_health_spending.png")
+
+# Clean up intermediate file
+file.remove(base_path)
+
+knitr::include_graphics("2026_04_21_tidy_tuesday_health_spending.png")
+```
