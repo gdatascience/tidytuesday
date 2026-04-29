@@ -16,6 +16,12 @@
 ### Visualization
 - `ggplot2` - Primary plotting library (part of tidyverse)
 - `scales` - Scale functions for ggplot2
+- `patchwork` - Combine multiple ggplots (use only when multi-panel is justified; see structure.md)
+- `showtext` / `sysfonts` - Custom Google Fonts for thematic styling
+- `magick` - Image processing, compositing logos onto plots
+- `cowplot` - `draw_image()` for placing logos/images on ggplots
+- `ggimage` - Embed images directly in ggplot geoms
+- `gganimate` - Animated GIF output from ggplots
 - `gt` - Grammar of tables for creating publication-quality tables
 - `gtExtras` - Extensions for gt package
 - `gtsummary` - Summary tables with gt
@@ -48,6 +54,21 @@ ggsave(
   filename = "YYYY_MM_DD_tidy_tuesday_topic.png",
   device = "png"
 )
+```
+
+### Using showtext with ggsave
+When using `showtext` for custom Google Fonts, **always set `showtext_opts(dpi = ...)` to match the `dpi` argument in `ggsave()`**. Without this, `showtext` defaults to 96 DPI internally while `ggsave` renders at 300 DPI, causing all fonts to render at roughly 1/3 their intended size.
+
+```r
+library(showtext)
+font_add_google("Roboto Condensed", "roboto_cond")
+showtext_auto()
+showtext_opts(dpi = 300)  # MUST match ggsave dpi
+
+# ... build your ggplot ...
+
+ggsave("plot.png", plot = p, width = 10, height = 10, dpi = 300)
+showtext_auto(FALSE)
 ```
 
 ### Saving gt Tables

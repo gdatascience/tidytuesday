@@ -72,6 +72,47 @@ Key principles:
 - Bullet points are fine for listing specific findings
 - Every visualization should have a clear title, subtitle, and caption
 
+## Final Shareable Image
+
+The exported PNG (or GIF) is the primary artifact shared on social media. It needs to look great on a phone screen.
+
+### Single vs. Multi-Panel
+- **Default to a single, focused visualization** for the final image. One clear chart with a strong title tells a better story on social media than a busy multi-panel layout.
+- **Use `patchwork` for multi-panel compositions only when** the story genuinely requires showing two or more complementary perspectives side by side (e.g., before/after, two variables that contrast). Don't combine plots just to include more content.
+- When in doubt, pick the single most compelling plot from the analysis.
+
+### Mobile-Friendly Design
+The image will primarily be viewed on phone screens. Design accordingly:
+- **Title:** 18–22pt, bold — readable at a glance
+- **Subtitle:** 13–15pt — provides context without squinting
+- **Axis labels and text:** 11–13pt minimum
+- **Caption/attribution:** 9–11pt
+- **Data labels on bars/points:** 9–11pt
+- **Legend text:** 10–12pt
+- Avoid thin lines (use `linewidth >= 0.8` for key lines)
+- Ensure sufficient contrast between colors — test that the palette works at small sizes
+- Prefer `fig.width = 8, fig.height = 10` (portrait) or `8 x 8` (square) over wide landscape formats for mobile
+
+### Thematic Styling
+Make the visualization feel connected to its subject matter:
+- **Colors:** Choose palettes inspired by the data source or topic (e.g., ocean blues for marine data, earth tones for agriculture, team colors for sports). Don't default to generic palettes when a thematic one would be more engaging.
+- **Logos and images:** When a relevant logo or image is available (e.g., a league logo, agency seal, or dataset provider mark), download it to the specs folder and incorporate it using `magick`, `cowplot::draw_image()`, or `ggimage`. This adds polish and immediate visual context.
+- **Emojis:** Use `emoji` or Unicode characters in titles/subtitles when they reinforce the theme (e.g., 🌾 for agriculture, 🏈 for football). Keep it tasteful — one or two, not a wall of emoji.
+- **Fonts:** Consider using `showtext` or `sysfonts` to load a thematic Google Font when it fits the mood (e.g., a playful font for pop culture data, a clean sans-serif for government data). Fall back to system fonts if font loading adds too much complexity.
+
+### Export Settings
+```r
+ggsave(
+  filename = "YYYY_MM_DD_tidy_tuesday_topic.png",
+  plot = final_plot,
+  device = "png",
+  width = 8,
+  height = 10,
+  dpi = 300,
+  bg = "white"
+)
+```
+
 ## Caption Convention
 Visualizations typically include attribution in captions:
 - Format: `"Data Source: [source] | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"`

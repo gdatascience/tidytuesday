@@ -49,5 +49,12 @@
 - Every post must include a link to the code on GitHub
 - Quantify findings where possible (e.g., "doubled from 8% to 15%")
 - Keep the tone conversational — data science is fun, not stuffy
-- If Kiro was used, mention it and describe what it handled
 - Reference the visualization or key chart in the post
+- If a Shiny app was built, mention it and describe what users can explore with it
+
+## Kiro Attribution
+Kiro does most of the work on these analyses. Every post should acknowledge that clearly:
+- Describe what Kiro built: EDA, blog post, visualizations, Shiny apps, etc.
+- Frame the human role as directing, steering, and making design/story decisions — Kiro handles the code, iteration, and debugging
+- Use phrasing like "Kiro did the heavy lifting," "Kiro handled the code and iteration," or "I steered while Kiro built"
+- Always include #Kiro in the hashtags

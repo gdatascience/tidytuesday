@@ -29,10 +29,21 @@ Create visualizations that serve the narrative:
 - Each plot should make one clear point
 - Use consistent color palettes across related plots
 - Include informative titles, subtitles, and captions
-- Consider multi-panel compositions (via `patchwork`) for the final shareable image
 - Always include the attribution caption convention
+- See the "Final Shareable Image" section in `structure.md` for detailed guidance on the exported PNG/GIF
 
-### 4. Write as a Blog Post
+### 4. Consider Advanced Approaches
+During data exploration, actively look for opportunities to go beyond static plots:
+- **Machine learning models** — classification, clustering, regression on the data
+- **Forecasts** — time series predictions where temporal data exists
+- **Shiny apps** — interactive dashboards for rich or multi-dimensional datasets
+- **Animated GIFs** — `gganimate` for temporal or sequential stories
+- **3D visualizations** — `rayshader`, `plotly` for spatial or multi-variable data
+- **Other creative formats** — interactive tables, network graphs, maps, etc.
+
+**Important:** Do NOT implement these automatically. When you spot a good opportunity, describe what you'd build and why, then **ask for guidance** before proceeding. These approaches add complexity and build time, so the decision should be collaborative.
+
+### 5. Write as a Blog Post
 The final Rmd/qmd should read as a self-contained article, not a code notebook:
 - Open with a hook that draws the reader in
 - Weave narrative prose between code chunks
