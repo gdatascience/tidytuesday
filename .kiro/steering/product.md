@@ -24,24 +24,29 @@ After exploring, identify a compelling narrative thread in the data:
 - Decide on 2-4 complementary perspectives that build on each other
 - The story should have a hook, supporting evidence, and open questions
 
-### 3. Build Storytelling Visualizations
+### 3. Propose Advanced Approaches (before building visualizations)
+After exploring the data and forming a story, **pause and present any opportunities** for advanced work before writing visualization code. Actively look for:
+- **Machine learning models** — classification, clustering, regression on the data
+- **Forecasts** — time series predictions or structural break detection where temporal data exists
+- **Shiny apps** — interactive dashboards for rich or multi-dimensional datasets
+- **Animated GIFs** — `gganimate` for temporal or sequential stories
+- **3D visualizations** — `rayshader`, `plotly` for spatial or multi-variable data
+- **Other creative formats** — interactive tables, network graphs, maps, etc.
+
+**When to ask:** Present these opportunities in a message to the user **after Step 2 (Form a Story) and before Step 4 (Build Visualizations)**. For each opportunity, briefly describe:
+1. What you'd build (e.g., "k-means clustering on tariff rate vectors across 20 trade agreements")
+2. Why it's interesting for this dataset
+3. What the output would look like (a plot, a table, a Shiny app, etc.)
+
+Then **wait for the user to decide** which (if any) to pursue before continuing. Do NOT implement these automatically — they add complexity and build time, so the decision should be collaborative.
+
+### 4. Build Storytelling Visualizations
 Create visualizations that serve the narrative:
 - Each plot should make one clear point
 - Use consistent color palettes across related plots
 - Include informative titles, subtitles, and captions
 - Always include the attribution caption convention
 - See the "Final Shareable Image" section in `structure.md` for detailed guidance on the exported PNG/GIF
-
-### 4. Consider Advanced Approaches
-During data exploration, actively look for opportunities to go beyond static plots:
-- **Machine learning models** — classification, clustering, regression on the data
-- **Forecasts** — time series predictions where temporal data exists
-- **Shiny apps** — interactive dashboards for rich or multi-dimensional datasets
-- **Animated GIFs** — `gganimate` for temporal or sequential stories
-- **3D visualizations** — `rayshader`, `plotly` for spatial or multi-variable data
-- **Other creative formats** — interactive tables, network graphs, maps, etc.
-
-**Important:** Do NOT implement these automatically. When you spot a good opportunity, describe what you'd build and why, then **ask for guidance** before proceeding. These approaches add complexity and build time, so the decision should be collaborative.
 
 ### 5. Write as a Blog Post
 The final Rmd/qmd should read as a self-contained article, not a code notebook:
