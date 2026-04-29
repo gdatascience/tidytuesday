@@ -16,15 +16,23 @@
 ### Visualization
 - `ggplot2` - Primary plotting library (part of tidyverse)
 - `scales` - Scale functions for ggplot2
+- `ggtext` - Rich text (markdown/HTML) in ggplot labels; required for Font Awesome icon captions via `element_markdown()`
 - `patchwork` - Combine multiple ggplots (use only when multi-panel is justified; see structure.md)
 - `showtext` / `sysfonts` - Custom Google Fonts for thematic styling (**IMPORTANT:** always call `showtext_opts(dpi = 300)` after `showtext_auto()` to match `ggsave` DPI — without this, fonts render at ~1/3 size)
-- `magick` - Image processing, compositing logos onto plots
+- `ragg` - Alternative graphics device with native color emoji support via `systemfonts`; use `ragg::agg_png` to render color emoji to a PNG, then composite with `magick` (see structure.md "Color Emoji in Titles")
+- `magick` - Image processing, compositing logos/emoji onto plots
 - `cowplot` - `draw_image()` for placing logos/images on ggplots
 - `ggimage` - Embed images directly in ggplot geoms
 - `gganimate` - Animated GIF output from ggplots
 - `gt` - Grammar of tables for creating publication-quality tables
 - `gtExtras` - Extensions for gt package
 - `gtsummary` - Summary tables with gt
+
+### Fonts & Icons
+- Font Awesome 6 OTF files installed at `~/Library/Fonts/` — used for icon captions
+  - `Font Awesome 6 Brands-Regular-400.otf` (Bluesky, GitHub, etc.)
+  - `Font Awesome 6 Free-Solid-900.otf` (table icon, etc.)
+- Register via `sysfonts::font_add()` for use with `showtext` + `ggtext::element_markdown()`
 
 ### Data Import
 - `readr` - Reading CSV files (part of tidyverse)

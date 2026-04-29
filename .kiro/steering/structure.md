@@ -83,16 +83,28 @@ The exported PNG (or GIF) is the primary artifact shared on social media. It nee
 
 ### Mobile-Friendly Design
 The image will primarily be viewed on phone screens. Design accordingly:
-- **Title:** 18–22pt, bold — readable at a glance
-- **Subtitle:** 13–15pt — provides context without squinting
-- **Axis labels and text:** 11–13pt minimum
-- **Caption/attribution:** 9–11pt
-- **Data labels on bars/points:** 9–11pt
-- **Legend text:** 10–12pt
-- **`geom_text()` / `annotate()` size:** 5–6 (these use mm, not pt — `size = 5` ≈ 14pt)
+
+**Font size hierarchy (title should dominate):**
+- **Title:** 32–36pt, bold, centered (`hjust = 0.5`) — the biggest text on the image
+- **Subtitle:** 16–20pt — noticeably smaller than the title
+- **Axis labels and text:** 14–18pt
+- **Data labels (`geom_text()` / `annotate()`):** `size = 5–6` (mm units — `size = 6` ≈ 17pt)
+- **Legend text:** 14pt
+- **Caption/attribution:** 9–10pt — small enough to fit on a **single line** at 8" width; test that it doesn't clip left/right
+- **Strip text (facets):** 16pt, bold
+
+**Clean theme defaults (always apply):**
+- `panel.grid = element_blank()` — remove all grid lines
+- `panel.border = element_blank()` — remove the panel border
+- `axis.ticks = element_blank()` — remove axis tick marks
+- `plot.title.position = "plot"` — title spans the full plot width, not just the panel
+
+**Layout rules:**
+- Center the title and subtitle (`hjust = 0.5`) so they don't collide with logos composited in the corners
+- Use `plot.margin = margin(top, right, bottom, left)` with enough right margin (~50px) to keep content clear of corner logos
+- Prefer `fig.width = 8, fig.height = 10` (portrait) or `8 x 8` (square) over wide landscape formats
 - Avoid thin lines (use `linewidth >= 0.8` for key lines)
-- Ensure sufficient contrast between colors — test that the palette works at small sizes
-- Prefer `fig.width = 8, fig.height = 10` (portrait) or `8 x 8` (square) over wide landscape formats for mobile
+- Ensure sufficient contrast between colors at small sizes
 
 **CRITICAL — showtext DPI:** When using `showtext` for custom fonts, you **must** set `showtext_opts(dpi = 300)` immediately after `showtext_auto()`. The default is 96 DPI, which means all font sizes render at roughly 1/3 their intended size in a 300 DPI `ggsave()` output. This is the #1 cause of "fonts look tiny" in the final PNG.
 
@@ -106,9 +118,31 @@ showtext_opts(dpi = 300)  # MUST match ggsave dpi
 ### Thematic Styling
 Make the visualization feel connected to its subject matter:
 - **Colors:** Choose palettes inspired by the data source or topic (e.g., ocean blues for marine data, earth tones for agriculture, team colors for sports). Don't default to generic palettes when a thematic one would be more engaging.
-- **Logos and images:** When a relevant logo or image is available (e.g., a league logo, agency seal, or dataset provider mark), download it to the specs folder and incorporate it using `magick`, `cowplot::draw_image()`, or `ggimage`. This adds polish and immediate visual context.
-- **Emojis:** Use `emoji` or Unicode characters in titles/subtitles when they reinforce the theme (e.g., 🌾 for agriculture, 🏈 for football). Keep it tasteful — one or two, not a wall of emoji.
-- **Fonts:** Consider using `showtext` or `sysfonts` to load a thematic Google Font when it fits the mood (e.g., a playful font for pop culture data, a clean sans-serif for government data). Fall back to system fonts if font loading adds too much complexity.
+- **Logos and images:** When a relevant logo or image is available (e.g., a league logo, agency seal, or dataset provider mark), download it to the specs folder and incorporate it using `magick` compositing. This adds polish and immediate visual context.
+- **Fonts:** Use `showtext` / `sysfonts` to load a thematic Google Font when it fits the mood (e.g., a playful font for pop culture data, a clean sans-serif for government data). Fall back to system fonts if font loading adds too much complexity.
+
+### Color Emoji in Titles
+`showtext` renders emoji as monochrome outlines because its FreeType backend doesn't support color emoji font tables. To get **color emoji** in the final image, use this composite approach:
+
+1. Render the emoji to a small transparent PNG using `ragg` (which supports Apple Color Emoji via `systemfonts`):
+```r
+showtext_auto(FALSE)  # temporarily disable showtext
+ggsave(
+  filename = "specs_folder/emoji.png",
+  plot = ggplot() +
+    annotate("text", x = 0.5, y = 0.5, label = "\U0001F33E", size = 25) +
+    theme_void(),
+  device = ragg::agg_png,
+  width = 0.6, height = 0.6, dpi = 300, bg = "transparent"
+)
+showtext_auto(TRUE)  # re-enable showtext
+```
+
+2. Add leading spaces in the plot title to reserve room for the emoji.
+
+3. After saving the base plot with `ggsave()`, composite the emoji PNG onto the title area using `magick::image_composite()` with a pixel offset that aligns it next to the title text.
+
+**Do NOT** put emoji Unicode directly in `element_text()` titles when using `showtext` — it will render as a blank or monochrome glyph.
 
 ### Export Settings
 ```r
@@ -124,6 +158,52 @@ ggsave(
 ```
 
 ## Caption Convention
-Visualizations typically include attribution in captions:
+
+### Icon-Rich Caption (preferred for final shareable image)
+Use `ggtext::element_markdown()` with Font Awesome icons registered via `showtext`. This produces a polished caption with table, Bluesky, and GitHub icons:
+
+```r
+library(ggtext)
+
+# Register Font Awesome (must be installed in ~/Library/Fonts/)
+font_add(family = "fa-brands",
+         regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid",
+         regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+
+# Build the caption with HTML spans for icon fonts
+tt_source <- "Data Source Name"
+bg_color <- "white"  # used for invisible spacer dots
+
+tt_caption <- paste0(
+  "DataViz: Tony Galvan #TidyTuesday",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-solid;'>&#xf0ce;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  tt_source,
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-brands;'>&#xe61b;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "@GDataScience1",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-brands;'>&#xf09b;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "gdatascience"
+)
+
+# Use element_markdown in the theme for the caption
+# Size 9 keeps it on a single line at 8" width — test before increasing
+theme(
+  plot.caption = element_markdown(size = 9, color = "gray50", hjust = 0.5),
+  plot.caption.position = "plot"
+)
+```
+
+Key Font Awesome HTML entities:
+- `&#xf0ce;` — table icon (fa-solid)
+- `&#xe61b;` — Bluesky icon (fa-brands)
+- `&#xf09b;` — GitHub icon (fa-brands)
+
+### Plain-Text Caption (fallback)
+When Font Awesome is not available or for simpler contexts:
 - Format: `"Data Source: [source] | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"`
-- Variations: `"Analysis: Tony Galvan (@GDataScience1)"` or `"Created by Anthony Galvan"`
