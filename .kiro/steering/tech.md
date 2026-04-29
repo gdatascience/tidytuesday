@@ -17,7 +17,7 @@
 - `ggplot2` - Primary plotting library (part of tidyverse)
 - `scales` - Scale functions for ggplot2
 - `patchwork` - Combine multiple ggplots (use only when multi-panel is justified; see structure.md)
-- `showtext` / `sysfonts` - Custom Google Fonts for thematic styling
+- `showtext` / `sysfonts` - Custom Google Fonts for thematic styling (**IMPORTANT:** always call `showtext_opts(dpi = 300)` after `showtext_auto()` to match `ggsave` DPI — without this, fonts render at ~1/3 size)
 - `magick` - Image processing, compositing logos onto plots
 - `cowplot` - `draw_image()` for placing logos/images on ggplots
 - `ggimage` - Embed images directly in ggplot geoms

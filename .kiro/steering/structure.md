@@ -89,9 +89,19 @@ The image will primarily be viewed on phone screens. Design accordingly:
 - **Caption/attribution:** 9–11pt
 - **Data labels on bars/points:** 9–11pt
 - **Legend text:** 10–12pt
+- **`geom_text()` / `annotate()` size:** 5–6 (these use mm, not pt — `size = 5` ≈ 14pt)
 - Avoid thin lines (use `linewidth >= 0.8` for key lines)
 - Ensure sufficient contrast between colors — test that the palette works at small sizes
 - Prefer `fig.width = 8, fig.height = 10` (portrait) or `8 x 8` (square) over wide landscape formats for mobile
+
+**CRITICAL — showtext DPI:** When using `showtext` for custom fonts, you **must** set `showtext_opts(dpi = 300)` immediately after `showtext_auto()`. The default is 96 DPI, which means all font sizes render at roughly 1/3 their intended size in a 300 DPI `ggsave()` output. This is the #1 cause of "fonts look tiny" in the final PNG.
+
+```r
+library(showtext)
+font_add_google("Source Sans 3", "source_sans")
+showtext_auto()
+showtext_opts(dpi = 300)  # MUST match ggsave dpi
+```
 
 ### Thematic Styling
 Make the visualization feel connected to its subject matter:
