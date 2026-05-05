@@ -716,18 +716,34 @@ result <- image_composite(result, seal_resized, offset = "+2160+15", operator = 
 image_write(result, file.path(spec_dir, "r_version_final.png"))
 ```
 
-The R version works, but for social media sharing I wanted something more polished — dark background, product photography instead of emoji, and an editorial magazine aesthetic. I used **Google Nano Banana Pro** to transform the R-generated chart into the final version.
+Here's the R-generated version — it tells the story clearly with the data, but the light background and emoji icons don't quite have the visual punch needed for social media:
+
+```{r show-r-version, echo=FALSE, fig.cap="R-generated version: The four clusters of frozen tariff rates with Liberation Day's +10% spike shown in orange. Emoji icons represent products in each tier."}
+knitr::include_graphics(file.path(spec_dir, "r_version_final.png"))
+```
+
+The chart makes the core story immediately visible: **the brown bars are all the same height within each cluster** — 2000, 2008, 2016, and 2024 are virtually identical. Then the orange-tipped Liberation Day bar breaks the pattern. The "Heavily Protected" cluster jumps from 18.9% to 28.9%, while even the "Duty-Free / Minimal" products that had near-zero rates for 25 years suddenly face a 10.1% tariff.
+
+But for social media sharing, I wanted something more polished — dark background, product photography instead of emoji, and an editorial magazine aesthetic. I used **Google Nano Banana Pro** to transform the R-generated chart into the final version.
 
 The process:
 
 1. **Built the analysis and base visualization in R** using Kiro — data exploration, k-means clustering, ggplot2 bar chart with Liberation Day overlay
 2. **Exported the R version** as a reference image showing the data, layout, and story structure
-3. **Wrote a detailed design prompt** for Google Nano Banana Pro specifying: dark background, product photography in circular cutouts replacing emoji, glowing Liberation Day bars, editorial typography, and Instagram-ready 1080×1350 format
+3. **Wrote a detailed design prompt** for Google Nano Banana Pro specifying: dark background, product photography in circular cutouts replacing emoji, glowing Liberation Day bars, editorial typography, and Instagram-ready format
 4. **Nano Banana Pro generated the final infographic** — preserving the data accuracy while adding the visual polish that makes it shareable
 
-The final version replaces emoji with real product photos (tuna cans, cheese wedges, strawberries, carrots), uses a dark navy background for contrast, and adds a subtle glow effect to the Liberation Day bars to create visual urgency. The data is identical — only the presentation changed.
+Here's the final version:
 
-```{r final-image, eval=FALSE}
+```{r show-final-version, echo=FALSE, fig.cap="Final version by Google Nano Banana Pro: Dark editorial aesthetic with product photography, glowing Liberation Day bars, and USITC seal."}
+knitr::include_graphics("2026_04_28_tidy_tuesday_tariffs.png")
+```
+
+The transformation is dramatic. The dark navy background creates contrast that makes the glowing orange Liberation Day bars feel urgent — almost like a warning signal. The product photography (tuna cans, cheese wedges, strawberries, carrots) makes each cluster immediately relatable in a way that emoji couldn't. And the editorial typography gives it the credibility of a Bloomberg or Economist graphic.
+
+The data is identical in both versions — the same four clusters, the same frozen rates, the same Liberation Day spike. But the presentation shift from "R output" to "designed infographic" is the difference between a chart that informs and one that stops someone mid-scroll.
+
+```{r final-image-note, eval=FALSE}
 # The final shareable image (2026_04_28_tidy_tuesday_tariffs.png) was generated
 # by Google Nano Banana Pro based on the R version above.
 # It is already saved in the repo root.
