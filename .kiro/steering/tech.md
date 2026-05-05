@@ -4,6 +4,11 @@
 - R (primary language)
 - RStudio project (`.Rproj` file)
 
+## Code Style
+- **Pipe operator:** Always use the native pipe `|>` instead of `%>%` (magrittr). The native pipe is faster, has no package dependency, and is the modern R standard.
+- **Indentation:** 2 spaces (no tabs)
+- **Encoding:** UTF-8
+
 ## Core Libraries
 
 ### Data Manipulation
@@ -150,6 +155,4 @@ rmarkdown::render(
 This keeps the repo root clean — only the `.Rmd` and final `.png` belong there.
 
 ## Project Configuration
-- Encoding: UTF-8
-- Indentation: 2 spaces (no tabs)
 - RStudio settings stored in `.Rproj.user/`

@@ -121,6 +121,12 @@ Make the visualization feel connected to its subject matter:
 - **Logos and images:** When a relevant logo or image is available (e.g., a league logo, agency seal, or dataset provider mark), download it to the specs folder and incorporate it using `magick` compositing. This adds polish and immediate visual context.
 - **Fonts:** Use `showtext` / `sysfonts` to load a thematic Google Font when it fits the mood (e.g., a playful font for pop culture data, a clean sans-serif for government data). Fall back to system fonts if font loading adds too much complexity.
 
+### Accessibility & Color Encoding
+- **Colorblind-safe palettes:** Always choose palettes that work for red-green colorblind viewers. Use `viridis`, `okabe-ito`, or manually verified palettes. Avoid relying solely on red vs. green to distinguish categories.
+- **Sufficient contrast:** Ensure text and data elements have enough contrast against the background — especially on dark backgrounds. Test that the chart is readable at a glance.
+- **Consistent color encoding:** If color encodes meaning in one part of the chart (e.g., orange = Liberation Day), do NOT use color decoratively elsewhere in a way that could be misread. Decorative elements (borders, backgrounds, icons) should be neutral/grayscale unless they carry data meaning.
+- **No false signals:** Every visual element that varies (color, size, position, shape) should encode data or be clearly decorative. If a viewer might ask "what does this color mean?" and the answer is "nothing," that's a design problem.
+
 ### Color Emoji in Titles
 `showtext` renders emoji as monochrome outlines because its FreeType backend doesn't support color emoji font tables. To get **color emoji** in the final image, use this composite approach:
 
@@ -207,3 +213,37 @@ Key Font Awesome HTML entities:
 ### Plain-Text Caption (fallback)
 When Font Awesome is not available or for simpler contexts:
 - Format: `"Data Source: [source] | DataViz: Tony Galvan (@GDataScience1) | #TidyTuesday"`
+
+## AI Design Handoff (e.g., Google Nano Banana Pro)
+
+When handing off an R-generated visualization to an AI image generation tool for polish, include these constraints in the prompt to prevent the AI from introducing visual confusion:
+
+1. **Specify an accessible color palette** — name specific colors or reference a colorblind-safe palette. Don't let the AI choose freely; it optimizes for aesthetics, not accessibility.
+2. **State the color encoding rules** — tell the AI which colors encode data meaning and instruct it to keep all other elements (borders, icon backgrounds, decorative shapes) in neutral/grayscale.
+3. **Require sufficient contrast** — especially if requesting a dark background, specify minimum contrast ratios or say "all text and data elements must be clearly readable."
+4. **Describe what each visual element means** — if you include product icons/photos, tell the AI they are illustrative examples only and should NOT use color to encode additional meaning.
+5. **Include the data values** — list the exact percentages and labels so the AI preserves data accuracy in the final output.
+6. **Request a format** — specify dimensions (e.g., 1080×1350 for Instagram) and safe areas for text.
+
+The AI is great at visual polish but does not understand data visualization principles. Your prompt must encode those principles explicitly.
+
+### Prompt Generation Workflow
+
+After the R version of the final visualization is complete and approved, offer to draft a design prompt for an image generation model. This is a standard part of the workflow — not an afterthought.
+
+**The prompt should include:**
+- A description of the R-generated image's structure (chart type, number of panels, axis layout, legend position) — describe it in words, don't rely on the AI "seeing" the reference
+- The exact data values to preserve (percentages, labels, product counts, category names)
+- The story and emotional hook the viz is trying to convey (e.g., "the visual tension between 25 years of sameness and a sudden spike")
+- Specific visual style direction (dark/light, editorial/playful, magazine/app aesthetic)
+- Accessibility constraints: colorblind-safe palette, sufficient contrast, consistent color encoding
+- What to replace (e.g., "replace emoji with circular product photography") and what to keep unchanged (e.g., "preserve bar heights and percentage labels exactly")
+- Target format and dimensions (e.g., 1080×1350 for Instagram, 1200×628 for LinkedIn)
+- Source attribution line to include
+
+**What NOT to leave to the AI's discretion:**
+- Color choices that encode data meaning
+- Whether decorative elements use meaningful-looking color
+- Typography hierarchy (specify which text is biggest/boldest)
+- Data accuracy (always list exact numbers)
+- Accessibility (always specify colorblind-safe and high-contrast requirements)
