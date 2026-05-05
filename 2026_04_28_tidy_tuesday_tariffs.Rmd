@@ -583,12 +583,12 @@ This dataset opens up several threads worth pulling:
 
 The data makes one thing clear: U.S. agricultural trade policy is a patchwork of deals, exceptions, and historical compromises. The headline MFN rates haven't changed much, but the real action is in the bilateral agreements that now cover the vast majority of actual trade.
 
-```{r save-image}
-# Final shareable image: bar chart with Liberation Day, emojis, and USITC seal
-# Built in two stages:
-# 1. Render the base plot with showtext (Google Fonts + Font Awesome caption)
-# 2. Composite emoji PNGs + seal with magick
+## From R to Instagram: Designing the Final Visualization
 
+The visualization above was built entirely in R — k-means clustering, ggplot2 bar charts, Font Awesome icon captions, and color emoji composited via `magick`. Here's the R-generated version:
+
+```{r save-r-version}
+# Save the R-generated version to the specs folder for reference
 spec_dir <- ".kiro/specs/2026_04_28_tidy_tuesday_tariffs"
 seal <- image_read(file.path(spec_dir, "usitc_seal.png"))
 
@@ -613,15 +613,14 @@ for (nm in names(emoji_list)) {
     p_emoji, device = ragg::agg_png,
     width = 4, height = 2, dpi = 150, bg = "transparent"
   )
-  # Trim and add padding to prevent visual cropping
   img <- image_read(file.path(spec_dir, paste0("emoji_", nm, "_final.png")))
   img <- image_trim(img) %>% image_border("transparent", "10x10")
   image_write(img, file.path(spec_dir, paste0("emoji_", nm, "_final.png")))
 }
 showtext_auto(TRUE)
 
-# Stage 1: Build the base bar chart
-final_plot <- stacked %>%
+# Build the base bar chart
+r_version <- stacked %>%
   ggplot(aes(x = year_label, y = value, fill = component)) +
   geom_col(width = 0.7, color = NA) +
   geom_text(
@@ -672,26 +671,24 @@ final_plot <- stacked %>%
 
 ggsave(
   file.path(spec_dir, "_base_v3.png"),
-  final_plot, device = "png", width = 8, height = 10, dpi = 300, bg = "white"
+  r_version, device = "png", width = 8, height = 10, dpi = 300, bg = "white"
 )
 
-# Stage 2: Composite emojis + seal with magick
+# Composite emojis + seal
 base_img <- image_read(file.path(spec_dir, "_base_v3.png"))
-r <- as.raster(base_img)
-n_rows <- nrow(r)
+r_raster <- as.raster(base_img)
+n_rows <- nrow(r_raster)
 
-# Find caption (scan from bottom up)
 caption_start <- n_rows
 for (row in seq(n_rows, n_rows - 200, by = -1)) {
-  nw <- which(r[row, ] != "#ffffffff")
+  nw <- which(r_raster[row, ] != "#ffffffff")
   if (length(nw) > 10) caption_start <- row
 }
 
-# Find strip text end (scan upward from caption through the gap)
 strip_end <- 0
 in_gap <- FALSE
 for (row in seq(caption_start - 1, 1, by = -5)) {
-  nw <- which(r[row, ] != "#ffffffff")
+  nw <- which(r_raster[row, ] != "#ffffffff")
   if (length(nw) == 0) {
     in_gap <- TRUE
   } else if (in_gap && length(nw) > 10) {
@@ -700,7 +697,6 @@ for (row in seq(caption_start - 1, 1, by = -5)) {
   }
 }
 
-# Place emojis centered in the gap between strip text and caption
 emoji_y <- round((strip_end + caption_start) / 2) - 20
 centers <- c(480, 1016, 1552, 2087)
 seal_resized <- image_resize(seal, "200x200")
@@ -717,5 +713,22 @@ for (i in seq_along(names(emoji_list))) {
 }
 
 result <- image_composite(result, seal_resized, offset = "+2160+15", operator = "over")
-image_write(result, "2026_04_28_tidy_tuesday_tariffs.png")
+image_write(result, file.path(spec_dir, "r_version_final.png"))
+```
+
+The R version works, but for social media sharing I wanted something more polished — dark background, product photography instead of emoji, and an editorial magazine aesthetic. I used **Google Nano Banana Pro** to transform the R-generated chart into the final version.
+
+The process:
+
+1. **Built the analysis and base visualization in R** using Kiro — data exploration, k-means clustering, ggplot2 bar chart with Liberation Day overlay
+2. **Exported the R version** as a reference image showing the data, layout, and story structure
+3. **Wrote a detailed design prompt** for Google Nano Banana Pro specifying: dark background, product photography in circular cutouts replacing emoji, glowing Liberation Day bars, editorial typography, and Instagram-ready 1080×1350 format
+4. **Nano Banana Pro generated the final infographic** — preserving the data accuracy while adding the visual polish that makes it shareable
+
+The final version replaces emoji with real product photos (tuna cans, cheese wedges, strawberries, carrots), uses a dark navy background for contrast, and adds a subtle glow effect to the Liberation Day bars to create visual urgency. The data is identical — only the presentation changed.
+
+```{r final-image, eval=FALSE}
+# The final shareable image (2026_04_28_tidy_tuesday_tariffs.png) was generated
+# by Google Nano Banana Pro based on the R version above.
+# It is already saved in the repo root.
 ```
