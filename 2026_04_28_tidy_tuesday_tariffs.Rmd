@@ -84,7 +84,8 @@ theme_set(
 ```
 
 ```{r load-data}
-tt <- readRDS(".kiro/specs/2026_04_28_tidy_tuesday_tariffs/tt_cache.rds")
+# tt <- readRDS(".kiro/specs/2026_04_28_tidy_tuesday_tariffs/tt_cache.rds")
+tt <- tt_load("2026-04-28")
 
 agreements <- tt$agreements
 tariff <- tt$tariff_agricultural
