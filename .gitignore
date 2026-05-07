@@ -1,4 +1,19 @@
-
+# R artifacts
 .Rhistory
-.Rproj.user
+.Rdata
+.httr-oauth
+
+# RStudio project metadata
+.Rproj.user/
+
+# R Markdown generated asset directories
+*_files/
+
+# Rendered HTML outputs
+*.html
+
+# macOS
+.DS_Store
+
+# Kiro specs (scripts, logs, intermediate outputs)
 .kiro/specs/
