@@ -2,37 +2,101 @@
 
 ## File Organization
 
-### Root Directory
-All analysis files are stored in the root directory with a consistent naming convention:
-- Format: `YYYY_MM_DD_tidy_tuesday_topic.Rmd` or `.qmd`
-- Output images: `YYYY_MM_DD_tidy_tuesday_topic.png` or `.gif`
-- Some analyses produce HTML output: `YYYY_MM_DD_tidy_tuesday_topic.html`
+### Repository Layout
+The repository is organized as a portfolio-style hierarchy by year and date:
+
+```
+tidytuesday/
+├── README.md                    # Portfolio landing page
+├── tidytuesday.Rproj
+├── .gitignore
+├── other/                       # Non-TidyTuesday projects
+│   ├── pinewood_derby/
+│   ├── christmas_cards/
+│   └── ...
+├── 2018/
+│   └── 2018_11_06/
+│       ├── 2018_11_06_tidy_tuesday.Rmd
+│       ├── outputs/
+│       │   └── 2018_11_06_tidy_tuesday.png
+│       └── README.md
+├── 2021/
+│   ├── 2021_01_19/
+│   │   ├── 2021_01_19_tidy_tuesday.Rmd
+│   │   ├── outputs/
+│   │   │   └── 2021_01_19_tidy_tuesday.png
+│   │   └── README.md
+│   └── ...
+└── ...
+```
+
+### Year Directories (`YYYY/`)
+Each year with at least one analysis has a top-level directory named by the four-digit year (e.g., `2018/`, `2021/`, `2025/`).
+
+### Week Directories (`YYYY/YYYY_MM_DD/`)
+Each week's analysis lives in a date-named subdirectory within its year folder. The directory name uses the `YYYY_MM_DD` format (underscores, matching the file naming convention).
+
+Each week directory contains:
+- The analysis file (`.Rmd` or `.qmd`)
+- An `outputs/` subfolder with produced artifacts (`.png`, `.gif`, etc.)
+- A `README.md` with embedded dataviz, blurb, and TidyTuesday data source link
+
+### The `outputs/` Subfolder
+All produced artifacts (images, GIFs, HTML exports) go in the `outputs/` subfolder within the week directory. This keeps the week directory clean and makes it easy to find the final shareable image.
+
+### The `other/` Directory
+Non-TidyTuesday projects live in the `other/` directory at the repository root. This includes:
+- Pinewood derby Shiny app (`other/pinewood_derby/`)
+- Christmas card analyses
+- Any other one-off projects not tied to a specific TidyTuesday week
+
+The internal structure of each project within `other/` is preserved as-is.
 
 ### Supporting Directories
 - `.Rproj.user/` - RStudio project metadata (auto-generated, gitignored)
-- `rsconnect/` - RStudio Connect deployment metadata
-- `*_files/` - Supporting files for specific analyses (e.g., `horror_movies_files/`, `2024_10_22_cbp_files/`)
 - `.kiro/` - Kiro AI assistant configuration and steering rules
 
-### Special Files
+### Special Files (Root)
 - `tidytuesday.Rproj` - RStudio project file
-- `.gitignore` - Git ignore rules (excludes `.Rhistory` and `.Rproj.user/`)
-- `_publish.yml` - Quarto publishing configuration
+- `.gitignore` - Git ignore rules
+- `README.md` - Portfolio landing page
 
 ## Naming Conventions
 
 ### Analysis Files
 - Date format: `YYYY_MM_DD` (underscores, not hyphens)
 - Topic: Short descriptive name in lowercase with underscores
+- Full path: `YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd` (or `.qmd`)
 - Examples:
-  - `2026_02_07_pinewood_derby.qmd`
-  - `2025_02_11_tidy_tuesday_cdc.Rmd`
-  - `2024_10_29_tidy_tuesday_monster.Rmd`
+  - `2026/2026_02_07/2026_02_07_pinewood_derby.qmd`
+  - `2025/2025_02_11/2025_02_11_tidy_tuesday_cdc.Rmd`
+  - `2024/2024_10_29/2024_10_29_tidy_tuesday_monster.Rmd`
 
 ### Output Files
-- Match the source file name exactly
-- Common extensions: `.png`, `.gif`, `.html`
-- Example: `2026_01_27_tidy_tuesday_companies.png`
+- Match the source file name exactly (different extension)
+- Live in the `outputs/` subfolder of the week directory
+- Full path: `YYYY/YYYY_MM_DD/outputs/YYYY_MM_DD_tidy_tuesday_topic.png`
+- Common extensions: `.png`, `.gif`
+- Example: `2026/2026_01_27/outputs/2026_01_27_tidy_tuesday_companies.png`
+
+## Week README
+
+Each week directory includes a `README.md` that serves as the "card" for that analysis when browsing on GitHub. It should include:
+
+1. **Embedded dataviz** — the final shareable image displayed inline so visitors see the visualization immediately:
+   ```markdown
+   ![Analysis Title](outputs/YYYY_MM_DD_tidy_tuesday_topic.png)
+   ```
+
+2. **Short social-media-style blurb** — 2-3 sentences summarizing the analysis, key findings, and tools used. This should read like a social media post: punchy, quantified, and engaging. Example:
+   > Explored 15 years of TidyTuesday participation data and found that contributions spike 3x in January. Built with ggplot2 + showtext, styled with a custom Google Font. 📊
+
+3. **Link to the TidyTuesday data source** — a direct link to the dataset page on the TidyTuesday GitHub repository:
+   ```markdown
+   **Data Source:** [TidyTuesday YYYY-MM-DD](https://github.com/rfordatascience/tidytuesday/tree/master/data/YYYY/YYYY-MM-DD)
+   ```
+
+If no output image exists for a week, the README should note "No visualization available" and link only to the source code.
 
 ## Code Structure Pattern
 
@@ -45,7 +109,7 @@ Most analysis files follow this structure:
 5. Data exploration (glimpse, readme)
 6. Data wrangling
 7. Visualization creation
-8. Image export (using `ggsave()` or `gtsave()`)
+8. Image export (using `ggsave()` or `gtsave()` — saving to `outputs/`)
 
 ## Blog Post Rmd Structure
 
@@ -71,6 +135,31 @@ Key principles:
 - Use bold text for key statistics in the prose
 - Bullet points are fine for listing specific findings
 - Every visualization should have a clear title, subtitle, and caption
+
+## Starting a New Analysis
+
+When creating a new TidyTuesday analysis for a given week date (e.g., 2026-03-04):
+
+1. Create the week directory structure:
+   ```
+   2026/2026_03_04/
+   2026/2026_03_04/outputs/
+   ```
+
+2. Create the analysis file inside the week directory:
+   ```
+   2026/2026_03_04/2026_03_04_tidy_tuesday_topic.Rmd
+   ```
+
+3. After the analysis is complete, save outputs to the `outputs/` subfolder:
+   ```r
+   ggsave(
+     filename = "outputs/2026_03_04_tidy_tuesday_topic.png",
+     ...
+   )
+   ```
+
+4. Create the week README at `2026/2026_03_04/README.md` with the embedded image, blurb, and data source link.
 
 ## Final Shareable Image
 
@@ -153,7 +242,7 @@ showtext_auto(TRUE)  # re-enable showtext
 ### Export Settings
 ```r
 ggsave(
-  filename = "YYYY_MM_DD_tidy_tuesday_topic.png",
+  filename = "outputs/YYYY_MM_DD_tidy_tuesday_topic.png",
   plot = final_plot,
   device = "png",
   width = 8,

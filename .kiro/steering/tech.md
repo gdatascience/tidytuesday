@@ -51,6 +51,8 @@
 ## Common Workflows
 
 ### Starting a New Analysis
+Analysis files live in `YYYY/YYYY_MM_DD/` directories (e.g., `2025/2025_06_10/2025_06_10_tidy_tuesday_topic.Rmd`). Always create the week directory structure first, then work inside it.
+
 ```r
 library(tidyverse)
 library(tidytuesdayR)
@@ -62,9 +64,19 @@ tt <- tt_load("YYYY-MM-DD")
 ```
 
 ### Saving Visualizations
+Save output images to the `outputs/` subfolder within the week directory. Since the working directory is the repo root, use the full relative path:
+
 ```r
 ggsave(
-  filename = "YYYY_MM_DD_tidy_tuesday_topic.png",
+  filename = "YYYY/YYYY_MM_DD/outputs/YYYY_MM_DD_tidy_tuesday_topic.png",
+  device = "png"
+)
+```
+
+If your working directory is already the week directory (`YYYY/YYYY_MM_DD/`), use:
+```r
+ggsave(
+  filename = "outputs/YYYY_MM_DD_tidy_tuesday_topic.png",
   device = "png"
 )
 ```
@@ -80,13 +92,20 @@ showtext_opts(dpi = 300)  # MUST match ggsave dpi
 
 # ... build your ggplot ...
 
-ggsave("plot.png", plot = p, width = 10, height = 10, dpi = 300)
+ggsave("YYYY/YYYY_MM_DD/outputs/plot.png", plot = p, width = 10, height = 10, dpi = 300)
 showtext_auto(FALSE)
 ```
 
 ### Saving gt Tables
+Save gt table outputs to the `outputs/` subfolder within the week directory:
+
 ```r
-gtsave(table_object, "filename.png")
+gtsave(table_object, "YYYY/YYYY_MM_DD/outputs/YYYY_MM_DD_tidy_tuesday_topic.png")
+```
+
+Or if your working directory is already the week directory:
+```r
+gtsave(table_object, "outputs/YYYY_MM_DD_tidy_tuesday_topic.png")
 ```
 
 ## Console/Terminal R Execution
@@ -131,9 +150,16 @@ This includes:
 - Intermediate images used during compositing (e.g., `_base.png` before adding a logo)
 - Any file that is not the final `.Rmd`, `.qmd`, or `.png` deliverable
 
-The **only files that should be written to the repo root** for a given week are:
-- The analysis file: `YYYY_MM_DD_tidy_tuesday_topic.Rmd` (or `.qmd`)
-- The final output image: `YYYY_MM_DD_tidy_tuesday_topic.png` (or `.gif`)
+The **only files that should exist in the repo root** are:
+- `README.md` — Portfolio landing page
+- `tidytuesday.Rproj` — RStudio project file
+- `.gitignore` — Git ignore rules
+- `_publish.yml` — Quarto publish configuration (if present)
+
+Analysis files and outputs go in their respective `YYYY/YYYY_MM_DD/` directories:
+- Analysis file: `YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd` (or `.qmd`)
+- Output image: `YYYY/YYYY_MM_DD/outputs/YYYY_MM_DD_tidy_tuesday_topic.png` (or `.gif`)
+- Week README: `YYYY/YYYY_MM_DD/README.md`
 
 Everything else stays in `.kiro/specs/`, including:
 - Rendered HTML files (render to the specs folder using `output_dir` parameter)
@@ -143,16 +169,16 @@ Everything else stays in `.kiro/specs/`, including:
 - Intermediate images used during compositing
 
 ### Rendering Rmd/qmd Files
-Always render HTML output into the specs folder, not the repo root:
+Analysis Rmd/qmd files live in `YYYY/YYYY_MM_DD/` directories. Always render HTML output into the specs folder, not the week directory:
 
 ```r
 rmarkdown::render(
-  "YYYY_MM_DD_tidy_tuesday_topic.Rmd",
+  "YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd",
   output_dir = ".kiro/specs/YYYY_MM_DD_tidy_tuesday_topic"
 )
 ```
 
-This keeps the repo root clean — only the `.Rmd` and final `.png` belong there.
+This keeps the week directory clean — only the `.Rmd`, `outputs/`, and `README.md` belong there.
 
 ## Project Configuration
 - RStudio settings stored in `.Rproj.user/`

@@ -2,7 +2,8 @@
 
 ## GitHub Repository
 - Repo: https://github.com/gdatascience/tidytuesday
-- Always link directly to the analysis file: `https://github.com/gdatascience/tidytuesday/blob/master/FILENAME.Rmd` (or `.qmd`)
+- Always link directly to the analysis file: `https://github.com/gdatascience/tidytuesday/blob/master/YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd` (or `.qmd`)
+- Link to browse the week directory: `https://github.com/gdatascience/tidytuesday/tree/master/YYYY/YYYY_MM_DD`
 
 ## Golden Dome Data Tuesdays (Static Info)
 - Event: "Golden Dome Data Tuesdays"
@@ -51,6 +52,11 @@
 - Keep the tone conversational — data science is fun, not stuffy
 - Reference the visualization or key chart in the post
 - If a Shiny app was built, mention it and describe what users can explore with it
+- When drafting social media posts for a completed analysis, also write a short blurb for that week's README (2-3 sentences summarizing the analysis, key finding, and tools used). This blurb should be punchy and quantified, similar in tone to the social posts.
+- When drafting social media posts, ask: "Would you like to add this visualization to the Highlights section of the root README?" If the user says yes, provide the markdown snippet to add — a clickable image linking to the week directory:
+  ```markdown
+  [![Analysis Title](YYYY/YYYY_MM_DD/outputs/YYYY_MM_DD_tidy_tuesday_topic.png)](YYYY/YYYY_MM_DD/)
+  ```
 
 ## Kiro Attribution
 Kiro does most of the work on these analyses. Every post should acknowledge that clearly:
