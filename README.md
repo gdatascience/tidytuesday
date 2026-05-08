@@ -6,7 +6,7 @@ This repository contains **243 analyses** spanning 2018–2026.
 
 ## About
 
-**Author:** Tony Galvan ([@GDataScience1](https://bsky.app/profile/gdatascience1.bsky.social) / [gdatascience](https://github.com/gdatascience))
+**Author:** Tony Galvan ([@GDataScience1](https://x.com/GDataScience1) / [LinkedIn](https://www.linkedin.com/in/anthony-raul-galvan/) / [gdatascience](https://github.com/gdatascience))
 
 [TidyTuesday](https://github.com/rfordatascience/tidytuesday) is a weekly data project aimed at the R ecosystem. Every week, a new dataset is posted and participants practice their data wrangling and visualization skills, then share their creations on social media with #TidyTuesday.
 
