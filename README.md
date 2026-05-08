@@ -32,8 +32,6 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 <a href="2026/2026_04_21/"><img src="2026/2026_04_21/outputs/2026_04_21_tidy_tuesday_health_spending.png" width="80"></a>
 <a href="2026/2026_04_28/"><img src="2026/2026_04_28/outputs/2026_04_28_tidy_tuesday_tariffs.png" height="80"></a>
 <a href="2026/2026_05_06/"><img src="2026/2026_05_06/outputs/2026_05_06_italian_industry.png" height="80"></a>
-<a href="2026/2026_01_20/"><img src="2026/2026_01_20/outputs/2026_01_20_tidy_tuesday.png" width="80"></a>
-<a href="2026/2026_03_03/"><img src="2026/2026_03_03/outputs/2026_03_03_tidy_tuesday.png" width="80"></a>
 </p>
 
 ### [2025/](2025/)
