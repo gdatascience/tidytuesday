@@ -39,7 +39,7 @@
 
 ### Fonts & Icons
 - Font Awesome 6 OTF files installed at `~/Library/Fonts/` — used for icon captions
-  - `Font Awesome 6 Brands-Regular-400.otf` (Bluesky, GitHub, etc.)
+  - `Font Awesome 6 Brands-Regular-400.otf` (GitHub, X, etc.)
   - `Font Awesome 6 Free-Solid-900.otf` (table icon, etc.)
 - Register via `sysfonts::font_add()` for use with `showtext` + `ggtext::element_markdown()`
 

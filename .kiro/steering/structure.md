@@ -371,7 +371,7 @@ ggsave(
 ## Caption Convention
 
 ### Icon-Rich Caption (preferred for final shareable image)
-Use `ggtext::element_markdown()` with Font Awesome icons registered via `showtext`. This produces a polished caption with table, Bluesky, and GitHub icons:
+Use `ggtext::element_markdown()` with Font Awesome icons registered via `showtext`. This produces a polished caption with table and GitHub icons:
 
 ```r
 library(ggtext)
@@ -393,10 +393,6 @@ tt_caption <- paste0(
   "<span style='color:", bg_color, ";'>.</span>",
   tt_source,
   "<span style='color:", bg_color, ";'>..</span>",
-  "<span style='font-family:fa-brands;'>&#xe61b;</span>",
-  "<span style='color:", bg_color, ";'>.</span>",
-  "@GDataScience1",
-  "<span style='color:", bg_color, ";'>..</span>",
   "<span style='font-family:fa-brands;'>&#xf09b;</span>",
   "<span style='color:", bg_color, ";'>.</span>",
   "gdatascience"
@@ -412,7 +408,6 @@ theme(
 
 Key Font Awesome HTML entities:
 - `&#xf0ce;` — table icon (fa-solid)
-- `&#xe61b;` — Bluesky icon (fa-brands)
 - `&#xf09b;` — GitHub icon (fa-brands)
 
 ### Plain-Text Caption (fallback)
