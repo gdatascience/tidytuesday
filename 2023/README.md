@@ -1,6 +1,6 @@
 # 2023
 
-**41 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**39 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -9,7 +9,7 @@
 <table>
 <tr>
 <td><a href="2023_01_10/"><img src="2023_01_10/outputs/2023_01_10_tidy_tuesday_birds.png" width="150"></a></td>
-<td><a href="2023_01_17/"><img src="2023_01_17/outputs/2023_01_17_tidy_tuesday_artists.png" width="150"></a></td>
+<td align="center"><a href="2023_01_17/"><em>No viz</em></a></td>
 <td><a href="2023_01_24/"><img src="2023_01_24/outputs/2023_01_24_tidy_tuesday_alone.png" width="150"></a></td>
 <td><a href="2023_01_31/"><img src="2023_01_31/outputs/2023_01_31_tidy_tuesday_cats.png" height="150"></a></td>
 </tr>
@@ -61,12 +61,10 @@
 
 <table>
 <tr>
-<td><a href="2023_04_11/"><img src="2023_04_11/outputs/2023_04_11_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2023_04_18/"><img src="2023_04_18/outputs/2023_04_18_tidy_tuesday_founder_crops.png" width="150"></a></td>
 <td><a href="2023_04_25/"><img src="2023_04_25/outputs/2023_04_25_tidy_tuesday_london_marathon.png" width="150"></a></td>
 </tr>
 <tr>
-<td align="center"><a href="2023_04_11/">Apr 11</a></td>
 <td align="center"><a href="2023_04_18/">Founder Crops</a></td>
 <td align="center"><a href="2023_04_25/">London Marathon</a></td>
 </tr>
@@ -76,13 +74,11 @@
 
 <table>
 <tr>
-<td><a href="2023_05_02/"><img src="2023_05_02/outputs/2023_05_02_tidy_tuesday_portal.png" width="150"></a></td>
 <td><a href="2023_05_09/"><img src="2023_05_09/outputs/2023_05_09_tidy_tuesday_childcare.png" width="150"></a></td>
 <td><a href="2023_05_16/"><img src="2023_05_16/outputs/2023_05_16_tidy_tuesday_tornados.png" width="150"></a></td>
 <td><a href="2023_05_23/"><img src="2023_05_23/outputs/2023_05_23_tidy_tuesday_squirrels.png" width="150"></a></td>
 </tr>
 <tr>
-<td align="center"><a href="2023_05_02/">Portal</a></td>
 <td align="center"><a href="2023_05_09/">Childcare</a></td>
 <td align="center"><a href="2023_05_16/">Tornados</a></td>
 <td align="center"><a href="2023_05_23/">Squirrels</a></td>

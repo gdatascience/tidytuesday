@@ -1,6 +1,6 @@
 # 2021
 
-**45 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**41 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -40,7 +40,7 @@
 <td><a href="2021_03_09/"><img src="2021_03_09/outputs/2021_03_09_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_03_16/"><img src="2021_03_16/outputs/2021_03_16_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_03_23/"><img src="2021_03_23/outputs/2021_03_23_tidy_tuesday.png" width="150"></a></td>
-<td><a href="2021_03_30/"><img src="2021_03_30/outputs/2021_03_30_tidy_tuesday.png" width="150"></a></td>
+<td align="center"><a href="2021_03_30/"><em>No viz</em></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2021_03_02/">Mar 02</a></td>
@@ -55,13 +55,11 @@
 
 <table>
 <tr>
-<td><a href="2021_04_06/"><img src="2021_04_06/outputs/2021_04_06_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_04_13/"><img src="2021_04_13/outputs/2021_04_13_tidy_tuesday.gif" width="150"></a></td>
 <td><a href="2021_04_20/"><img src="2021_04_20/outputs/2021_04_20_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_04_27/"><img src="2021_04_27/outputs/2021_04_27_tidy_tuesday.png" width="150"></a></td>
 </tr>
 <tr>
-<td align="center"><a href="2021_04_06/">Apr 06</a></td>
 <td align="center"><a href="2021_04_13/">Apr 13</a></td>
 <td align="center"><a href="2021_04_20/">Apr 20</a></td>
 <td align="center"><a href="2021_04_27/">Apr 27</a></td>
@@ -129,14 +127,12 @@
 <td><a href="2021_08_10/"><img src="2021_08_10/outputs/2021_08_10_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_08_17/"><img src="2021_08_17/outputs/2021_08_17_tidy_tuesday.png" width="150"></a></td>
 <td align="center"><a href="2021_08_24/"><em>No viz</em></a></td>
-<td><a href="2021_08_31/"><img src="2021_08_31/outputs/2021_08_31_tidy_tuesday.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2021_08_03/">Aug 03</a></td>
 <td align="center"><a href="2021_08_10/">Aug 10</a></td>
 <td align="center"><a href="2021_08_17/">Aug 17</a></td>
 <td align="center"><a href="2021_08_24/">Aug 24</a></td>
-<td align="center"><a href="2021_08_31/">Aug 31</a></td>
 </tr>
 </table>
 
@@ -145,13 +141,11 @@
 <table>
 <tr>
 <td><a href="2021_09_07/"><img src="2021_09_07/outputs/2021_09_07_tidy_tuesday.png" width="150"></a></td>
-<td><a href="2021_09_14/"><img src="2021_09_14/outputs/2021_09_14_tidy_tuesday.png" width="150"></a></td>
-<td><a href="2021_09_21/"><img src="2021_09_21/outputs/2021_09_21_tidy_tuesday.png" width="150"></a></td>
+<td align="center"><a href="2021_09_21/"><em>No viz</em></a></td>
 <td align="center"><a href="2021_09_28/"><em>No viz</em></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2021_09_07/">Sep 07</a></td>
-<td align="center"><a href="2021_09_14/">Sep 14</a></td>
 <td align="center"><a href="2021_09_21/">Sep 21</a></td>
 <td align="center"><a href="2021_09_28/">Sep 28</a></td>
 </tr>
@@ -194,10 +188,8 @@
 <table>
 <tr>
 <td><a href="2021_12_07/"><img src="2021_12_07/outputs/2021_12_07_tidy_tuesday.png" width="150"></a></td>
-<td><a href="2021_12_14/"><img src="2021_12_14/outputs/2021_12_14_tidy_tuesday.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2021_12_07/">Dec 07</a></td>
-<td align="center"><a href="2021_12_14/">Dec 14</a></td>
 </tr>
 </table>

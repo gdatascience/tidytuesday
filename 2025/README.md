@@ -1,6 +1,6 @@
 # 2025
 
-**41 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**38 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -27,7 +27,7 @@
 <tr>
 <td><a href="2025_02_04/"><img src="2025_02_04/outputs/2025_02_04_tidy_tuesday_simpsons.png" width="150"></a></td>
 <td><a href="2025_02_11/"><img src="2025_02_11/outputs/2025_02_11_tidy_tuesday_cdc.png" width="150"></a></td>
-<td><a href="2025_02_18/"><img src="2025_02_18/outputs/2025_02_18_tidy_tuesday_agencies.png" width="150"></a></td>
+<td align="center"><a href="2025_02_18/"><em>No viz</em></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2025_02_04/">Simpsons</a></td>
@@ -55,15 +55,11 @@
 <tr>
 <td><a href="2025_04_01/"><img src="2025_04_01/outputs/2025_04_01_tidy_tuesday_pokemon.png" width="150"></a></td>
 <td><a href="2025_04_08/"><img src="2025_04_08/outputs/2025_04_08_tidy_tuesday_care.png" width="150"></a></td>
-<td><a href="2025_04_15/"><img src="2025_04_15/outputs/2025_04_15_tidy_tuesday_penguins.png" width="150"></a></td>
-<td><a href="2025_04_22/"><img src="2025_04_22/outputs/2025_04_22_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2025_04_29/"><img src="2025_04_29/outputs/2025_04_29_tidy_tuesday_user2025.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2025_04_01/">Pokemon</a></td>
 <td align="center"><a href="2025_04_08/">Care</a></td>
-<td align="center"><a href="2025_04_15/">Penguins</a></td>
-<td align="center"><a href="2025_04_22/">Apr 22</a></td>
 <td align="center"><a href="2025_04_29/">User2025</a></td>
 </tr>
 </table>
@@ -135,7 +131,7 @@
 <table>
 <tr>
 <td><a href="2025_09_02/"><img src="2025_09_02/outputs/2025_09_02_tidy_tuesday_frogs.png" width="150"></a></td>
-<td><a href="2025_09_09/"><img src="2025_09_09/outputs/2025_09_09_tidy_tuesday_passport.png" width="150"></a></td>
+<td align="center"><a href="2025_09_09/"><em>No viz</em></a></td>
 <td><a href="2025_09_16/"><img src="2025_09_16/outputs/2025_09_16_tidy_tuesday_recipes.png" width="150"></a></td>
 <td><a href="2025_09_23/"><img src="2025_09_23/outputs/2025_09_23_tidy_tuesday_chess.png" height="150"></a></td>
 <td><a href="2025_09_30/"><img src="2025_09_30/outputs/2025_09_30_tidy_tuesday_cranes.png" width="150"></a></td>
@@ -153,13 +149,11 @@
 
 <table>
 <tr>
-<td><a href="2025_10_07/"><img src="2025_10_07/outputs/2025_10_07_tidy_tuesday_basketball.png" width="150"></a></td>
 <td><a href="2025_10_14/"><img src="2025_10_14/outputs/2025_10_14_tidy_tuesday_food_security.png" width="150"></a></td>
 <td><a href="2025_10_21/"><img src="2025_10_21/outputs/2025_10_21_tidy_tuesday_met.png" width="150"></a></td>
 <td><a href="2025_10_28/"><img src="2025_10_28/outputs/2025_10_28_tidy_tuesday_prizes.png" width="150"></a></td>
 </tr>
 <tr>
-<td align="center"><a href="2025_10_07/">Basketball</a></td>
 <td align="center"><a href="2025_10_14/">Food Security</a></td>
 <td align="center"><a href="2025_10_21/">Met</a></td>
 <td align="center"><a href="2025_10_28/">Prizes</a></td>
