@@ -490,7 +490,7 @@ The final shareable image was polished using Google Nano Banana Pro, which added
 
 ```{r ai-polished-image, echo=FALSE, fig.align='center'}
 showtext_auto(FALSE)
-knitr::include_graphics("2026_05_06_italian_industry.png")
+knitr::include_graphics("outputs/2026_05_06_italian_industry.png")
 ```
 
 ## What We Learned
