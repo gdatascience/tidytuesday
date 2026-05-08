@@ -1,5 +1,9 @@
 # Technology Stack
 
+## Git Workflow
+- **Push directly to master** unless explicitly asked to create a branch. This is a personal repo — no PRs or branches needed for routine work.
+- Only create a branch when the user specifically requests one for a larger project.
+
 ## Language & Environment
 - R (primary language)
 - RStudio project (`.Rproj` file)
