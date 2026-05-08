@@ -31,7 +31,7 @@ tidytuesday/
 ```
 
 ### Year Directories (`YYYY/`)
-Each year with at least one analysis has a top-level directory named by the four-digit year (e.g., `2018/`, `2021/`, `2025/`).
+Each year with at least one analysis has a top-level directory named by the four-digit year (e.g., `2018/`, `2021/`, `2025/`). Each year directory contains a `README.md` with a thumbnail gallery organized by month (see "Year README" section below).
 
 ### Week Directories (`YYYY/YYYY_MM_DD/`)
 Each week's analysis lives in a date-named subdirectory within its year folder. The directory name uses the `YYYY_MM_DD` format (underscores, matching the file naming convention).
@@ -98,6 +98,71 @@ Each week directory includes a `README.md` that serves as the "card" for that an
 
 If no output image exists for a week, the README should note "No visualization available" and link only to the source code.
 
+## Year README
+
+Each year directory (`YYYY/`) includes a `README.md` that serves as a browsable gallery of that year's analyses, organized by month. Structure:
+
+1. **Title and count** — the year as an H1 heading, followed by the total number of analyses and a link to TidyTuesday:
+   ```markdown
+   # 2025
+
+   **42 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+
+   ---
+   ```
+
+2. **Monthly sections** — each month with analyses gets an `## Month` heading and an HTML table with two rows:
+   - **Row 1:** Thumbnail images (150px wide) linked to the week directory. Weeks without a visualization show *No viz* in italics.
+   - **Row 2:** Short topic labels (one word, capitalized) linked to the week directory.
+
+   Example:
+   ```html
+   ## January
+
+   <table>
+   <tr>
+   <td><a href="2025_01_07/"><img src="2025_01_07/outputs/2025_01_07_tidy_tuesday_fires.png" width="150"></a></td>
+   <td align="center"><a href="2025_01_21/"><em>No viz</em></a></td>
+   </tr>
+   <tr>
+   <td align="center"><a href="2025_01_07/">Fires</a></td>
+   <td align="center"><a href="2025_01_21/">Exped</a></td>
+   </tr>
+   </table>
+   ```
+
+3. **Image sizing:** Use `width="150"` for landscape/square images and `height="150"` for portrait images to keep the gallery uniform.
+
+4. **Topic labels:** Use a short, recognizable word derived from the analysis topic (e.g., "Fires", "Pokemon", "Chess"). Capitalize the first letter.
+
+## Root README
+
+The root `README.md` is the portfolio landing page. It does NOT have a Highlights section — all visualizations are displayed inline in the "Analyses by Year" section. Structure:
+
+1. **Title and intro** — project description, author info, and about section
+2. **Analyses by Year** — each year gets an H3 heading (`### [YYYY/](YYYY/)`) followed by the analysis count and a `<p>` block of clickable thumbnail images:
+   ```html
+   ### [2025/](2025/)
+
+   42 analyses
+
+   <p>
+   <a href="2025/2025_01_07/"><img src="2025/2025_01_07/outputs/2025_01_07_tidy_tuesday_fires.png" width="80"></a>
+   <a href="2025/2025_01_14/"><img src="2025/2025_01_14/outputs/2025_01_14_tidy_tuesday_talks.png" width="80"></a>
+   </p>
+   ```
+
+3. **Thumbnail rules for root README:**
+   - Only include weeks that have a visualization (skip "No viz" weeks)
+   - Use `width="80"` for landscape/square images and `height="80"` for portrait images
+   - Link each thumbnail to the week directory (e.g., `2025/2025_01_07/`)
+   - Image paths are relative to the repo root (e.g., `2025/2025_01_07/outputs/...`)
+   - Order thumbnails chronologically within each year
+
+4. **Other Projects** — a section listing non-TidyTuesday projects in the `other/` directory
+
+When a new analysis is completed with a visualization, automatically add its thumbnail to both the root README (in the appropriate year's `<p>` block) and the yearly README (in the appropriate month's table). Do not ask the user — just do it as part of the standard workflow.
+
 ## Code Structure Pattern
 
 Most analysis files follow this structure:
@@ -160,6 +225,10 @@ When creating a new TidyTuesday analysis for a given week date (e.g., 2026-03-04
    ```
 
 4. Create the week README at `2026/2026_03_04/README.md` with the embedded image, blurb, and data source link.
+
+5. Add the thumbnail to the **root README** — append a new `<a><img></a>` element to the year's `<p>` block (use `width="80"` or `height="80"`). Do this automatically as part of the workflow.
+
+6. Add the thumbnail to the **yearly README** (`2026/README.md`) — add the image to the appropriate month's HTML table (use `width="150"` or `height="150"`). Do this automatically as part of the workflow.
 
 ## Final Shareable Image
 
