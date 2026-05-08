@@ -1,8 +1,8 @@
-# R4DS_membership
+# R4DS Membership
 
 Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-07-16).
 
-*No visualization available for this analysis.*
+![](outputs/R4DS_membership.png)
 
 ## Source Code
 

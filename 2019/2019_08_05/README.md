@@ -1,8 +1,8 @@
-# bob_ross_paintings
+# Bob Ross Paintings
 
 Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-08-05).
 
-*No visualization available for this analysis.*
+![](outputs/bob_ross_paintings.png)
 
 ## Source Code
 

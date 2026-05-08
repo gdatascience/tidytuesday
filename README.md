@@ -232,7 +232,32 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 
 ### [2019/](2019/)
 
-22 analyses — no visualizations available
+22 analyses
+
+<p>
+<a href="2019/2019_01_08/"><img src="2019/2019_01_08/outputs/tv_ratings.png" width="80"></a>
+<a href="2019/2019_02_05/"><img src="2019/2019_02_05/outputs/house_mortgage.png" width="80"></a>
+<a href="2019/2019_02_12/"><img src="2019/2019_02_12/outputs/fed_spending.png" width="80"></a>
+<a href="2019/2019_02_19/"><img src="2019/2019_02_19/outputs/us_phds_awarded.png" width="80"></a>
+<a href="2019/2019_02_26/"><img src="2019/2019_02_26/outputs/french_trains.png" width="80"></a>
+<a href="2019/2019_03_12/"><img src="2019/2019_03_12/outputs/board_games.png" width="80"></a>
+<a href="2019/2019_04_30/"><img src="2019/2019_04_30/outputs/bird_collisions.png" width="80"></a>
+<a href="2019/2019_05_07/"><img src="2019/2019_05_07/outputs/student_teacher_ratio.png" width="80"></a>
+<a href="2019/2019_05_14/"><img src="2019/2019_05_14/outputs/nobel_prizes.png" width="80"></a>
+<a href="2019/2019_05_21/"><img src="2019/2019_05_21/outputs/plastic_waste.png" width="80"></a>
+<a href="2019/2019_06_11/"><img src="2019/2019_06_11/outputs/meteorites.png" width="80"></a>
+<a href="2019/2019_06_18/"><img src="2019/2019_06_18/outputs/christmas_birds.png" width="80"></a>
+<a href="2019/2019_06_25/"><img src="2019/2019_06_25/outputs/ufo_sightings.png" width="80"></a>
+<a href="2019/2019_07_02/"><img src="2019/2019_07_02/outputs/media_franchises.png" width="80"></a>
+<a href="2019/2019_07_09/"><img src="2019/2019_07_09/outputs/womens_world_cup.png" width="80"></a>
+<a href="2019/2019_07_16/"><img src="2019/2019_07_16/outputs/R4DS_membership.png" width="80"></a>
+<a href="2019/2019_07_23/"><img src="2019/2019_07_23/outputs/wildlife_strikes.png" width="80"></a>
+<a href="2019/2019_07_30/"><img src="2019/2019_07_30/outputs/video_games.png" width="80"></a>
+<a href="2019/2019_08_05/"><img src="2019/2019_08_05/outputs/bob_ross_paintings.png" width="80"></a>
+<a href="2019/2019_08_20/"><img src="2019/2019_08_20/outputs/nuclear_explosions.png" width="80"></a>
+<a href="2019/2019_08_27/"><img src="2019/2019_08_27/outputs/simpsons.png" width="80"></a>
+<a href="2019/2019_09_03/"><img src="2019/2019_09_03/outputs/moores_law.png" width="80"></a>
+</p>
 
 ### [2018/](2018/)
 

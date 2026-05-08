@@ -1,8 +1,8 @@
-# nobel_prize
+# Nobel Prizes
 
 Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-05-14).
 
-*No visualization available for this analysis.*
+![](outputs/nobel_prizes.png)
 
 ## Source Code
 
