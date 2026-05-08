@@ -113,7 +113,7 @@
 
 <table>
 <tr>
-<td align="center"><a href="2024_08_27/"><em>No viz</em></a></td>
+<td><a href="2024_08_27/"><img src="2024_08_27/outputs/2024_08_27_tidy_tuesday_rangers.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2024_08_27/">Rangers</a></td>
@@ -124,7 +124,7 @@
 
 <table>
 <tr>
-<td align="center"><a href="2024_09_03/"><em>No viz</em></a></td>
+<td><a href="2024_09_03/"><img src="2024_09_03/outputs/2024_09_03_tidy_tuesday_stackoverflow.png" width="150"></a></td>
 <td align="center"><a href="2024_09_10/"><em>No viz</em></a></td>
 <td><a href="2024_09_17/"><img src="2024_09_17/outputs/2024_09_17_tidy_tuesday_shakespeare.png" width="150"></a></td>
 <td align="center"><a href="2024_09_24/"><em>No viz</em></a></td>

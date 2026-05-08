@@ -161,7 +161,7 @@
 
 <table>
 <tr>
-<td align="center"><a href="2023_10_03/"><em>No viz</em></a></td>
+<td><a href="2023_10_03/"><img src="2023_10_03/outputs/2023_10_03_tidy_tuesday_grants.png" width="150"></a></td>
 <td><a href="2023_10_10/"><img src="2023_10_10/outputs/2023_10_10_tidy_tuesday_haunted.png" width="150"></a></td>
 <td><a href="2023_10_17/"><img src="2023_10_17/outputs/2023_10_17_tidy_tuesday_taylor.png" height="150"></a></td>
 <td><a href="2023_10_24/"><img src="2023_10_24/outputs/2023_10_24_tidy_tuesday.png" width="150"></a></td>
