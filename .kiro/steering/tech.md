@@ -178,6 +178,18 @@ rmarkdown::render(
 )
 ```
 
+When rendering to GitHub markdown (e.g., to generate content for a README), also render into the specs folder:
+
+```r
+rmarkdown::render(
+  "YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd",
+  output_format = rmarkdown::github_document(html_preview = FALSE),
+  output_dir = ".kiro/specs/YYYY_MM_DD_tidy_tuesday_topic"
+)
+```
+
+Then copy only the generated plot images into `YYYY/YYYY_MM_DD/outputs/` and use their content in the README. **Never leave rendered `.md` or `_files/` directories in the week folder.**
+
 This keeps the week directory clean — only the `.Rmd`, `outputs/`, and `README.md` belong there.
 
 ## Project Configuration
