@@ -2,7 +2,7 @@
 
 A portfolio of weekly data visualization exercises from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project — a weekly social data project in R where participants explore datasets, create visualizations, and share their work.
 
-This repository contains **250 analyses** spanning 2018–2026.
+This repository contains **243 analyses** spanning 2018–2026.
 
 ## About
 
@@ -32,11 +32,13 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 <a href="2026/2026_04_21/"><img src="2026/2026_04_21/outputs/2026_04_21_tidy_tuesday_health_spending.png" width="80"></a>
 <a href="2026/2026_04_28/"><img src="2026/2026_04_28/outputs/2026_04_28_tidy_tuesday_tariffs.png" height="80"></a>
 <a href="2026/2026_05_06/"><img src="2026/2026_05_06/outputs/2026_05_06_italian_industry.png" height="80"></a>
+<a href="2026/2026_01_20/"><img src="2026/2026_01_20/outputs/2026_01_20_tidy_tuesday.png" width="80"></a>
+<a href="2026/2026_03_03/"><img src="2026/2026_03_03/outputs/2026_03_03_tidy_tuesday.png" width="80"></a>
 </p>
 
 ### [2025/](2025/)
 
-42 analyses
+41 analyses
 
 <p>
 <a href="2025/2025_01_07/"><img src="2025/2025_01_07/outputs/2025_01_07_tidy_tuesday_fires.png" width="80"></a>
@@ -67,11 +69,21 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 <a href="2025/2025_12_02/"><img src="2025/2025_12_02/outputs/2025_12_02_tidy_tuesday_snowman.png" width="80"></a>
 <a href="2025/2025_12_09/"><img src="2025/2025_12_09/outputs/2025_12_09_tidy_tuesday_cars.png" width="80"></a>
 <a href="2025/2025_12_30/"><img src="2025/2025_12_30/outputs/2025_12_30_tidy_tuesday_christmas.png" width="80"></a>
+<a href="2025/2025_01_21/"><img src="2025/2025_01_21/outputs/2025_01_21_tidy_tuesday_exped.png" width="80"></a>
+<a href="2025/2025_01_28/"><img src="2025/2025_01_28/outputs/2025_01_28_tidy_tuesday_water.png" width="80"></a>
+<a href="2025/2025_02_18/"><img src="2025/2025_02_18/outputs/2025_02_18_tidy_tuesday_agencies.png" width="80"></a>
+<a href="2025/2025_04_15/"><img src="2025/2025_04_15/outputs/2025_04_15_tidy_tuesday_penguins.png" width="80"></a>
+<a href="2025/2025_04_22/"><img src="2025/2025_04_22/outputs/2025_04_22_tidy_tuesday.png" width="80"></a>
+<a href="2025/2025_07_08/"><img src="2025/2025_07_08/outputs/2025_07_08_tidy_tuesday_colors.png" width="80"></a>
+<a href="2025/2025_09_09/"><img src="2025/2025_09_09/outputs/2025_09_09_tidy_tuesday_passport.png" width="80"></a>
+<a href="2025/2025_10_07/"><img src="2025/2025_10_07/outputs/2025_10_07_tidy_tuesday_basketball.png" width="80"></a>
+<a href="2025/2025_10_21/"><img src="2025/2025_10_21/outputs/2025_10_21_tidy_tuesday_met.png" width="80"></a>
+<a href="2025/2025_10_28/"><img src="2025/2025_10_28/outputs/2025_10_28_tidy_tuesday_prizes.png" width="80"></a>
 </p>
 
 ### [2024/](2024/)
 
-37 analyses
+36 analyses
 
 <p>
 <a href="2024/2024_01_16/"><img src="2024/2024_01_16/outputs/2024_01_16_tidy_tuesday_polling_places.png" width="80"></a>
@@ -94,6 +106,19 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 <a href="2024/2024_11_05/"><img src="2024/2024_11_05/outputs/2024_11_05_tidy_tuesday_democracy.png" width="80"></a>
 <a href="2024/2024_12_03/"><img src="2024/2024_12_03/outputs/2024_12_03_tidy_tuesday_traffic.png" width="80"></a>
 <a href="2024/2024_12_10/"><img src="2024/2024_12_10/outputs/2024_12_10_tidy_tuesday_parfumo.png" width="80"></a>
+<a href="2024/2024_01_09/"><img src="2024/2024_01_09/outputs/2024_01_09_tidy_tuesday.png" width="80"></a>
+<a href="2024/2024_01_23/"><img src="2024/2024_01_23/outputs/2024_01_23_tidy_tuesday.png" width="80"></a>
+<a href="2024/2024_01_30/"><img src="2024/2024_01_30/outputs/2024_01_30_tidy_tuesday.png" width="80"></a>
+<a href="2024/2024_03_19/"><img src="2024/2024_03_19/outputs/2024_03_19_tidy_tuesday.png" width="80"></a>
+<a href="2024/2024_04_16/"><img src="2024/2024_04_16/outputs/2024_04_16_tidy_tuesday.png" width="80"></a>
+<a href="2024/2024_05_14/"><img src="2024/2024_05_14/outputs/2024_05_14_tidy_tuesday_coffee.png" width="80"></a>
+<a href="2024/2024_06_25/"><img src="2024/2024_06_25/outputs/2024_06_25_tidy_tuesday_movies.png" width="80"></a>
+<a href="2024/2024_07_16/"><img src="2024/2024_07_16/outputs/2024_07_16_tidy_tuesday_ewf.png" width="80"></a>
+<a href="2024/2024_08_27/"><img src="2024/2024_08_27/outputs/2024_08_27_tidy_tuesday_rangers.png" width="80"></a>
+<a href="2024/2024_09_03/"><img src="2024/2024_09_03/outputs/2024_09_03_tidy_tuesday_stackoverflow.png" width="80"></a>
+<a href="2024/2024_10_01/"><img src="2024/2024_10_01/outputs/2024_10_01_tidy_tuesday.png" width="80"></a>
+<a href="2024/2024_11_12/"><img src="2024/2024_11_12/outputs/2024_11_12_tidy_tuesday.png" width="80"></a>
+<a href="2024/2024_12_31/"><img src="2024/2024_12_31/outputs/2024_12_31_tidy_tuesday.png" width="80"></a>
 </p>
 
 ### [2023/](2023/)
@@ -132,8 +157,14 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 <a href="2023/2023_09_12/"><img src="2023/2023_09_12/outputs/2023_09_12_tidy_tuesday_human_day.png" width="80"></a>
 <a href="2023/2023_09_19/"><img src="2023/2023_09_19/outputs/2023_09_19_tidy_tuesday_cran.png" width="80"></a>
 <a href="2023/2023_09_26/"><img src="2023/2023_09_26/outputs/2023_09_26_tidy_tuesday_lasso.png" width="80"></a>
+<a href="2023/2023_10_03/"><img src="2023/2023_10_03/outputs/2023_10_03_tidy_tuesday_grants.png" width="80"></a>
 <a href="2023/2023_10_10/"><img src="2023/2023_10_10/outputs/2023_10_10_tidy_tuesday_haunted.png" width="80"></a>
 <a href="2023/2023_10_17/"><img src="2023/2023_10_17/outputs/2023_10_17_tidy_tuesday_taylor.png" height="80"></a>
+<a href="2023/2023_01_17/"><img src="2023/2023_01_17/outputs/2023_01_17_tidy_tuesday_artists.png" width="80"></a>
+<a href="2023/2023_04_11/"><img src="2023/2023_04_11/outputs/2023_04_11_tidy_tuesday.png" width="80"></a>
+<a href="2023/2023_05_02/"><img src="2023/2023_05_02/outputs/2023_05_02_tidy_tuesday_portal.png" width="80"></a>
+<a href="2023/2023_10_24/"><img src="2023/2023_10_24/outputs/2023_10_24_tidy_tuesday.png" width="80"></a>
+<a href="2023/2023_12_12/"><img src="2023/2023_12_12/outputs/2023_12_12_tidy_tuesday.png" width="80"></a>
 </p>
 
 ### [2022/](2022/)
@@ -186,11 +217,12 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 <a href="2022/2022_12_06/"><img src="2022/2022_12_06/outputs/2022_12_06_tidy_tuesday_elevators.png" width="80"></a>
 <a href="2022/2022_12_13/"><img src="2022/2022_12_13/outputs/2022_12_13_tidy_tuesday_retail.png" width="80"></a>
 <a href="2022/2022_12_20/"><img src="2022/2022_12_20/outputs/2022_12_20_tidy_tuesday_weather.png" width="80"></a>
+<a href="2022/2022_10_18/"><img src="2022/2022_10_18/outputs/2022_10_18_tidy_tuesday_stranger_things.png" width="80"></a>
 </p>
 
 ### [2021/](2021/)
 
-47 analyses
+45 analyses
 
 <p>
 <a href="2021/2021_02_02/"><img src="2021/2021_02_02/outputs/2021_02_02_tidy_tuesday.png" width="80"></a>
@@ -224,15 +256,55 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 <a href="2021/2021_11_09/"><img src="2021/2021_11_09/outputs/2021_11_09_tidy_tuesday.png" width="80"></a>
 <a href="2021/2021_11_30/"><img src="2021/2021_11_30/outputs/2021_11_30_tidy_tuesday.png" width="80"></a>
 <a href="2021/2021_12_07/"><img src="2021/2021_12_07/outputs/2021_12_07_tidy_tuesday.png" width="80"></a>
+<a href="2021/2021_01_19/"><img src="2021/2021_01_19/outputs/2021_01_19_tidy_tuesday.png" width="80"></a>
+<a href="2021/2021_01_26/"><img src="2021/2021_01_26/outputs/2021_01_26_tidy_tuesday.png" width="80"></a>
+<a href="2021/2021_03_16/"><img src="2021/2021_03_16/outputs/2021_03_16_tidy_tuesday.png" width="80"></a>
+<a href="2021/2021_03_30/"><img src="2021/2021_03_30/outputs/2021_03_30_tidy_tuesday.png" width="80"></a>
+<a href="2021/2021_04_06/"><img src="2021/2021_04_06/outputs/2021_04_06_tidy_tuesday.png" width="80"></a>
+<a href="2021/2021_08_31/"><img src="2021/2021_08_31/outputs/2021_08_31_tidy_tuesday.png" width="80"></a>
+<a href="2021/2021_09_14/"><img src="2021/2021_09_14/outputs/2021_09_14_tidy_tuesday.png" width="80"></a>
+<a href="2021/2021_09_21/"><img src="2021/2021_09_21/outputs/2021_09_21_tidy_tuesday.png" width="80"></a>
+<a href="2021/2021_12_14/"><img src="2021/2021_12_14/outputs/2021_12_14_tidy_tuesday.png" width="80"></a>
 </p>
 
 ### [2020/](2020/)
 
-6 analyses — no visualizations available
+3 analyses
+
+<p>
+<a href="2020/2020_12_08/"><img src="2020/2020_12_08/outputs/women_thumb.png" width="80"></a>
+<a href="2020/2020_12_15/"><img src="2020/2020_12_15/outputs/ninja_warrior.png" width="80"></a>
+<a href="2020/2020_12_22/"><img src="2020/2020_12_22/outputs/big_mac.png" width="80"></a>
+</p>
 
 ### [2019/](2019/)
 
-22 analyses — no visualizations available
+22 analyses
+
+<p>
+<a href="2019/2019_01_08/"><img src="2019/2019_01_08/outputs/tv_ratings.png" width="80"></a>
+<a href="2019/2019_02_05/"><img src="2019/2019_02_05/outputs/house_mortgage.png" width="80"></a>
+<a href="2019/2019_02_12/"><img src="2019/2019_02_12/outputs/fed_spending.png" width="80"></a>
+<a href="2019/2019_02_19/"><img src="2019/2019_02_19/outputs/us_phds_awarded.png" width="80"></a>
+<a href="2019/2019_02_26/"><img src="2019/2019_02_26/outputs/french_trains.png" width="80"></a>
+<a href="2019/2019_03_12/"><img src="2019/2019_03_12/outputs/board_games.png" width="80"></a>
+<a href="2019/2019_04_30/"><img src="2019/2019_04_30/outputs/bird_collisions.png" width="80"></a>
+<a href="2019/2019_05_07/"><img src="2019/2019_05_07/outputs/student_teacher_ratio.png" width="80"></a>
+<a href="2019/2019_05_14/"><img src="2019/2019_05_14/outputs/nobel_prizes.png" width="80"></a>
+<a href="2019/2019_05_21/"><img src="2019/2019_05_21/outputs/plastic_waste.png" width="80"></a>
+<a href="2019/2019_06_11/"><img src="2019/2019_06_11/outputs/meteorites.png" width="80"></a>
+<a href="2019/2019_06_18/"><img src="2019/2019_06_18/outputs/christmas_birds.png" width="80"></a>
+<a href="2019/2019_06_25/"><img src="2019/2019_06_25/outputs/ufo_sightings.png" width="80"></a>
+<a href="2019/2019_07_02/"><img src="2019/2019_07_02/outputs/media_franchises.png" width="80"></a>
+<a href="2019/2019_07_09/"><img src="2019/2019_07_09/outputs/womens_world_cup.png" width="80"></a>
+<a href="2019/2019_07_16/"><img src="2019/2019_07_16/outputs/R4DS_membership.png" width="80"></a>
+<a href="2019/2019_07_23/"><img src="2019/2019_07_23/outputs/wildlife_strikes.png" width="80"></a>
+<a href="2019/2019_07_30/"><img src="2019/2019_07_30/outputs/video_games.png" width="80"></a>
+<a href="2019/2019_08_05/"><img src="2019/2019_08_05/outputs/bob_ross_paintings.png" width="80"></a>
+<a href="2019/2019_08_20/"><img src="2019/2019_08_20/outputs/nuclear_explosions.png" width="80"></a>
+<a href="2019/2019_08_27/"><img src="2019/2019_08_27/outputs/simpsons.png" width="80"></a>
+<a href="2019/2019_09_03/"><img src="2019/2019_09_03/outputs/moores_law.png" width="80"></a>
+</p>
 
 ### [2018/](2018/)
 

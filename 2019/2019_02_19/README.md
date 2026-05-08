@@ -1,8 +1,8 @@
-# TidyTuesday - February 19, 2019
+# US PhDs Awarded
 
 Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-02-19).
 
-*No visualization available for this analysis.*
+![](outputs/us_phds_awarded.png)
 
 ## Source Code
 

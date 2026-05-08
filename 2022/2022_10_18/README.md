@@ -2,7 +2,7 @@
 
 Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-10-18).
 
-*No visualization available for this analysis.*
+![](outputs/2022_10_18_tidy_tuesday_stranger_things.png)
 
 ## Source Code
 

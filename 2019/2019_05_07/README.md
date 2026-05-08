@@ -1,8 +1,8 @@
-# student_teacher_ratio
+# Student Teacher Ratio
 
 Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-05-07).
 
-*No visualization available for this analysis.*
+![](outputs/student_teacher_ratio.png)
 
 ## Source Code
 

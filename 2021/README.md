@@ -1,6 +1,6 @@
 # 2021
 
-**47 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**45 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -8,12 +8,10 @@
 
 <table>
 <tr>
-<td align="center"><a href="2021_01_18/"><em>No viz</em></a></td>
-<td align="center"><a href="2021_01_19/"><em>No viz</em></a></td>
-<td align="center"><a href="2021_01_26/"><em>No viz</em></a></td>
+<td><a href="2021_01_19/"><img src="2021_01_19/outputs/2021_01_19_tidy_tuesday.png" width="150"></a></td>
+<td><a href="2021_01_26/"><img src="2021_01_26/outputs/2021_01_26_tidy_tuesday.png" width="150"></a></td>
 </tr>
 <tr>
-<td align="center"><a href="2021_01_18/">Jan 18</a></td>
 <td align="center"><a href="2021_01_19/">Jan 19</a></td>
 <td align="center"><a href="2021_01_26/">Jan 26</a></td>
 </tr>
@@ -25,13 +23,11 @@
 <tr>
 <td><a href="2021_02_02/"><img src="2021_02_02/outputs/2021_02_02_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_02_09/"><img src="2021_02_09/outputs/2021_02_09_tidy_tuesday.png" height="150"></a></td>
-<td align="center"><a href="2021_02_16/"><em>No viz</em></a></td>
 <td><a href="2021_02_23/"><img src="2021_02_23/outputs/2021_02_23_tidy_tuesday.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2021_02_02/">Feb 02</a></td>
 <td align="center"><a href="2021_02_09/">Feb 09</a></td>
-<td align="center"><a href="2021_02_16/">Feb 16</a></td>
 <td align="center"><a href="2021_02_23/">Feb 23</a></td>
 </tr>
 </table>
@@ -42,9 +38,9 @@
 <tr>
 <td><a href="2021_03_02/"><img src="2021_03_02/outputs/2021_03_02_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_03_09/"><img src="2021_03_09/outputs/2021_03_09_tidy_tuesday.png" width="150"></a></td>
-<td align="center"><a href="2021_03_16/"><em>No viz</em></a></td>
+<td><a href="2021_03_16/"><img src="2021_03_16/outputs/2021_03_16_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_03_23/"><img src="2021_03_23/outputs/2021_03_23_tidy_tuesday.png" width="150"></a></td>
-<td align="center"><a href="2021_03_30/"><em>No viz</em></a></td>
+<td><a href="2021_03_30/"><img src="2021_03_30/outputs/2021_03_30_tidy_tuesday.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2021_03_02/">Mar 02</a></td>
@@ -59,7 +55,7 @@
 
 <table>
 <tr>
-<td align="center"><a href="2021_04_06/"><em>No viz</em></a></td>
+<td><a href="2021_04_06/"><img src="2021_04_06/outputs/2021_04_06_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_04_13/"><img src="2021_04_13/outputs/2021_04_13_tidy_tuesday.gif" width="150"></a></td>
 <td><a href="2021_04_20/"><img src="2021_04_20/outputs/2021_04_20_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_04_27/"><img src="2021_04_27/outputs/2021_04_27_tidy_tuesday.png" width="150"></a></td>
@@ -133,7 +129,7 @@
 <td><a href="2021_08_10/"><img src="2021_08_10/outputs/2021_08_10_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_08_17/"><img src="2021_08_17/outputs/2021_08_17_tidy_tuesday.png" width="150"></a></td>
 <td align="center"><a href="2021_08_24/"><em>No viz</em></a></td>
-<td align="center"><a href="2021_08_31/"><em>No viz</em></a></td>
+<td><a href="2021_08_31/"><img src="2021_08_31/outputs/2021_08_31_tidy_tuesday.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2021_08_03/">Aug 03</a></td>
@@ -149,8 +145,8 @@
 <table>
 <tr>
 <td><a href="2021_09_07/"><img src="2021_09_07/outputs/2021_09_07_tidy_tuesday.png" width="150"></a></td>
-<td align="center"><a href="2021_09_14/"><em>No viz</em></a></td>
-<td align="center"><a href="2021_09_21/"><em>No viz</em></a></td>
+<td><a href="2021_09_14/"><img src="2021_09_14/outputs/2021_09_14_tidy_tuesday.png" width="150"></a></td>
+<td><a href="2021_09_21/"><img src="2021_09_21/outputs/2021_09_21_tidy_tuesday.png" width="150"></a></td>
 <td align="center"><a href="2021_09_28/"><em>No viz</em></a></td>
 </tr>
 <tr>
@@ -198,7 +194,7 @@
 <table>
 <tr>
 <td><a href="2021_12_07/"><img src="2021_12_07/outputs/2021_12_07_tidy_tuesday.png" width="150"></a></td>
-<td align="center"><a href="2021_12_14/"><em>No viz</em></a></td>
+<td><a href="2021_12_14/"><img src="2021_12_14/outputs/2021_12_14_tidy_tuesday.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2021_12_07/">Dec 07</a></td>

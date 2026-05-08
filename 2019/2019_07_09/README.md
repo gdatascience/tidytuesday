@@ -2,7 +2,7 @@
 
 Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-07-09).
 
-*No visualization available for this analysis.*
+![](outputs/womens_world_cup.png)
 
 ## Source Code
 

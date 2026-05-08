@@ -1,8 +1,8 @@
-# House and Mortgage data
+# House and Mortgage Data
 
 Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-02-05).
 
-*No visualization available for this analysis.*
+![](outputs/house_mortgage.png)
 
 ## Source Code
 

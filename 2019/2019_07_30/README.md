@@ -1,8 +1,8 @@
-# video_games
+# Video Games
 
 Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-07-30).
 
-*No visualization available for this analysis.*
+![](outputs/video_games.png)
 
 ## Source Code
 

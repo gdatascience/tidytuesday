@@ -1,8 +1,8 @@
-# TidyTuesday - February 12, 2019
+# Federal R&D Spending
 
 Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-02-12).
 
-*No visualization available for this analysis.*
+![](outputs/fed_spending.png)
 
 ## Source Code
 

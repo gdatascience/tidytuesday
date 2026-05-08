@@ -9,7 +9,7 @@
 <table>
 <tr>
 <td><a href="2026_01_06/"><img src="2026_01_06/outputs/2026_01_06_tidy_tuesday_nd.png" width="150"></a></td>
-<td align="center"><a href="2026_01_20/"><em>No viz</em></a></td>
+<td><a href="2026_01_20/"><img src="2026_01_20/outputs/2026_01_20_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2026_01_27/"><img src="2026_01_27/outputs/2026_01_27_tidy_tuesday_companies.png" width="150"></a></td>
 </tr>
 <tr>
@@ -36,7 +36,7 @@
 
 <table>
 <tr>
-<td align="center"><a href="2026_03_03/"><em>No viz</em></a></td>
+<td><a href="2026_03_03/"><img src="2026_03_03/outputs/2026_03_03_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2026_03_17/"><img src="2026_03_17/outputs/2026_03_17_tidy_tuesday_fish.png" width="150"></a></td>
 <td><a href="2026_03_24/"><img src="2026_03_24/outputs/2026_03_24_tidy_tuesday_pi.gif" width="150"></a></td>
 </tr>

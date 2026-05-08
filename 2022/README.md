@@ -163,7 +163,7 @@
 <tr>
 <td><a href="2022_10_04/"><img src="2022_10_04/outputs/2022_10_04_tidy_tuesday_product_hunt.png" width="150"></a></td>
 <td><a href="2022_10_11/"><img src="2022_10_11/outputs/2022_10_11_tidy_tuesday_yarn.png" width="150"></a></td>
-<td align="center"><a href="2022_10_18/"><em>No viz</em></a></td>
+<td><a href="2022_10_18/"><img src="2022_10_18/outputs/2022_10_18_tidy_tuesday_stranger_things.png" width="150"></a></td>
 <td><a href="2022_10_25/"><img src="2022_10_25/outputs/2022_10_25_tidy_tuesday_bakeoff.png" width="150"></a></td>
 </tr>
 <tr>
