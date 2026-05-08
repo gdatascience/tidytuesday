@@ -12,7 +12,7 @@ This repository contains **243 analyses** spanning 2018–2026.
 
 This portfolio was organized with the help of [Kiro](https://kiro.dev), an AI-powered development environment, as a development partner for code generation, iteration, and restructuring.
 
-Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays** — a weekly open discussion on data science, AI, and LLMs held every Tuesday at 11 AM PT with the Notre Dame Data Science community.
+Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays** — a weekly open discussion on data science, AI, and LLMs held every Tuesday at 11 AM PT with the Notre Dame Data Science community. 📅 Add to your calendar: [Google Calendar](https://calendar.google.com/calendar/render?action=TEMPLATE&text=Golden+Dome+Data+Tuesdays&dates=20260512T180000Z/20260512T190000Z&recur=RRULE%3AFREQ%3DWEEKLY%3BBYDAY%3DTU&details=Golden%20Dome%20Data%20Tuesdays%0A%0AA%20weekly%20open%20discussion%20for%20Notre%20Dame%20Data%20Science%20alumni%20and%20the%20wider%20data%20science%20community.%0A%0AFormat%3A%0A-%20Open%20discussion%20on%20data%20science%2C%20AI%2C%20GenAI%2C%20and%20LLMs%0A-%20%23TidyTuesday%20sharing%20%E2%80%94%20bring%20your%20weekly%20data%20viz%20to%20show%20and%20discuss%0A-%20All%20skill%20levels%20welcome%0A%0ATime%3A%20Every%20Tuesday%2C%2011%20AM%20PT%20/%202%20PM%20ET%0A%0AZoom%3A%20https%3A//notredame.zoom.us/j/93246968828%3Fpwd%3DT2k0QUFKNkxvMkV2ekZrejdpdTJIdz09%0A%0ACode%3A%20https%3A//github.com/gdatascience/tidytuesday&location=https%3A//notredame.zoom.us/j/93246968828%3Fpwd%3DT2k0QUFKNkxvMkV2ekZrejdpdTJIdz09) | [Download .ics](golden_dome_data_tuesdays.ics)
 
 ## Analyses by Year
 

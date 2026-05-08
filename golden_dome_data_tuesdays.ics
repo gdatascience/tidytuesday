@@ -1,0 +1,14 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Golden Dome Data Tuesdays//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+DTSTART:20260512T180000Z
+DTEND:20260512T190000Z
+RRULE:FREQ=WEEKLY;BYDAY=TU
+SUMMARY:Golden Dome Data Tuesdays
+DESCRIPTION:A weekly open discussion for Notre Dame Data Science alumni and the wider data science community.\n\nFormat:\n- Open discussion on data science\, AI\, GenAI\, and LLMs\n- #TidyTuesday sharing — bring your weekly data viz to show and discuss\n- All skill levels welcome\n\nTime: Every Tuesday\, 11 AM PT / 2 PM ET\n\nZoom: https://notredame.zoom.us/j/93246968828?pwd=T2k0QUFKNkxvMkV2ekZrejdpdTJIdz09\n\nCode: https://github.com/gdatascience/tidytuesday
+LOCATION:https://notredame.zoom.us/j/93246968828?pwd=T2k0QUFKNkxvMkV2ekZrejdpdTJIdz09
+END:VEVENT
+END:VCALENDAR
