@@ -9,7 +9,7 @@
 <table>
 <tr>
 <td align="center"><a href="2020_12_07/"><em>No viz</em></a></td>
-<td><a href="2020_12_08/"><img src="2020_12_08/outputs/women.png" width="150"></a></td>
+<td><a href="2020_12_08/"><img src="2020_12_08/outputs/women.png" height="150"></a></td>
 <td><a href="2020_12_15/"><img src="2020_12_15/outputs/ninja_warrior.png" width="150"></a></td>
 <td align="center"><a href="2020_12_16/"><em>No viz</em></a></td>
 <td><a href="2020_12_22/"><img src="2020_12_22/outputs/big_mac.png" width="150"></a></td>
