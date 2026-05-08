@@ -2,7 +2,7 @@
 
 A portfolio of weekly data visualization exercises from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project — a weekly social data project in R where participants explore datasets, create visualizations, and share their work.
 
-This repository contains **247 analyses** spanning 2018–2026.
+This repository contains **243 analyses** spanning 2018–2026.
 
 ## About
 
@@ -36,7 +36,7 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 
 ### [2025/](2025/)
 
-42 analyses
+41 analyses
 
 <p>
 <a href="2025/2025_01_07/"><img src="2025/2025_01_07/outputs/2025_01_07_tidy_tuesday_fires.png" width="80"></a>
@@ -71,7 +71,7 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 
 ### [2024/](2024/)
 
-37 analyses
+36 analyses
 
 <p>
 <a href="2024/2024_01_16/"><img src="2024/2024_01_16/outputs/2024_01_16_tidy_tuesday_polling_places.png" width="80"></a>
@@ -190,7 +190,7 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 
 ### [2021/](2021/)
 
-47 analyses
+45 analyses
 
 <p>
 <a href="2021/2021_02_02/"><img src="2021/2021_02_02/outputs/2021_02_02_tidy_tuesday.png" width="80"></a>

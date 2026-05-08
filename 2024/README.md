@@ -1,6 +1,6 @@
 # 2024
 
-**37 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**36 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -143,7 +143,6 @@
 <tr>
 <td align="center"><a href="2024_10_01/"><em>No viz</em></a></td>
 <td><a href="2024_10_08/"><img src="2024_10_08/outputs/2024_10_08_tidy_tuesday_nps.png" width="150"></a></td>
-<td align="center"><a href="2024_10_09/"><em>No viz</em></a></td>
 <td><a href="2024_10_15/"><img src="2024_10_15/outputs/2024_10_15_tidy_tuesday_orcas.png" width="150"></a></td>
 <td><a href="2024_10_22/"><img src="2024_10_22/outputs/2024_10_22_cbp.png" width="150"></a></td>
 <td><a href="2024_10_29/"><img src="2024_10_29/outputs/2024_10_29_tidy_tuesday_monster.png" width="150"></a></td>
@@ -151,7 +150,6 @@
 <tr>
 <td align="center"><a href="2024_10_01/">Chess</a></td>
 <td align="center"><a href="2024_10_08/">Nps</a></td>
-<td align="center"><a href="2024_10_09/">Oct 09</a></td>
 <td align="center"><a href="2024_10_15/">Orcas</a></td>
 <td align="center"><a href="2024_10_22/">Cbp</a></td>
 <td align="center"><a href="2024_10_29/">Monster</a></td>

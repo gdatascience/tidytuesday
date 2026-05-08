@@ -1,6 +1,6 @@
 # 2021
 
-**47 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**45 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -8,12 +8,10 @@
 
 <table>
 <tr>
-<td align="center"><a href="2021_01_18/"><em>No viz</em></a></td>
 <td align="center"><a href="2021_01_19/"><em>No viz</em></a></td>
 <td align="center"><a href="2021_01_26/"><em>No viz</em></a></td>
 </tr>
 <tr>
-<td align="center"><a href="2021_01_18/">Jan 18</a></td>
 <td align="center"><a href="2021_01_19/">Jan 19</a></td>
 <td align="center"><a href="2021_01_26/">Jan 26</a></td>
 </tr>
@@ -25,13 +23,11 @@
 <tr>
 <td><a href="2021_02_02/"><img src="2021_02_02/outputs/2021_02_02_tidy_tuesday.png" width="150"></a></td>
 <td><a href="2021_02_09/"><img src="2021_02_09/outputs/2021_02_09_tidy_tuesday.png" height="150"></a></td>
-<td align="center"><a href="2021_02_16/"><em>No viz</em></a></td>
 <td><a href="2021_02_23/"><img src="2021_02_23/outputs/2021_02_23_tidy_tuesday.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2021_02_02/">Feb 02</a></td>
 <td align="center"><a href="2021_02_09/">Feb 09</a></td>
-<td align="center"><a href="2021_02_16/">Feb 16</a></td>
 <td align="center"><a href="2021_02_23/">Feb 23</a></td>
 </tr>
 </table>

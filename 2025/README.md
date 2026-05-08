@@ -1,6 +1,6 @@
 # 2025
 
-**42 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**41 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -119,14 +119,12 @@
 <tr>
 <td><a href="2025_08_05/"><img src="2025_08_05/outputs/2025_08_05_tidy_tuesday_inequality.png" width="150"></a></td>
 <td><a href="2025_08_12/"><img src="2025_08_12/outputs/2025_08_12_tidy_tuesday_studies.png" width="150"></a></td>
-<td align="center"><a href="2025_08_18/"><em>No viz</em></a></td>
 <td><a href="2025_08_19/"><img src="2025_08_19/outputs/2025_08_19_tidy_tuesday_monros.png" width="150"></a></td>
 <td><a href="2025_08_26/"><img src="2025_08_26/outputs/2025_08_26_tidy_tuesday_billboard.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2025_08_05/">Inequality</a></td>
 <td align="center"><a href="2025_08_12/">Studies</a></td>
-<td align="center"><a href="2025_08_18/">Aug 18</a></td>
 <td align="center"><a href="2025_08_19/">Monros</a></td>
 <td align="center"><a href="2025_08_26/">Billboard</a></td>
 </tr>
