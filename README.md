@@ -228,7 +228,13 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 
 ### [2020/](2020/)
 
-6 analyses — no visualizations available
+6 analyses
+
+<p>
+<a href="2020/2020_12_08/"><img src="2020/2020_12_08/outputs/women.png" width="80"></a>
+<a href="2020/2020_12_15/"><img src="2020/2020_12_15/outputs/ninja_warrior.png" width="80"></a>
+<a href="2020/2020_12_22/"><img src="2020/2020_12_22/outputs/big_mac.png" width="80"></a>
+</p>
 
 ### [2019/](2019/)
 
