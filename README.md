@@ -243,23 +243,4 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 </p>
 
 
-## Other Projects
-
-Non-TidyTuesday projects and special analyses are collected in the [`other/`](other/) directory:
-
-- [2023_ND_Christmas_Card.gif](other/2023_ND_Christmas_Card.gif)
-- [2023_ND_Christmas_Card.png](other/2023_ND_Christmas_Card.png)
-- [2023_ND_Christmas_Card.Rmd](other/2023_ND_Christmas_Card.Rmd)
-- [2024_ND_Christmas_Card.gif](other/2024_ND_Christmas_Card.gif)
-- [2024_ND_Christmas_Card.png](other/2024_ND_Christmas_Card.png)
-- [2024_ND_Christmas_Card.Rmd](other/2024_ND_Christmas_Card.Rmd)
-- [2025_02_08_pinewood_derby.png](other/2025_02_08_pinewood_derby.png)
-- [2025_02_08_pinewood_derby.Rmd](other/2025_02_08_pinewood_derby.Rmd)
-- [2026_02_07_pinewood_derby.png](other/2026_02_07_pinewood_derby.png)
-- [2026_02_07_pinewood_derby.qmd](other/2026_02_07_pinewood_derby.qmd)
-- [nybb_22c/](other/nybb_22c/)
-- [pinewood_derby/](other/pinewood_derby/)
-- [pinewood_derby_schedule_template.xlsx](other/pinewood_derby_schedule_template.xlsx)
-- [rsconnect/](other/rsconnect/)
-- [sst.R](other/sst.R)
 
