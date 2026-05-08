@@ -114,6 +114,7 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 <a href="2024/2024_07_16/"><img src="2024/2024_07_16/outputs/2024_07_16_tidy_tuesday_ewf.png" width="80"></a>
 <a href="2024/2024_08_27/"><img src="2024/2024_08_27/outputs/2024_08_27_tidy_tuesday_rangers.png" width="80"></a>
 <a href="2024/2024_09_03/"><img src="2024/2024_09_03/outputs/2024_09_03_tidy_tuesday_stackoverflow.png" width="80"></a>
+<a href="2024/2024_09_10/"><img src="2024/2024_09_10/outputs/2024_09_10_tidy_tuesday_college.png" width="80"></a>
 <a href="2024/2024_10_01/"><img src="2024/2024_10_01/outputs/2024_10_01_tidy_tuesday.png" width="80"></a>
 <a href="2024/2024_11_12/"><img src="2024/2024_11_12/outputs/2024_11_12_tidy_tuesday.png" width="80"></a>
 <a href="2024/2024_12_31/"><img src="2024/2024_12_31/outputs/2024_12_31_tidy_tuesday.png" width="80"></a>

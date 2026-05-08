@@ -125,13 +125,13 @@
 <table>
 <tr>
 <td><a href="2024_09_03/"><img src="2024_09_03/outputs/2024_09_03_tidy_tuesday_stackoverflow.png" width="150"></a></td>
-<td align="center"><a href="2024_09_10/"><em>No viz</em></a></td>
+<td><a href="2024_09_10/"><img src="2024_09_10/outputs/2024_09_10_tidy_tuesday_college.png" width="150"></a></td>
 <td><a href="2024_09_17/"><img src="2024_09_17/outputs/2024_09_17_tidy_tuesday_shakespeare.png" width="150"></a></td>
 <td align="center"><a href="2024_09_24/"><em>No viz</em></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2024_09_03/">Stackoverflow</a></td>
-<td align="center"><a href="2024_09_10/">Sep 10</a></td>
+<td align="center"><a href="2024_09_10/">College</a></td>
 <td align="center"><a href="2024_09_17/">Shakespeare</a></td>
 <td align="center"><a href="2024_09_24/">Imo</a></td>
 </tr>
