@@ -1,4 +1,4 @@
-# TidyTuesday Data Visualizations
+![Golden Dome Data Tuesdays](header.png)
 
 A portfolio of weekly data visualization exercises from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project — a weekly social data project in R where participants explore datasets, create visualizations, and share their work.
 
