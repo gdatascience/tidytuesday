@@ -14,10 +14,6 @@ This portfolio was organized with the help of [Kiro](https://kiro.dev), an AI-po
 
 Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays** — a weekly open discussion on data science, AI, and LLMs held every Tuesday at 11 AM PT with the Notre Dame Data Science community.
 
-## Highlights
-
-*Featured analyses will be added here. Check back soon for a curated gallery of standout visualizations!*
-
 ## Analyses by Year
 
 ### [2026/](2026/)
