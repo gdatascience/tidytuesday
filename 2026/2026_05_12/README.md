@@ -4,7 +4,7 @@
 
 ![Sister city links reveal hidden diplomatic blocs shaped by colonial history, Cold War alliances, and linguistic kinship](outputs/2026_05_12_tidy_tuesday_twinned_cities.png)
 
-10,596 twin city links connect 5,470 cities across 191 countries. Using Louvain community detection on the country-level network, the algorithm independently rediscovered colonial ties, Cold War alliances, and post-WWII reconciliation blocs -- all encoded in which cities chose to become siblings.
+10,596 twin city links connect 5,470 cities across 191 countries. Using Louvain community detection on the country-level network, the algorithm independently rediscovered colonial ties, Cold War alliances, and post-WWII reconciliation blocs — all encoded in which cities chose to become siblings.
 
 ---
 
@@ -92,18 +92,18 @@ cities |>
   knitr::kable()
 ```
 
-| name            | country                  | continent     |         lng |      lat |
-|:----------------|:-------------------------|:--------------|------------:|---------:|
-| Mělník          | Czechia                  | Europe        |   14.474194 | 50.35057 |
-| Spremberg       | Germany                  | Europe        |   14.379444 | 51.57167 |
-| Burglengenfeld  | Germany                  | Europe        |   12.040900 | 49.20610 |
-| Navi Mumbai     | India                    | Asia          |   73.010000 | 19.03000 |
-| Baunatal        | Germany                  | Europe        |    9.418333 | 51.25889 |
-| Pleasant Hill   | United States of America | North America | -122.052500 | 37.94806 |
-| Hama            | Syria                    | Asia          |   36.750000 | 35.13500 |
-| Ventspils       | Latvia                   | Europe        |   21.564444 | 57.38972 |
-| Borsec          | Romania                  | Europe        |   25.570000 | 46.96667 |
-| Hajdúböszörmény | Hungary                  | Europe        |   21.516667 | 47.66667 |
+| name                | country    | continent     |        lng |        lat |
+|:--------------------|:-----------|:--------------|-----------:|-----------:|
+| Sullana             | Peru       | South America | -80.685278 |  -4.903889 |
+| Miercurea Nirajului | Romania    | Europe        |  24.800000 |  46.530000 |
+| Perth               | Australia  | Oceania       | 115.859722 | -31.955833 |
+| Aktobe              | Kazakhstan | Asia          |  57.229722 |  50.283611 |
+| Constantine         | Algeria    | Africa        |   6.614722 |  36.365000 |
+| Weida               | Germany    | Europe        |  12.066667 |  50.766667 |
+| Sankt Augustin      | Germany    | Europe        |   7.186667 |  50.770000 |
+| Fürstenberg/Havel   | Germany    | Europe        |  13.145541 |  53.185585 |
+| Neusalza-Spremberg  | Germany    | Europe        |  14.529444 |  51.038889 |
+| Ogaki               | Japan      | Asia          | 136.612694 |  35.359944 |
 
 We have **5,470 cities** across **191 countries** and **6 continents**,
 connected by **10,596 twin city links**.

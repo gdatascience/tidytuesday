@@ -6,7 +6,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
-                      fig.width = 8, fig.height = 6)
+                      fig.width = 8, fig.height = 6, fig.path = "outputs/")
 ```
 
 Sister cities — also called twin towns — are one of the quietest forms of international diplomacy. Two cities in different countries agree to a cultural and commercial partnership, and over decades these links accumulate into a sprawling global network. This week's TidyTuesday dataset maps **10,596 twin city links** connecting **5,470 cities** across **191 countries**.
