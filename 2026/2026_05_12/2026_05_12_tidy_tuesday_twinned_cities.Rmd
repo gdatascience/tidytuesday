@@ -509,3 +509,9 @@ Some open questions this data raises:
 - **Which cities are the "bridges"** — connecting communities that otherwise wouldn't link?
 
 The quiet diplomacy of sister cities turns out to be a remarkably faithful mirror of geopolitical history.
+
+## A Personal Connection
+
+I live in Temecula, California, and our sister city is [Daisen Town, Japan](https://temeculaca.gov/744/Daisen-Nakayama-Japan-1994---present) — a relationship that's been going strong since 1994. Temecula isn't in this Wikidata dataset (the real network is even larger than 10,596 links), but it's a perfect example of the **Japan–USA corridor** that shows up as the second-strongest country pair with 213 links.
+
+These aren't just lines on a map. Every year, Temecula and Daisen exchange student delegations, and the partnership has built genuine cultural ties over three decades. Multiply that by thousands of city pairs worldwide, and you start to see how sister cities quietly weave the fabric of international understanding — one municipal handshake at a time.

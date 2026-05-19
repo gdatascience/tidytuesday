@@ -132,9 +132,9 @@ The simplified workflow renders the Rmd directly to `README.md` in the week fold
    ```
    This produces `README.md` with all code, output, and images referencing `outputs/` — no intermediate `_files/` directory.
 
-3. **Replace the pandoc title block with the hero section.** The rendered README starts with 3 lines (title, `================`, date). Replace them with the hero (H1 title, source/data links, final image, blurb, `---`). Also remove any `<!-- -->` artifacts left by pandoc.
+3. **Replace the pandoc title block with the hero section.** The rendered README starts with 3 lines (title, `================`, date). Replace them with the hero (H1 title, source/data links, final image, blurb, `---`).
 
-That's it — no Python scripts, no copying files between folders, no intermediate markdown files to clean up.
+That's it — no Python scripts, no copying files between folders, no intermediate markdown files to clean up. The `<!-- -->` artifacts pandoc leaves after images are invisible HTML comments that GitHub doesn't render, so leave them in.
 
 **Key rule:** The only image files in `outputs/` should be:
 - The final shareable dataviz (polished PNG/GIF)

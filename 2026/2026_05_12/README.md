@@ -92,18 +92,18 @@ cities |>
   knitr::kable()
 ```
 
-| name                | country    | continent     |        lng |        lat |
-|:--------------------|:-----------|:--------------|-----------:|-----------:|
-| Sullana             | Peru       | South America | -80.685278 |  -4.903889 |
-| Miercurea Nirajului | Romania    | Europe        |  24.800000 |  46.530000 |
-| Perth               | Australia  | Oceania       | 115.859722 | -31.955833 |
-| Aktobe              | Kazakhstan | Asia          |  57.229722 |  50.283611 |
-| Constantine         | Algeria    | Africa        |   6.614722 |  36.365000 |
-| Weida               | Germany    | Europe        |  12.066667 |  50.766667 |
-| Sankt Augustin      | Germany    | Europe        |   7.186667 |  50.770000 |
-| Fürstenberg/Havel   | Germany    | Europe        |  13.145541 |  53.185585 |
-| Neusalza-Spremberg  | Germany    | Europe        |  14.529444 |  51.038889 |
-| Ogaki               | Japan      | Asia          | 136.612694 |  35.359944 |
+| name          | country     | continent |        lng |       lat |
+|:--------------|:------------|:----------|-----------:|----------:|
+| Eilat         | Israel      | Asia      |  34.950000 |  29.55000 |
+| Walcourt      | Belgium     | Europe    |   4.432200 |  50.25190 |
+| Kalisz        | Poland      | Europe    |  18.083000 |  51.75700 |
+| Falkenstein   | Germany     | Europe    |  12.366667 |  50.46667 |
+| Khasavyurt    | Russia      | Europe    |  46.583333 |  43.25000 |
+| Chur          | Switzerland | Europe    |   9.529650 |  46.85212 |
+| Omihachiman   | Japan       | Asia      | 136.098056 |  35.12833 |
+| Montpellier   | France      | Europe    |   3.877231 |  43.61092 |
+| Schwarzenberg | Germany     | Europe    |  12.779167 |  50.54528 |
+| Port Mathurin | Mauritius   | Africa    |  63.421111 | -19.68333 |
 
 We have **5,470 cities** across **191 countries** and **6 continents**,
 connected by **10,596 twin city links**.
@@ -129,7 +129,7 @@ cities |>
   )
 ```
 
-![](outputs/eda-countries-1.png)
+![](outputs/eda-countries-1.png)<!-- -->
 
 **Germany has 1,086 cities** in the network — nearly twice as many as
 the United States (603). This reflects Germany’s strong tradition of
@@ -165,7 +165,7 @@ degree_df |>
   )
 ```
 
-![](outputs/eda-degree-1.png)
+![](outputs/eda-degree-1.png)<!-- -->
 
 The median city has just **2 twin links**, but the distribution has a
 long tail. The most connected cities are global capitals and cultural
@@ -188,7 +188,7 @@ degree_df |>
   )
 ```
 
-![](outputs/eda-top-cities-1.png)
+![](outputs/eda-top-cities-1.png)<!-- -->
 
 **Saint Petersburg** leads with **96 twin city links**, followed closely
 by **Rio de Janeiro** (94). These are cities with outsized diplomatic
@@ -232,7 +232,7 @@ cross_continent |>
   )
 ```
 
-![](outputs/eda-cross-continent-1.png)
+![](outputs/eda-cross-continent-1.png)<!-- -->
 
 Nearly **half of all twin city links (45%)** cross continental
 boundaries. These aren’t just neighboring towns shaking hands — they’re
@@ -267,7 +267,7 @@ top_pairs |>
   )
 ```
 
-![](outputs/country-pairs-1.png)
+![](outputs/country-pairs-1.png)<!-- -->
 
 The **Germany–Poland** corridor has **344 twin city links** — more than
 any other international pair. This is the legacy of post-WWII
@@ -599,7 +599,7 @@ ggplot() +
   )
 ```
 
-![](outputs/facet-map-1.png)
+![](outputs/facet-map-1.png)<!-- -->
 
 ``` r
 showtext_auto(FALSE)
@@ -654,3 +654,19 @@ Some open questions this data raises:
 
 The quiet diplomacy of sister cities turns out to be a remarkably
 faithful mirror of geopolitical history.
+
+## A Personal Connection
+
+I live in Temecula, California, and our sister city is [Daisen Town,
+Japan](https://temeculaca.gov/744/Daisen-Nakayama-Japan-1994---present)
+— a relationship that’s been going strong since 1994. Temecula isn’t in
+this Wikidata dataset (the real network is even larger than 10,596
+links), but it’s a perfect example of the **Japan–USA corridor** that
+shows up as the second-strongest country pair with 213 links.
+
+These aren’t just lines on a map. Every year, Temecula and Daisen
+exchange student delegations, and the partnership has built genuine
+cultural ties over three decades. Multiply that by thousands of city
+pairs worldwide, and you start to see how sister cities quietly weave
+the fabric of international understanding — one municipal handshake at a
+time.
