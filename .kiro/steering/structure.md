@@ -203,7 +203,7 @@ The root `README.md` is the portfolio landing page. It does NOT have a Highlight
 
 4. **Other Projects** — a section listing non-TidyTuesday projects in the `other/` directory
 
-When a new analysis is completed with a visualization, automatically add its thumbnail to both the root README (in the appropriate year's `<p>` block) and the yearly README (in the appropriate month's table). Do not ask the user — just do it as part of the standard workflow.
+When a new analysis is completed with a visualization and the user has approved the final dataviz, add its thumbnail to both the root README (in the appropriate year's `<p>` block) and the yearly README (in the appropriate month's table). Do this as part of the finalization step (step 5 in "Starting a New Analysis"), not during the iterative design phase.
 
 ## Code Structure Pattern
 
@@ -266,16 +266,19 @@ When creating a new TidyTuesday analysis for a given week date (e.g., 2026-03-04
    )
    ```
 
-4. Generate the week README (see "Generating the Week README" above):
-   - Render to GitHub markdown in the specs folder
-   - Copy plot images into `outputs/`
-   - Build the README with hero section + full rendered blog post
-   - Fix image paths to be relative to `outputs/`
-   - Delete intermediate files from specs
+4. **Iterate on the final dataviz with the user.** The user will review the output image and request adjustments (legend position, font sizes, aspect ratio, colors, etc.). During this phase, just re-render the Rmd to update the PNG. **Do NOT generate READMEs or update thumbnails yet** — that work gets thrown away with each design iteration.
 
-5. Add the thumbnail to the **root README** — append a new `<a><img></a>` element to the year's `<p>` block (use `width="80"` or `height="80"`). **Only use the final shareable dataviz** (e.g., `YYYY_MM_DD_tidy_tuesday_topic.png`) — never EDA or intermediate blog post plots. Do this automatically as part of the workflow.
+5. **Once the user approves the final dataviz**, generate all READMEs in one pass:
+   - Generate the week README (see "Generating the Week README" above):
+     - Render to GitHub markdown in the specs folder
+     - Copy plot images into `outputs/`
+     - Build the README with hero section + full rendered blog post
+     - Fix image paths to be relative to `outputs/`
+     - Delete intermediate files from specs
+   - Add the thumbnail to the **root README** — append a new `<a><img></a>` element to the year's `<p>` block (use `width="80"` or `height="80"`). **Only use the final shareable dataviz** (e.g., `YYYY_MM_DD_tidy_tuesday_topic.png`) — never EDA or intermediate blog post plots.
+   - Add the thumbnail to the **yearly README** (`2026/README.md`) — add the image to the appropriate month's HTML table (use `width="150"` or `height="150"`). **Same rule: only the final shareable dataviz.**
 
-6. Add the thumbnail to the **yearly README** (`2026/README.md`) — add the image to the appropriate month's HTML table (use `width="150"` or `height="150"`). **Same rule: only the final shareable dataviz.** Do this automatically as part of the workflow.
+6. Draft social media posts (see `social.md`) — this is the natural trigger for step 5. When the user asks for social posts, that signals the dataviz is finalized.
 
 ## Final Shareable Image
 

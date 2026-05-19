@@ -48,13 +48,25 @@ Create visualizations that serve the narrative:
 - Always include the attribution caption convention
 - See the "Final Shareable Image" section in `structure.md` for detailed guidance on the exported PNG/GIF
 
-### 5. Write as a Blog Post
+### 5. Iterate on the Final Dataviz
+The user will review the final shareable image and request adjustments (legend position, font sizes, aspect ratio, colors, etc.). **Do NOT generate READMEs or update thumbnails during this phase.** Just re-render the Rmd to update the output PNG and wait for the user to approve.
+
+### 6. Write as a Blog Post
 The final Rmd/qmd should read as a self-contained article, not a code notebook:
 - Open with a hook that draws the reader in
 - Weave narrative prose between code chunks
 - Each section should flow naturally into the next
 - End with open questions or forward-looking commentary
 - See the "Blog Post Rmd Structure" section in `structure.md` for the template
+
+### 7. Finalize READMEs and Social Posts (only after dataviz is approved)
+Once the user is happy with the final shareable image, **then** do all of the following in one pass:
+- Generate the week README (render to GitHub markdown, build hero + blog post)
+- Update the yearly README with the new thumbnail
+- Update the root README with the new thumbnail and count
+- Draft social media posts (see `social.md`)
+
+This avoids redundant README rebuilds during the iterative design phase.
 
 ## Data Analyst Role
 
