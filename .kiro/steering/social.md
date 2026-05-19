@@ -27,7 +27,9 @@
 - End with hashtags
 
 ## X (Twitter)
-- Under 280 characters
+- Under 280 **weighted** characters (not raw character count)
+- Character counting rules: URLs always count as 23 characters regardless of length, emojis count as 2 each, CJK characters count as 2 each, attached media counts as 0
+- In practice: a post with one URL (~23) + 5 emojis (~10) leaves ~247 characters for text and hashtags
 - Direct invitation mentioning the topic
 - Include the GitHub link to the analysis file
 - Use relevant hashtags
