@@ -2,8 +2,8 @@
 
 ## GitHub Repository
 - Repo: https://github.com/gdatascience/tidytuesday
-- Always link directly to the analysis file: `https://github.com/gdatascience/tidytuesday/blob/master/YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd` (or `.qmd`)
-- Link to browse the week directory: `https://github.com/gdatascience/tidytuesday/tree/master/YYYY/YYYY_MM_DD`
+- Always link to the week README (the blog post): `https://github.com/gdatascience/tidytuesday/tree/master/YYYY/YYYY_MM_DD`
+- This shows the full rendered blog post with visualizations inline — much better for readers than a raw Rmd file
 
 ## Golden Dome Data Tuesdays (Static Info)
 - Event: "Golden Dome Data Tuesdays"
@@ -22,7 +22,7 @@
 - Open with a hook — a surprising finding or funny moment from the analysis
 - Highlight a key quantified insight from the data
 - Mention tools used (e.g., Kiro, specific R packages)
-- Include a direct link to the Rmd/qmd file on GitHub
+- Include a link to the week directory on GitHub (shows the README blog post)
 - Clear call-to-action to join the Tuesday session with Zoom link
 - End with hashtags
 
@@ -31,25 +31,25 @@
 - Character counting rules: URLs always count as 23 characters regardless of length, emojis count as 2 each, CJK characters count as 2 each, attached media counts as 0
 - In practice: a post with one URL (~23) + 5 emojis (~10) leaves ~247 characters for text and hashtags
 - Direct invitation mentioning the topic
-- Include the GitHub link to the analysis file
+- Include the GitHub link to the week directory
 - Use relevant hashtags
 
 ## WhatsApp
 - Short, informal, friendly tone for alumni group
 - ~500 characters max
 - Include session details (day, time, Zoom link)
-- Include the GitHub link to the analysis file
+- Include the GitHub link to the week directory
 - Use a few relevant emojis
 
 ## Slack
 - Professional yet friendly
 - Briefly summarize the topic and key finding
 - Provide all session details (when, format, Zoom link)
-- Include the GitHub link to the analysis file
+- Include the GitHub link to the week directory
 - Use Slack emoji formatting (e.g., `:fish:`, `:calendar:`, `:link:`)
 
 ## General Rules
-- Every post must include a link to the code on GitHub
+- Every post must include a link to the week directory on GitHub (which renders the README blog post)
 - Quantify findings where possible (e.g., "doubled from 8% to 15%")
 - Keep the tone conversational — data science is fun, not stuffy
 - Reference the visualization or key chart in the post
