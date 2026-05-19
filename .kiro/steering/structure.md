@@ -229,14 +229,15 @@ The preferred format for analysis files is a narrative blog post that a reader c
 3. Opening narrative hook — 1-2 paragraphs introducing the dataset and why it matters
 4. Library loading chunk
 5. Data loading chunk
-6. Sections that alternate between prose and code:
+6. **Thorough EDA section** — profile the data and visualize it extensively (see "EDA Requirements" below)
+7. Sections that alternate between prose and code:
    - Each section has a `##` heading that reads like a blog section title
    - Narrative text before each code chunk explains what we're about to look at and why
    - Narrative text after each plot interprets the results for the reader
    - Sections build on each other to tell a progressive story
-7. A combined/summary visualization section
-8. A closing "What's Next?" section with open questions
-9. Image export chunk
+8. A combined/summary visualization section
+9. A closing "What's Next?" section with open questions
+10. Image export chunk
 
 Key principles:
 - Remove all boilerplate template text (e.g., "Join the Data Science Learning Community...")
@@ -244,6 +245,53 @@ Key principles:
 - Use bold text for key statistics in the prose
 - Bullet points are fine for listing specific findings
 - Every visualization should have a clear title, subtitle, and caption
+
+### EDA Requirements
+
+Every analysis must include a thorough exploratory data analysis section early in the blog post. This is not optional — it's the foundation that makes the rest of the story credible. Include:
+
+**Data profiling:**
+- Show the dimensions of the dataset (rows × columns)
+- Display column names, types, and a `glimpse()` or similar overview
+- Summarize missing values — which columns have gaps and how much
+- Show summary statistics for key numeric variables (min, max, mean, median, distribution shape)
+- Identify unique values for categorical variables (how many categories, what are the top ones)
+- Note the time range if temporal data is present
+
+**EDA visualizations (include several — not just one or two):**
+- Distribution plots (histograms, density plots, bar charts for categorical variables)
+- Relationships between key variables (scatter plots, box plots, correlation matrices)
+- Temporal trends if time data exists (line charts showing change over time)
+- Geographic or categorical breakdowns (faceted plots, grouped bar charts)
+- Outlier identification (where relevant)
+
+The EDA section should contain **at least 3-5 visualizations** that help the reader understand the shape, quirks, and patterns in the data before the analysis narrows to its main story. These plots don't need to be polished — they're exploratory — but they should have clear titles and axis labels.
+
+### Explaining Technical Concepts
+
+The blog post should be accessible to a curious reader who may not have a data science background. When using technical terminology or methodologies, **always explain them in plain language** and link to further reading:
+
+**What to explain:**
+- Statistical methods (e.g., correlation, regression, clustering, time series decomposition)
+- Data science terminology (e.g., "feature engineering," "one-hot encoding," "imputation")
+- Mathematical concepts (e.g., logarithmic scales, percentiles, standard deviation)
+- Domain-specific jargon from the dataset's field (e.g., "DOI," "ORCID," "ROR ID" for scholarly data)
+- R functions or techniques that aren't self-explanatory (e.g., what `pivot_longer()` is doing conceptually)
+
+**How to explain:**
+- Define the term in 1-2 sentences in plain language the first time it appears
+- Use an analogy or concrete example where helpful
+- Include a hyperlink to a relevant resource (official documentation, Wikipedia, a good tutorial) for readers who want to go deeper
+- Format: `[term](url)` inline or a parenthetical like "(see [this guide](url) for more detail)"
+
+**Example:**
+> We'll use a [slope chart](https://en.wikipedia.org/wiki/Slope_chart) — a visualization that connects two time points with lines, making it easy to see which items grew or shrank the most. Think of it like a before-and-after comparison where the steepness of each line tells the story.
+
+**Do NOT:**
+- Assume the reader knows what ORCID, ROR, DOI, p-values, R², or similar terms mean
+- Use acronyms without defining them on first use
+- Skip over why a particular chart type or statistical method was chosen
+- Leave mathematical notation unexplained
 
 ## Starting a New Analysis
 
@@ -268,17 +316,21 @@ When creating a new TidyTuesday analysis for a given week date (e.g., 2026-03-04
    )
    ```
 
-4. **Iterate on the final dataviz with the user.** The user will review the output image and request adjustments (legend position, font sizes, aspect ratio, colors, etc.). During this phase, just re-render the Rmd to update the PNG. **Do NOT generate READMEs or update thumbnails yet** — that work gets thrown away with each design iteration.
+4. **Render to README.md with every Rmd update.** After each change to the Rmd, render directly to `README.md` in the week folder so the user can see the blog post in real time:
+   ```r
+   rmarkdown::render(
+     "YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd",
+     output_format = rmarkdown::github_document(html_preview = FALSE),
+     output_file = "README.md",
+     output_dir = "YYYY/YYYY_MM_DD"
+   )
+   ```
+   Then replace the pandoc title block with the hero section (see "Generating the Week README" above). This produces both the final dataviz PNG and the rendered blog post in one pass — no separate README generation step needed later.
 
-5. **Once the user approves the final dataviz**, generate all READMEs in one pass:
-   - Generate the week README (see "Generating the Week README" above):
-     - Render to GitHub markdown in the specs folder
-     - Copy plot images into `outputs/`
-     - Build the README with hero section + full rendered blog post
-     - Fix image paths to be relative to `outputs/`
-     - Delete intermediate files from specs
+5. **Once the user approves the final dataviz**, update thumbnails and draft social posts:
    - Add the thumbnail to the **root README** — append a new `<a><img></a>` element to the year's `<p>` block (use `width="80"` or `height="80"`). **Only use the final shareable dataviz** (e.g., `YYYY_MM_DD_tidy_tuesday_topic.png`) — never EDA or intermediate blog post plots.
    - Add the thumbnail to the **yearly README** (`2026/README.md`) — add the image to the appropriate month's HTML table (use `width="150"` or `height="150"`). **Same rule: only the final shareable dataviz.**
+   - The week README is already up to date from continuous rendering in step 4.
 
 6. Draft social media posts (see `social.md`) — this is the natural trigger for step 5. When the user asks for social posts, that signals the dataviz is finalized.
 
@@ -398,6 +450,10 @@ tt_caption <- paste0(
   "<span style='color:", bg_color, ";'>.</span>",
   tt_source,
   "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-brands;'>&#xf08c;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "anthony-raul-galvan",
+  "<span style='color:", bg_color, ";'>..</span>",
   "<span style='font-family:fa-brands;'>&#xf09b;</span>",
   "<span style='color:", bg_color, ";'>.</span>",
   "gdatascience"
@@ -413,7 +469,10 @@ theme(
 
 Key Font Awesome HTML entities:
 - `&#xf0ce;` — table icon (fa-solid)
+- `&#xf08c;` — LinkedIn icon, rounded square (fa-brands)
 - `&#xf09b;` — GitHub icon (fa-brands)
+
+**IMPORTANT:** The caption must always include all three elements: data source with table icon, LinkedIn handle (anthony-raul-galvan) with LinkedIn icon, and GitHub username (gdatascience) with GitHub icon. Never omit the LinkedIn icon and handle.
 
 ### Plain-Text Caption (fallback)
 When Font Awesome is not available or for simpler contexts:

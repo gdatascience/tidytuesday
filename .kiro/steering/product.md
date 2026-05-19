@@ -40,16 +40,31 @@ After exploring the data and forming a story, **pause and present any opportunit
 
 Then **wait for the user to decide** which (if any) to pursue before continuing. Do NOT implement these automatically — they add complexity and build time, so the decision should be collaborative.
 
-### 4. Build Storytelling Visualizations
-Create visualizations that serve the narrative:
+### 4. Build the Blog Post with Thorough EDA
+The Rmd must include a **thorough EDA section** before narrowing to the main story. This means:
+- Profile the raw data (dimensions, types, missing values, summary stats)
+- Include **at least 3-5 EDA visualizations** (distributions, relationships, temporal trends, categorical breakdowns)
+- Explain every technical term, methodology, or domain-specific jargon in plain language with links to further reading
+- See the "EDA Requirements" and "Explaining Technical Concepts" sections in `structure.md` for full details
+
+After the EDA, build the storytelling visualizations that serve the narrative:
 - Each plot should make one clear point
 - Use consistent color palettes across related plots
 - Include informative titles, subtitles, and captions
 - Always include the attribution caption convention
 - See the "Final Shareable Image" section in `structure.md` for detailed guidance on the exported PNG/GIF
 
-### 5. Iterate on the Final Dataviz
-The user will review the final shareable image and request adjustments (legend position, font sizes, aspect ratio, colors, etc.). **Do NOT generate READMEs or update thumbnails during this phase.** Just re-render the Rmd to update the output PNG and wait for the user to approve.
+### 5. Iterate with Live README Rendering
+After every change to the Rmd, **render directly to README.md** in the week folder so the user can see the blog post taking shape in real time:
+```r
+rmarkdown::render(
+  "YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd",
+  output_format = rmarkdown::github_document(html_preview = FALSE),
+  output_file = "README.md",
+  output_dir = "YYYY/YYYY_MM_DD"
+)
+```
+Then replace the pandoc title block with the hero section (see `structure.md`). This lets the user review both the final dataviz PNG and the full blog post layout during iteration — no separate "generate README" step at the end.
 
 ### 6. Write as a Blog Post
 The final Rmd/qmd should read as a self-contained article, not a code notebook:
@@ -59,14 +74,13 @@ The final Rmd/qmd should read as a self-contained article, not a code notebook:
 - End with open questions or forward-looking commentary
 - See the "Blog Post Rmd Structure" section in `structure.md` for the template
 
-### 7. Finalize READMEs and Social Posts (only after dataviz is approved)
-Once the user is happy with the final shareable image, **then** do all of the following in one pass:
-- Generate the week README (render to GitHub markdown, build hero + blog post)
+### 7. Finalize Thumbnails and Social Posts (only after dataviz is approved)
+Once the user is happy with the final shareable image, **then** do the following:
 - Update the yearly README with the new thumbnail
 - Update the root README with the new thumbnail and count
 - Draft social media posts (see `social.md`)
 
-This avoids redundant README rebuilds during the iterative design phase.
+The week README is already up to date from continuous rendering in step 5.
 
 ## Data Analyst Role
 
