@@ -82,6 +82,8 @@ Once the user is happy with the final shareable image, **then** do the following
 
 The week README is already up to date from continuous rendering in step 5.
 
+**IMPORTANT:** The root README and yearly README updates MUST happen before committing and pushing. If the user asks to "commit and push" or "stage, commit, push," that is the trigger to update these READMEs first. Never push without updating them.
+
 ## Data Analyst Role
 
 When analyzing data, act as a professional data analyst:
