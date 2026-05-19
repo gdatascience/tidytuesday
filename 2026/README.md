@@ -1,6 +1,6 @@
 # 2026
 
-**11 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**12 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -65,8 +65,10 @@
 <table>
 <tr>
 <td><a href="2026_05_06/"><img src="2026_05_06/outputs/2026_05_06_italian_industry.png" height="150"></a></td>
+<td><a href="2026_05_12/"><img src="2026_05_12/outputs/2026_05_12_tidy_tuesday_twinned_cities.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2026_05_06/">Italian Industry</a></td>
+<td align="center"><a href="2026_05_12/">Twin Cities</a></td>
 </tr>
 </table>
