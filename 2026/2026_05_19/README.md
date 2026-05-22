@@ -2,7 +2,7 @@
 
 **[Source Code](2026_05_19_tidy_tuesday_crossref.Rmd)** | Data from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/main/data/2026/2026-05-19) (Week 20, 2026-05-19)
 
-![The ORCID Revolution in Research](outputs/2026_05_19_tidy_tuesday_crossref.png)
+![The ORCID Race](outputs/2026_05_19_tidy_tuesday_crossref.gif)
 
 Turkey’s ORCID adoption exploded from under 1% to 42% in seven years — the largest jump among major publishing nations. This analysis explores how the global research metadata landscape is transforming, with Latin America and Eastern Europe leading the charge toward connected, transparent science.
 

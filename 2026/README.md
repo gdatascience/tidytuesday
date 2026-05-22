@@ -66,7 +66,7 @@
 <tr>
 <td><a href="2026_05_06/"><img src="2026_05_06/outputs/2026_05_06_italian_industry.png" height="150"></a></td>
 <td><a href="2026_05_12/"><img src="2026_05_12/outputs/2026_05_12_tidy_tuesday_twinned_cities.png" width="150"></a></td>
-<td><a href="2026_05_19/"><img src="2026_05_19/outputs/2026_05_19_tidy_tuesday_crossref.png" height="150"></a></td>
+<td><a href="2026_05_19/"><img src="2026_05_19/outputs/2026_05_19_tidy_tuesday_crossref.gif" height="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2026_05_06/">Italian Industry</a></td>
