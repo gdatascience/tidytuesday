@@ -1,20 +1,13 @@
 ---
-title: "TidyTemplate"
+title: "Mapping America's Wind Power: A Visual Tour of 60,000+ Turbines"
 date: 2021-11-08
-output: html_output
+output: html_document
 ---
 
-# TidyTuesday
-
-Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
-Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
-While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
-The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
-As such we encourage everyone of all skills to participate!
+The United States has quietly built one of the largest wind energy infrastructures on the planet. With over 60,000 turbines scattered across the country — from the windswept plains of Texas to the ridgelines of Appalachia — wind power has become a defining feature of America's energy landscape. This week's data from the USGS gives us coordinates, capacity, and installation year for every single one. Let's map the wind revolution.
 
 ```{r setup, include=FALSE}
-
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.path = "outputs/")
 
 library(tidyverse)
 library(tidytuesdayR)
@@ -22,12 +15,11 @@ library(tidytuesdayR)
 theme_set(theme_light())
 
 tt_caption <- "Source: usgs.gov  |  Analysis: Tony Galvan (@GDataScience1)"
-
 ```
 
-# Load the weekly Data
+## Loading the Turbine Data
 
-Dowload the weekly data and make available in the `tt` object.
+We'll pull the US Wind Turbine dataset from the TidyTuesday archive. This dataset contains detailed records for every utility-scale wind turbine in the country, including geographic coordinates, turbine capacity in kilowatts, and the year each project came online.
 
 ```{r Load}
 
@@ -35,62 +27,53 @@ tt <- tt_load("2018-11-06")
 
 ```
 
+## A First Look at the Data
 
-# Readme
-
-Take a look at the readme for the weekly data to get insight on the dataset.
-This includes a data dictionary, source, and a link to an article on the data.
-
-```{r Readme, eval = interactive()}
-
-tt
-
-```
-
-
-# Glimpse Data
-
-Take an initial look at the format of the data available.
+Let's explore the structure of the dataset to understand what we're working with.
 
 ```{r Glimpse}
 
-tt %>% 
+tt |> 
   map(glimpse)
 
 ```
 
-# Wrangle
+## Preparing the Data for Mapping
 
-Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+We'll filter out any records with invalid coordinates (positive longitudes would place turbines outside the continental US) and remove entries with zero or negative capacity or missing project years.
 
 ```{r Wrangle}
 
-us_wind <- tt$us_wind %>%
+us_wind <- tt$us_wind |>
   filter(xlong <= 0,
          t_cap >= 0,
          p_year > 0)
 
 ```
 
-# Exploratory Data Analysis (EDA)
+## How Powerful Are These Turbines?
+
+Before mapping, let's look at the distribution of turbine capacity. Modern turbines range from small community installations to massive multi-megawatt machines. Where does the typical American turbine fall?
+
 ```{r}
 
 # Turbine capacity - Histogram
-us_wind %>%
+us_wind |>
   ggplot(aes(t_cap)) +
   geom_histogram()
 
 ```
 
+The distribution is heavily right-skewed, with most turbines clustered in the 1,000-2,000 kW range (1-2 megawatts). There's a long tail of older, smaller turbines and a growing number of newer, larger ones pushing past 3,000 kW.
 
-# Visualize
+## Painting the Map: Where America Generates Wind Power
 
-Using your processed dataset, create your unique visualization.
+Now for the main event — plotting every turbine on a map of the continental US, colored by capacity. This gives us both the geographic spread and a sense of which regions have invested in the largest, most modern turbines.
 
 ```{r Visualize}
 
-us_wind %>%
-  mutate(decade = p_year %/% 10 * 10) %>%
+us_wind |>
+  mutate(decade = p_year %/% 10 * 10) |>
   ggplot(aes(xlong, ylat, color = t_cap)) +
   geom_point(size = 0.25, alpha = 0.25) +
   #facet_wrap(~decade) +
@@ -104,9 +87,9 @@ us_wind %>%
   
 ```
 
-# Save Image
+The map tells a striking story. Wind farms cluster heavily in the Great Plains corridor — Texas, Oklahoma, Kansas, Iowa — where flat terrain and consistent winds make turbine placement ideal. California's passes and the upper Midwest also show dense concentrations. The East Coast is notably sparse, with only scattered installations along ridgelines. The color gradient reveals that the newest, highest-capacity turbines tend to be in the central states, while older, smaller installations dot the coasts.
 
-Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+## Saving the Final Visualization
 
 ```{r}
 

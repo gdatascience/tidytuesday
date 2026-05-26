@@ -1,27 +1,21 @@
-# Who Shot First? Exploring Star Wars Fandom Through Data
-
-**[Source Code](2018_05_14_tidy_tuesday_star_wars.Rmd)** | Data from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2018/2018-05-14) (2018-05-14)
-
-![Gender differences in Star Wars character ratings](outputs/unnamed-chunk-7-1.png)
-
-FiveThirtyEight surveyed 1,000+ Americans about Star Wars. We explore where fans live, which episodes they prefer, and how men and women rate characters differently — from Han Solo at the top to Jar Jar Binks at the bottom.
-
+---
+title: "Who Shot First? Exploring Star Wars Fandom Through Data"
+author: "Tony Galvan"
+date: "8/6/2019"
+output: html_document
 ---
 
-In 2014, FiveThirtyEight surveyed over 1,000 Americans about their Star
-Wars opinions — which films they’d seen, how they’d rank them, and how
-they felt about every major character from Han Solo to Jar Jar Binks.
-The results paint a fascinating portrait of a fandom divided by
-generation, geography, and gender. Let’s dig in.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.path = "outputs/")
+```
+
+In 2014, FiveThirtyEight surveyed over 1,000 Americans about their Star Wars opinions — which films they'd seen, how they'd rank them, and how they felt about every major character from Han Solo to Jar Jar Binks. The results paint a fascinating portrait of a fandom divided by generation, geography, and gender. Let's dig in.
 
 ## Setting Up and Loading the Data
 
-We’ll pull the survey data directly from the TidyTuesday GitHub
-repository and clean up the column names. The raw dataset has cryptic
-headers from the survey tool, so we rename them to something
-human-readable.
+We'll pull the survey data directly from the TidyTuesday GitHub repository and clean up the column names. The raw dataset has cryptic headers from the survey tool, so we rename them to something human-readable.
 
-``` r
+```{r}
 library(tidyverse)
 theme_set(theme_light())
 
@@ -68,53 +62,11 @@ star_wars <- star_wars_data |>
 glimpse(star_wars)
 ```
 
-    ## Rows: 1,186
-    ## Columns: 38
-    ## $ RespondentID      <dbl> 3292879998, 3292879538, 3292765271, 3292763116, 3292…
-    ## $ Any_seen          <chr> "Yes", "No", "Yes", "Yes", "Yes", "Yes", "Yes", "Yes…
-    ## $ Star_Wars_fan     <chr> "Yes", NA, "No", "Yes", "Yes", "Yes", "Yes", "Yes", …
-    ## $ Ep1_seen          <chr> "Star Wars: Episode I  The Phantom Menace", NA, "Sta…
-    ## $ Ep2_seen          <chr> "Star Wars: Episode II  Attack of the Clones", NA, "…
-    ## $ Ep3_seen          <chr> "Star Wars: Episode III  Revenge of the Sith", NA, "…
-    ## $ Ep4_seen          <chr> "Star Wars: Episode IV  A New Hope", NA, NA, "Star W…
-    ## $ Ep5_seen          <chr> "Star Wars: Episode V The Empire Strikes Back", NA, …
-    ## $ Ep6_seen          <chr> "Star Wars: Episode VI Return of the Jedi", NA, NA, …
-    ## $ Ep1_rating        <chr> "3", NA, "1", "5", "5", "1", "6", "4", "5", "1", NA,…
-    ## $ Ep2_rating        <chr> "2", NA, "2", "6", "4", "4", "5", "5", "4", "2", NA,…
-    ## $ Ep3_rating        <chr> "1", NA, "3", "1", "6", "3", "4", "6", "6", "3", NA,…
-    ## $ Ep4_rating        <chr> "4", NA, "4", "2", "2", "6", "3", "3", "2", "4", NA,…
-    ## $ Ep5_rating        <chr> "5", NA, "5", "4", "1", "5", "1", "2", "1", "5", NA,…
-    ## $ Ep6_rating        <chr> "6", NA, "6", "3", "3", "2", "2", "1", "3", "6", NA,…
-    ## $ Han_Solo          <chr> "Very favorably", NA, "Somewhat favorably", "Very fa…
-    ## $ Luke_Skywalker    <chr> "Very favorably", NA, "Somewhat favorably", "Very fa…
-    ## $ Princess_Leia     <chr> "Very favorably", NA, "Somewhat favorably", "Very fa…
-    ## $ Anakin_Skywalker  <chr> "Very favorably", NA, "Somewhat favorably", "Very fa…
-    ## $ Obi_Wan           <chr> "Very favorably", NA, "Somewhat favorably", "Very fa…
-    ## $ Emperor_Palpatine <chr> "Very favorably", NA, "Unfamiliar (N/A)", "Somewhat …
-    ## $ Darth_Vader       <chr> "Very favorably", NA, "Unfamiliar (N/A)", "Very favo…
-    ## $ Lando_Calrissian  <chr> "Unfamiliar (N/A)", NA, "Unfamiliar (N/A)", "Somewha…
-    ## $ Boba_Fett         <chr> "Unfamiliar (N/A)", NA, "Unfamiliar (N/A)", "Somewha…
-    ## $ C_3PO             <chr> "Very favorably", NA, "Unfamiliar (N/A)", "Very favo…
-    ## $ R2D2              <chr> "Very favorably", NA, "Unfamiliar (N/A)", "Very favo…
-    ## $ Jar_Jar_Binks     <chr> "Very favorably", NA, "Unfamiliar (N/A)", "Very favo…
-    ## $ Padme_Amidala     <chr> "Very favorably", NA, "Unfamiliar (N/A)", "Very favo…
-    ## $ Yoda              <chr> "Very favorably", NA, "Unfamiliar (N/A)", "Very favo…
-    ## $ Shot_first        <chr> "I don't understand this question", NA, "I don't und…
-    ## $ Exp_Uni_Aware     <chr> "Yes", NA, "No", "No", "Yes", "Yes", "Yes", "No", "N…
-    ## $ Exp_Uni_Fan       <chr> "No", NA, NA, NA, "No", "No", "No", NA, NA, NA, NA, …
-    ## $ Star_Trek_Fan     <chr> "No", "Yes", "No", "Yes", "No", "Yes", "No", "Yes", …
-    ## $ Gender            <chr> "Male", "Male", "Male", "Male", "Male", "Male", "Mal…
-    ## $ Age               <chr> "18-29", "18-29", "18-29", "18-29", "18-29", "18-29"…
-    ## $ Income            <chr> NA, "$0 - $24,999", "$0 - $24,999", "$100,000 - $149…
-    ## $ Education         <chr> "High school degree", "Bachelor degree", "High schoo…
-    ## $ Location          <chr> "South Atlantic", "West South Central", "West North …
-
 ## Where in America Are the Biggest Star Wars Fans?
 
-First, let’s look at fandom by geography. Are some regions of the
-country more likely to claim Star Wars allegiance than others?
+First, let's look at fandom by geography. Are some regions of the country more likely to claim Star Wars allegiance than others?
 
-``` r
+```{r}
 star_wars |>
   filter(!is.na(Location)) |>
   group_by(Location) |>
@@ -133,19 +85,13 @@ star_wars |>
        caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
 ```
 
-![](outputs/unnamed-chunk-2-1.png)<!-- -->
-
-The Mountain region leads the pack with over 60% of respondents
-identifying as fans. The South Atlantic and Pacific regions aren’t far
-behind. Fandom is remarkably widespread — even the lowest region still
-clocks in above 45%.
+The Mountain region leads the pack with over 60% of respondents identifying as fans. The South Atlantic and Pacific regions aren't far behind. Fandom is remarkably widespread — even the lowest region still clocks in above 45%.
 
 ## Does Education Level Predict Fandom?
 
-Next, let’s see whether education correlates with Star Wars enthusiasm.
-Do people with more schooling tend to be bigger fans?
+Next, let's see whether education correlates with Star Wars enthusiasm. Do people with more schooling tend to be bigger fans?
 
-``` r
+```{r}
 star_wars |>
   filter(!is.na(Education)) |>
   group_by(Education) |>
@@ -164,19 +110,13 @@ star_wars |>
        caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
 ```
 
-![](outputs/unnamed-chunk-3-1.png)<!-- -->
-
-There’s a mild positive trend — respondents with at least some college
-education are more likely to identify as fans. But the differences are
-modest, suggesting Star Wars truly cuts across educational backgrounds.
+There's a mild positive trend — respondents with at least some college education are more likely to identify as fans. But the differences are modest, suggesting Star Wars truly cuts across educational backgrounds.
 
 ## Which Episodes Have People Actually Seen?
 
-Now let’s look at viewership. The original trilogy came out decades
-before the prequels — does that show up in how many people have seen
-each film?
+Now let's look at viewership. The original trilogy came out decades before the prequels — does that show up in how many people have seen each film?
 
-``` r
+```{r}
 star_wars |>
   select(RespondentID, Ep1_seen, Ep2_seen, Ep3_seen, Ep4_seen, Ep5_seen, Ep6_seen) |>
   gather(episode, seen, -RespondentID) |>
@@ -196,19 +136,13 @@ star_wars |>
        caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
 ```
 
-![](outputs/unnamed-chunk-4-1.png)<!-- -->
-
-Episodes 5 and 6 — *The Empire Strikes Back* and *Return of the Jedi* —
-edge out the rest, with over 60% of respondents having seen them. The
-prequels (Episodes 1-3) lag behind, which makes sense given the survey’s
-age demographics.
+Episodes 5 and 6 — *The Empire Strikes Back* and *Return of the Jedi* — edge out the rest, with over 60% of respondents having seen them. The prequels (Episodes 1-3) lag behind, which makes sense given the survey's age demographics.
 
 ## How Do Fans Rate Each Episode?
 
-Seeing a movie is one thing — liking it is another. Let’s look at
-average ratings across the six films.
+Seeing a movie is one thing — liking it is another. Let's look at average ratings across the six films.
 
-``` r
+```{r}
 star_wars |>
   select(RespondentID, Ep1_rating, Ep2_rating, Ep3_rating, Ep4_rating, Ep5_rating, Ep6_rating) |>
   gather(episode, rating, -RespondentID) |>
@@ -226,20 +160,13 @@ star_wars |>
        caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
 ```
 
-![](outputs/unnamed-chunk-5-1.png)<!-- -->
-
-The original trilogy dominates here. Episodes 4-6 are consistently rated
-higher than the prequels, with *The Empire Strikes Back* (Episode 5)
-taking the crown. The prequel trilogy’s lower ratings reflect a
-well-known divide in the fanbase.
+The original trilogy dominates here. Episodes 4-6 are consistently rated higher than the prequels, with *The Empire Strikes Back* (Episode 5) taking the crown. The prequel trilogy's lower ratings reflect a well-known divide in the fanbase.
 
 ## The Character Popularity Contest
 
-Star Wars is ultimately about its characters. Let’s rank them all by
-average favorability rating — from the galaxy’s most beloved to its most
-despised.
+Star Wars is ultimately about its characters. Let's rank them all by average favorability rating — from the galaxy's most beloved to its most despised.
 
-``` r
+```{r}
 star_wars |>
   select(RespondentID, Han_Solo, Luke_Skywalker, Princess_Leia, 
          Anakin_Skywalker, Obi_Wan, Emperor_Palpatine, Darth_Vader, 
@@ -265,21 +192,13 @@ star_wars |>
        caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
 ```
 
-![](outputs/unnamed-chunk-6-1.png)<!-- -->
-
-Han Solo reigns supreme — the scruffy-looking nerf herder is America’s
-favorite. Yoda, Obi-Wan, and the droids round out the top tier. At the
-bottom? Jar Jar Binks, unsurprisingly, with Emperor Palpatine not far
-above. Even villains like Darth Vader and Boba Fett earn more goodwill
-than poor Jar Jar.
+Han Solo reigns supreme — the scruffy-looking nerf herder is America's favorite. Yoda, Obi-Wan, and the droids round out the top tier. At the bottom? Jar Jar Binks, unsurprisingly, with Emperor Palpatine not far above. Even villains like Darth Vader and Boba Fett earn more goodwill than poor Jar Jar.
 
 ## Do Men and Women See These Characters Differently?
 
-Finally, let’s explore whether gender shapes character preferences.
-We’ll calculate the difference between male and female average ratings
-for each character — positive values mean men rate the character higher.
+Finally, let's explore whether gender shapes character preferences. We'll calculate the difference between male and female average ratings for each character — positive values mean men rate the character higher.
 
-``` r
+```{r}
 star_wars |>
   select(RespondentID, Han_Solo, Luke_Skywalker, Princess_Leia, 
          Anakin_Skywalker, Obi_Wan, Emperor_Palpatine, Darth_Vader, 
@@ -308,16 +227,10 @@ star_wars |>
        caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
 ```
 
-![](outputs/unnamed-chunk-7-1.png)<!-- -->
-
-The gender gap is revealing. Men rate villains and morally ambiguous
-characters (Boba Fett, Emperor Palpatine, Darth Vader) more favorably
-than women do. Women, on the other hand, rate the droids (R2D2, C-3PO)
-and — surprisingly — Jar Jar Binks higher than men. Perhaps the
-slapstick humor lands differently across genders.
+The gender gap is revealing. Men rate villains and morally ambiguous characters (Boba Fett, Emperor Palpatine, Darth Vader) more favorably than women do. Women, on the other hand, rate the droids (R2D2, C-3PO) and — surprisingly — Jar Jar Binks higher than men. Perhaps the slapstick humor lands differently across genders.
 
 ## Saving the Final Visualization
 
-``` r
+```{r}
 ggsave("star_wars.png", width = 6.25)
 ```
