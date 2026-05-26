@@ -288,6 +288,7 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 2 analyses
 
 <p>
+<a href="2018/2018_05_14/"><img src="2018/2018_05_14/outputs/unnamed-chunk-7-1.png" width="80"></a>
 <a href="2018/2018_11_06/"><img src="2018/2018_11_06/outputs/2018_11_06_tidy_tuesday.png" width="80"></a>
 </p>
 
