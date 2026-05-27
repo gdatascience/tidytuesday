@@ -1,10 +1,154 @@
-# Simpsons Guest Stars
+# D’oh! 30 Seasons of Simpsons Guest Stars — Who Showed Up the Most?
 
-Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-08-27).
+**[Source Code](2019_08_27_tidy_tuesday_simpsons.Rmd)** | Data from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-08-27) (2019-08-27)
 
-![](outputs/simpsons.png)
+![D’oh! 30 Seasons of Simpsons Guest Stars — Who Showed Up the Most?](outputs/simpsons.png)
 
-## Source Code
+The Simpsons has hosted an extraordinary parade of guest stars over 30 seasons. This analysis explores whether the guest star phenomenon has grown over time and which voice actors have played the most unique characters, using Wikipedia’s comprehensive records.
 
-- [simpsons.Rmd](simpsons.Rmd)
+---
 
+*The Simpsons* has been on the air for over 30 seasons — and in that
+time, it’s hosted an extraordinary parade of guest stars. From musicians
+to politicians to fellow actors, the show has become a cultural
+milestone that celebrities actively seek out. But has the guest star
+phenomenon grown over time? And which voice actors have played the most
+unique characters? Let’s dig into the data from Wikipedia’s
+comprehensive guest star records.
+
+## Loading the Data
+
+The data uses a pipe delimiter (`|`) rather than the typical comma,
+reflecting its Wikipedia table origins.
+
+``` r
+# Load libraries, set the default theme & caption, and grab the data
+library(tidyverse)
+library(patchwork)
+theme_set(theme_light())
+
+default_caption <- "Source: Wikipedia  |  Designer: Tony Galvan @gdatascience1  |  #TidyTuesday 2019 Week 35"
+
+simpsons <- readr::read_delim("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-08-27/simpsons-guests.csv", delim = "|", quote = "")
+
+glimpse(simpsons)
+```
+
+    ## Rows: 1,386
+    ## Columns: 6
+    ## $ season          <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1",…
+    ## $ number          <chr> "002–102", "003–103", "003–103", "006–106", "006–106",…
+    ## $ production_code <chr> "7G02", "7G03", "7G03", "7G06", "7G06", "7G09", "7G07"…
+    ## $ episode_title   <chr> "Bart the Genius", "Homer's Odyssey", "Homer's Odyssey…
+    ## $ guest_star      <chr> "Marcia Wallace", "Sam McMurray", "Marcia Wallace", "M…
+    ## $ role            <chr> "Edna Krabappel;  Ms. Melon", "Worker", "Edna Krabappe…
+
+## Guest Stars Per Season: A Growing Trend
+
+Has the show relied more heavily on guest stars as it’s aged? Let’s plot
+the count per season with a trend line.
+
+``` r
+p1 <- simpsons |>
+  filter(season != "Movie") |>
+  group_by(season) |>
+  summarise(n = n()) |>
+  mutate(season = as.integer(str_replace(season, "Movie", "0"))) |>
+  ggplot(aes(season, n)) +
+  geom_line(color = "#FED90F", size = 3) +
+  scale_x_continuous(breaks = c(1, 10, 20, 30), labels = c(1, 10, 20, 30)) +
+  geom_smooth(method = "lm", se = FALSE, 
+              color = "#70D1FE", linetype = 5, size = 2) +
+  theme(panel.border = element_blank(),
+        panel.grid = element_blank(),) +
+  labs(x = "Season",
+       y = "# of guest stars",
+       title = "The Simpsons: guest stars per season",
+       subtitle = "Seasons 1 - 30",
+       caption = default_caption)
+
+p1
+```
+
+![](outputs/unnamed-chunk-2-1.png)<!-- -->
+
+The trend is unmistakable — guest star appearances have roughly tripled
+from the early seasons to the most recent ones. As the show’s cultural
+cachet grew, so did the celebrity guest list.
+
+## Who Played the Most Unique Roles?
+
+Some guest stars appear once as themselves; others return repeatedly to
+voice different characters. Let’s find the most versatile guest
+performers.
+
+``` r
+roles <- simpsons |>
+  unnest(role = strsplit(role, ";")) |>
+  mutate(role_name = if_else(role %in% c("Himself", "Herself", "Themselves"), guest_star, role))
+
+glimpse(roles)
+```
+
+    ## Rows: 1,477
+    ## Columns: 7
+    ## $ season          <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1",…
+    ## $ number          <chr> "002–102", "002–102", "003–103", "003–103", "006–106",…
+    ## $ production_code <chr> "7G02", "7G02", "7G03", "7G03", "7G06", "7G06", "7G09"…
+    ## $ episode_title   <chr> "Bart the Genius", "Bart the Genius", "Homer's Odyssey…
+    ## $ guest_star      <chr> "Marcia Wallace", "Marcia Wallace", "Sam McMurray", "M…
+    ## $ role            <chr> "Edna Krabappel", "  Ms. Melon", "Worker", "Edna Kraba…
+    ## $ role_name       <chr> "Edna Krabappel", "  Ms. Melon", "Worker", "Edna Kraba…
+
+``` r
+p2 <- roles |>
+  group_by(role_name, guest_star) |>
+  summarise(n = n()) |>
+  group_by(guest_star) |>
+  summarise(star_roles = n()) |>
+  top_n(10, wt = star_roles) |>
+  mutate(guest_star = fct_reorder(guest_star, star_roles)) |>
+  ggplot(aes(guest_star, star_roles)) +
+  geom_col(fill = "#FED90F") + 
+  coord_flip() +
+  theme(panel.border = element_blank(),
+        panel.grid = element_blank(),) +
+  labs(x = "",
+       y = "# of unique roles",
+       title = "Top 10 guest stars with the most unique roles",
+       subtitle = "The Simpsons: seasons 1 - 30",
+       caption = default_caption)
+
+p2
+```
+
+![](outputs/unnamed-chunk-4-1.png)<!-- -->
+
+Maurice LaMarche leads the pack — a professional voice actor known for
+his versatility, he’s voiced dozens of distinct characters across the
+show’s run.
+
+## Combined View: Growth and Versatility
+
+Let’s combine both visualizations into a single panel that tells the
+complete story.
+
+``` r
+p1 + 
+  labs(title = "The Simpsons: seasons 1 - 30",
+       subtitle = "More guest stars per season; Maurice LaMarche has played the most unique roles",
+       caption = "") +
+  p2 +
+  labs(title = "",
+       subtitle = "")
+```
+
+![](outputs/unnamed-chunk-5-1.png)<!-- -->
+
+``` r
+#ggsave("outputs/2019_08_27_tidy_tuesday_simpsons.png", width = 10)
+```
+
+Together, these charts paint a picture of a show that has increasingly
+relied on celebrity guest appearances — and a handful of versatile voice
+actors who have become unofficial members of the extended cast.

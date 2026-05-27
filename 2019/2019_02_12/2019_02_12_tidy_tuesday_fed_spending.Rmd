@@ -1,0 +1,77 @@
+---
+title: "Where Does America Invest in Science? Federal R&D Spending by Agency"
+author: "Tony Galvan"
+date: "February 12, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.path = "outputs/")
+```
+
+Federal research and development spending shapes the future of American science, technology, and innovation. From the Department of Defense to the National Institutes of Health, each agency's R&D budget reflects national priorities — and those priorities have shifted dramatically over four decades. Let's explore how federal R&D spending has evolved from 1976 to 2017, both as a share of GDP and as a fraction of discretionary spending.
+
+## Loading the Data
+
+We'll use the `plotly` package for interactive exploration, which lets us hover over individual agencies to trace their funding trajectories.
+
+```{r}
+library(tidyverse)
+library(plotly)
+
+theme_set(theme_light())
+
+fed_rd <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-02-12/fed_r_d_spending.csv")
+```
+
+## Profiling the Dataset
+
+Let's get a sense of the data's structure and coverage.
+
+```{r}
+fed_rd |> 
+    summary()
+```
+
+This data contains 588 total observations from 1976 to 2017.
+
+## Engineering New Metrics
+
+Raw dollar amounts don't tell the full story — a billion dollars meant something very different in 1976 than in 2017. To make meaningful comparisons across time, we'll compute R&D spending as a percentage of GDP, total federal outlays, and discretionary outlays.
+
+```{r}
+fed_rd_processed <- fed_rd |>
+    mutate(rd_pct_gdp = rd_budget / gdp, 
+            rd_pct_tot = rd_budget / total_outlays, 
+        rd_pct_dis = rd_budget / discretionary_outlays)
+```
+
+## R&D as a Percentage of GDP
+
+This view shows how much of the nation's total economic output goes toward federally funded research. A declining share might indicate that private-sector R&D is growing faster, or that federal priorities have shifted away from research.
+
+```{r}
+p <- fed_rd_processed |> 
+    ggplot(aes(year, rd_pct_gdp, color = department)) +
+    geom_line() + 
+    scale_y_continuous(labels = scales::percent_format())
+    
+ggplotly(p) 
+```
+
+The Department of Defense dominates federal R&D spending as a share of GDP, though its share has declined steadily since the Cold War peak. NASA's share shows a dramatic spike during the Space Race era before settling into a much smaller footprint.
+
+## R&D as a Percentage of Discretionary Outlays
+
+Discretionary spending is the portion of the budget that Congress actively decides each year (as opposed to mandatory programs like Social Security). Looking at R&D as a share of discretionary outlays reveals how much of the "controllable" budget goes to research.
+
+```{r}
+p <- fed_rd_processed |> 
+    ggplot(aes(year, rd_pct_dis, color = department)) +
+    geom_line() + 
+    scale_y_continuous(labels = scales::percent_format())
+    
+ggplotly(p) 
+```
+
+This perspective tells a slightly different story — while R&D's share of GDP has declined, its share of discretionary spending has been more stable for some agencies, suggesting that the decline is partly driven by GDP growth outpacing budget growth rather than active cuts to research funding.

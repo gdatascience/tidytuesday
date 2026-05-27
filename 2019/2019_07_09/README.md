@@ -1,10 +1,214 @@
-# Women's World Cup
+# Goals and Glory: Visualizing the Women’s World Cup Through Eight Tournaments
 
-Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-07-09).
+**[Source Code](2019_07_09_tidy_tuesday_womens_world_cup.Rmd)** | Data from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-07-09) (2019-07-09)
 
-![](outputs/womens_world_cup.png)
+![Goals and Glory: Visualizing the Women’s World Cup Through Eight Tournaments](outputs/womens_world_cup.png)
 
-## Source Code
+The FIFA Women’s World Cup has grown from a 12-team experiment in 1991 to a global sporting spectacle. This analysis traces the expansion of the competition across eight tournaments, identifies dominant nations, and visualizes scoring relationships between teams.
 
-- [womens_world_cup.Rmd](womens_world_cup.Rmd)
+---
 
+The FIFA Women’s World Cup has grown from a 12-team experiment in 1991
+to a global sporting spectacle. With data from all eight tournaments
+through 2019, we can trace the expansion of the competition, identify
+the dominant nations, and visualize the scoring relationships between
+teams. The United States’ dominance is clear in the numbers — but the
+competition is getting fiercer.
+
+## Loading the Data
+
+We’ll work with three datasets: country codes, match outcomes, and squad
+rosters.
+
+``` r
+library(tidyverse)
+theme_set(theme_light())
+
+codes <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-09/codes.csv")
+wwc_outcomes <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-09/wwc_outcomes.csv") |>
+  left_join(codes, by = "team")
+squads <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-09/squads.csv")
+```
+
+``` r
+glimpse(wwc_outcomes)
+```
+
+    ## Rows: 568
+    ## Columns: 8
+    ## $ year           <dbl> 1991, 1991, 1991, 1991, 1991, 1991, 1991, 1991, 1991, 1…
+    ## $ team           <chr> "CHN", "NOR", "DEN", "NZL", "JPN", "BRA", "GER", "NGA",…
+    ## $ score          <dbl> 4, 0, 3, 0, 0, 1, 4, 0, 2, 3, 0, 5, 4, 0, 2, 2, 0, 8, 1…
+    ## $ round          <chr> "Group", "Group", "Group", "Group", "Group", "Group", "…
+    ## $ yearly_game_id <dbl> 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 1…
+    ## $ team_num       <dbl> 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1…
+    ## $ win_status     <chr> "Won", "Lost", "Won", "Lost", "Lost", "Won", "Won", "Lo…
+    ## $ country        <chr> "China PR", "Norway", "Denmark", "New Zealand", "Japan"…
+
+## Tournament Growth: Games Per Round by Year
+
+The Women’s World Cup has expanded significantly — from 26 matches in
+1991 to 52 in 2019. Let’s visualize how the tournament structure has
+grown.
+
+``` r
+wwc_outcomes |>
+  group_by(year, round) |>
+  summarise(games = n() / 2) |>
+  ungroup() |>
+  mutate(round = fct_relevel(round, "Final", "Third Place Playoff", 
+                             "Semi Final", "Quarter Final", "Round of 16")) |>
+  ggplot(aes(year, games, fill = round)) +
+  geom_col()
+```
+
+![](outputs/unnamed-chunk-3-1.png)<!-- -->
+
+The addition of the Round of 16 in 1999 (when the tournament expanded to
+16 teams) and further growth to 24 teams in 2015 are clearly visible in
+the stacked bars.
+
+## The Winningest Nations
+
+Which countries have accumulated the most victories across all Women’s
+World Cup tournaments?
+
+``` r
+wwc_outcomes |>
+  filter(win_status == "Won") |>
+  mutate(country = fct_lump(country, 9)) |>
+  group_by(country) |>
+  summarise(n = n()) |>
+  mutate(country = fct_reorder(country, n, .desc = TRUE)) |>
+  ggplot(aes(country, n, fill = country)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip() + 
+  labs(x = "",
+       y = "# of wins",
+       title = "Countries with the most Women's World Cup wins",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: Wikipedia")
+```
+
+![](outputs/unnamed-chunk-4-1.png)<!-- -->
+
+The United States leads comfortably — a testament to decades of
+investment in women’s soccer through Title IX and professional leagues.
+
+## The Most-Defeated Nations
+
+Losses tell a different story — they often indicate teams that
+consistently qualify but face tough competition in later rounds.
+
+``` r
+wwc_outcomes |>
+  filter(win_status == "Lost") |>
+  mutate(country = fct_lump(country, 9)) |>
+  group_by(country) |>
+  summarise(n = n()) |>
+  mutate(country = fct_reorder(country, n, .desc = TRUE)) |>
+  ggplot(aes(country, n, fill = country)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip() + 
+  labs(x = "",
+       y = "# of losses",
+       title = "Countries with the most Women's World Cup losses",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: Wikipedia")
+```
+
+![](outputs/unnamed-chunk-5-1.png)<!-- -->
+
+## Scoring Trends Over Time
+
+Has the Women’s World Cup become higher-scoring as the tournament has
+grown? More games means more goals, but what about the rate?
+
+``` r
+wwc_outcomes |>
+group_by(year) |>
+summarise(goals = sum(score)) |>
+ggplot(aes(year, goals)) + 
+geom_col() +
+geom_smooth(method = "loess", se = FALSE)
+```
+
+![](outputs/unnamed-chunk-6-1.png)<!-- -->
+
+Total goals have increased with tournament expansion, and the smoothed
+trend suggests the rate of scoring has remained relatively stable.
+
+## Does Squad Age Predict Success?
+
+Is there a relationship between a team’s average age and their win rate?
+Older squads might have more experience, but younger ones might have
+more energy.
+
+``` r
+avg_age <- squads |>
+  group_by(country) |>
+  summarise(avg_age = mean(age)) |>
+  mutate(country = fct_recode(country, "United States" = "US"))
+
+wwc_outcomes |>
+  left_join(avg_age, by = "country") |>
+  group_by(win_status) |>
+  summarise(avg_age = mean(avg_age, na.rm = TRUE)) |>
+  ggplot(aes(win_status, avg_age, fill = win_status)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip()
+```
+
+![](outputs/unnamed-chunk-7-1.png)<!-- -->
+
+## Score Distribution
+
+Let’s look at how goals are distributed across all matches — most games
+are low-scoring affairs, but blowouts do happen.
+
+``` r
+wwc_outcomes |>
+  ggplot(aes(score)) +
+  geom_histogram()
+```
+
+![](outputs/unnamed-chunk-8-1.png)<!-- -->
+
+## Preparing Data for the Chord Diagram
+
+To visualize head-to-head scoring relationships, we need to pair winners
+and losers from each match.
+
+``` r
+wwc_winners <- wwc_outcomes |>
+  filter(win_status == "Won") |>
+  select(year, yearly_game_id, round, w_country = country, w_score = score) 
+
+wwc_losers <- wwc_outcomes |>
+  filter(win_status == "Lost") |>
+  select(year, yearly_game_id, l_country = country, l_score = score) 
+```
+
+## Scoring Differentials: A Chord Diagram
+
+This chord diagram shows the average scoring differential between pairs
+of countries that have played each other more than twice. Thicker
+connections indicate larger average margins of victory.
+
+``` r
+wwc_winners |>
+  left_join(wwc_losers, by = c("year" = "year", 
+                               "yearly_game_id" = "yearly_game_id")) |>
+  group_by(w_country, l_country) |>
+  summarise(games = n(),
+            avg_score_diff = mean(w_score - l_score)) |>
+  filter(games > 2) |>
+  select(w_country, l_country, avg_score_diff) |>
+  circlize::chordDiagram(order = c("United States", "China PR", "Brazil", "South Korea", "Norway", "France", "Japan", "Germany", "Nigeria", "Canada", "Sweden", "North Korea"))
+
+title("Women's World Cup: scoring differentials chord diagram 
+      Designer: Tony Galvan @gdatascience1  |  Source: Wikipedia")
+```
+
+The chord diagram reveals the web of competitive relationships in
+women’s international soccer. The United States’ connections are
+consistently thick, reflecting their dominance across multiple opponents
+over decades of competition.

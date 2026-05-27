@@ -1,0 +1,113 @@
+---
+title: "Happy Little Trees: How Bob Ross's Painting Style Evolved Over 31 Seasons"
+author: "Tony Galvan"
+date: "8/5/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.path = "outputs/")
+```
+
+Bob Ross painted 403 landscapes on *The Joy of Painting* over 31 seasons — and FiveThirtyEight cataloged every element in every painting. Trees, mountains, clouds, cabins, lakes — each painting is a combination of these building blocks. But did Bob's style change over three decades on television? Let's find out which elements he favored, how his preferences shifted over time, and what words dominated his painting titles.
+
+## Loading the Data
+
+We'll use the `fivethirtyeight` package which includes the pre-processed Bob Ross dataset.
+
+```{r}
+library(tidyverse)
+theme_set(theme_light())
+
+paintings <- fivethirtyeight::bob_ross |> 
+  mutate(title = str_to_title(title))
+
+summary(paintings)
+```
+
+## Reshaping the Data
+
+The dataset has one column per element (tree, mountain, lake, etc.) with binary indicators. We'll pivot this into a long format for easier analysis, consolidating plural categories (e.g., "lakes" into "lake").
+
+```{r}
+bob_ross <- paintings |> 
+  mutate(lake = as.integer(if_else(lakes == 1,1,as.double(lake))),
+         mountain = as.integer(if_else(mountains == 1,1,as.double(mountain))),
+         tree = as.integer(if_else(trees == 1,1,as.double(tree)))) |>
+  select(-episode, -lakes, -mountains, -trees) |>
+  gather(element, exists, -season, -episode_num, -title) |>
+  mutate(element = str_replace_all(element,"_"," "))
+
+summary(bob_ross)
+```
+
+## The Most Common Painting Elements
+
+Which elements appear in the highest percentage of Bob Ross paintings? The answer won't surprise anyone who's watched the show.
+
+```{r}
+num_of_paintings <- nrow(paintings)
+
+top_elements <- bob_ross |>
+  group_by(element) |>
+  summarise(pct_of_paintings = sum(exists)/num_of_paintings) |>
+  top_n(16, pct_of_paintings) |>
+  ungroup() 
+
+top_elements |>
+  mutate(element = fct_reorder(element, pct_of_paintings)) |>
+  ggplot(aes(element, pct_of_paintings, fill = element)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  coord_flip() +
+  labs(x = "Element",
+       y = "% of paintings",
+       title = "Bob Ross loved painting trees",
+       subtitle = "Top 10 elements in the paintings from his show",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
+```
+
+Trees appear in over 85% of all paintings — Bob's "happy little trees" catchphrase was well-earned. Mountains, clouds, and bushes round out the top elements, painting a picture of Bob's quintessential landscape: a tree-lined mountain scene with clouds overhead.
+
+## How Did Bob's Style Evolve?
+
+Let's track the top elements across all 31 seasons. Did Bob paint more or fewer of certain elements as the show progressed?
+
+```{r}
+bob_ross |>
+  inner_join(top_elements) |>
+  group_by(season, element) |>
+  summarise(num_of_paintings = sum(exists)) |>
+  ungroup() |>
+  ggplot(aes(season, num_of_paintings, color = element)) +
+  geom_line() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~element, scales = "free_y") +
+  theme(legend.position = "None") + 
+  labs(x = "Season",
+       y = "# of paintings",
+       title = "How did Bob Ross' paintings change during 30+ seasons on TV?",
+       subtitle = "Fewer bushes and clouds, more snowy winter scenes",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: FiveThirtyEight")
+```
+
+```{r}
+ggsave("outputs/bob_ross_paintings.png", width = 7.5, height = 8)
+```
+
+The trends reveal a subtle evolution: Bob painted fewer bushes and clouds in later seasons while increasing snow and winter scenes. Trees remained constant throughout — some things never change.
+
+## Word Cloud from Painting Titles
+
+What words did Bob use most in his painting titles? The titles often evoke mood and setting.
+
+```{r eval=FALSE}
+paintings |>
+  tidytext::unnest_tokens(tbl = ., output = word, input = title) |>
+  anti_join(tidytext::get_stopwords()) |>
+  count(word, sort = TRUE) |>
+  filter(n > 3) |>
+  wordcloud2::wordcloud2(shape = "cardiod")
+```
+
+"Mountain," "winter," "sunset," and "lake" dominate the titles — a perfect summary of the Bob Ross aesthetic. His painting titles read like a love letter to the American wilderness.
