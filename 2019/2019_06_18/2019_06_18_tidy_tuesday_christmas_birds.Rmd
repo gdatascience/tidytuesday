@@ -1,0 +1,69 @@
+---
+title: "A Century of Counting: The Christmas Bird Count's Remarkable Growth"
+author: "Tony Galvan"
+date: "6/17/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.path = "outputs/")
+```
+
+Since 1921, volunteers across North America have bundled up in winter to count birds as part of the Christmas Bird Count — one of the longest-running citizen science projects in the world. The data from Bird Studies Canada reveals not just bird population trends, but the remarkable growth of the volunteer effort itself. Let's explore nearly a century of dedicated birdwatching.
+
+## Loading the Data
+
+```{r}
+library(tidyverse)
+theme_set(theme_light())
+
+bird_counts <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-06-18/bird_counts.csv")
+```
+
+## Data Overview
+
+```{r}
+bird_counts |>
+  summary()
+```
+
+This data spans from 1921 to 2017 — nearly a century of continuous observation.
+
+## Total Birds Counted Over Time
+
+How has the total count changed across the decades? This reflects both actual bird populations and the expanding scope of the counting effort.
+
+```{r}
+bird_counts |>
+  group_by(year) |>
+  summarise(total = sum(how_many_counted)) |>
+  ggplot(aes(year, total)) +
+  geom_line() + 
+  labs(x = "",
+       y = "# of birds",
+       title = "Christmas birds counted",
+       subtitle = "from 1921 to 2017",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: Bird Studies Canada")
+```
+
+The exponential growth in total birds counted is striking — but is it because there are more birds, or because more people are looking? The next chart helps answer that.
+
+## Hours Spent Counting Over Time
+
+Let's look at the volunteer effort itself — how many hours are being invested in the count each year?
+
+```{r}
+bird_counts |>
+  filter(!is.na(total_hours)) |>
+  group_by(year) |>
+  summarise(hours = mean(total_hours)) |>
+  ggplot(aes(year, hours)) +
+  geom_line() + 
+  labs(x = "",
+       y = "# of hours",
+       title = "Hours spent counting Christmas birds",
+       subtitle = "from 1921 to 2017",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: Bird Studies Canada")
+```
+
+The hours spent counting have grown dramatically too — suggesting that much of the increase in total birds counted is driven by expanded effort rather than growing bird populations. This is a common challenge in citizen science: separating signal (actual population changes) from noise (changes in observation effort). To draw conclusions about bird populations, researchers need to normalize counts by effort — birds per party-hour rather than raw totals.

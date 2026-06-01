@@ -1,10 +1,116 @@
-# Student Teacher Ratio
+# Money and Mentorship: Does National Wealth Buy Smaller Class Sizes?
 
-Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-05-07).
+**[Source Code](2019_05_07_tidy_tuesday_student_teacher_ratio.Rmd)** | Data from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-05-07) (2019-05-07)
 
-![](outputs/student_teacher_ratio.png)
+![Money and Mentorship: Does National Wealth Buy Smaller Class Sizes?](outputs/student_teacher_ratio.png)
 
-## Source Code
+Using global student-teacher ratio data from UNESCO combined with GDP per capita from the World Bank, this analysis tests whether national wealth translates into smaller class sizes. The relationship is strong, but with some fascinating outliers.
 
-- [student_teacher_ratio.Rmd](student_teacher_ratio.Rmd)
+---
 
+Intuitively, wealthier countries should be able to afford more teachers
+per student — but does the data actually support this? Using global
+student-teacher ratio data from UNESCO (2012–2018) combined with GDP per
+capita from the World Bank, we can test whether national wealth
+translates into smaller class sizes. The relationship turns out to be
+strong, but with some fascinating outliers.
+
+## Loading the Data
+
+``` r
+library(tidyverse)
+
+theme_set(theme_minimal())
+
+student_ratio <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-07/student_teacher_ratio.csv")
+```
+
+## What Years Are Covered?
+
+``` r
+summary(student_ratio)
+```
+
+    ##   edulit_ind         indicator         country_code         country         
+    ##  Length:5189        Length:5189        Length:5189        Length:5189       
+    ##  Class :character   Class :character   Class :character   Class :character  
+    ##  Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+    ##                                                                             
+    ##                                                                             
+    ##                                                                             
+    ##                                                                             
+    ##       year      student_ratio      flag_codes           flags          
+    ##  Min.   :2012   Min.   :  1.162   Length:5189        Length:5189       
+    ##  1st Qu.:2013   1st Qu.: 11.661   Class :character   Class :character  
+    ##  Median :2014   Median : 15.838   Mode  :character   Mode  :character  
+    ##  Mean   :2014   Mean   : 18.293                                        
+    ##  3rd Qu.:2016   3rd Qu.: 21.907                                        
+    ##  Max.   :2018   Max.   :168.625                                        
+    ##                 NA's   :325
+
+## Enriching with GDP Data
+
+We’ll pull GDP per capita from the World Bank’s World Development
+Indicators (WDI) API and join it to our student-teacher ratio data. This
+gives us the economic context needed to test our hypothesis.
+
+``` r
+library(WDI)
+
+gdp_per_capita <- WDI(indicator = "NY.GDP.PCAP.CD", start = 2012, end = 2018, 
+                      extra = TRUE) |>
+  tbl_df() |>
+  transmute(year, country_code = as.character(iso3c), 
+           gdp_per_capita = NY.GDP.PCAP.CD)
+
+student_ratio_GDP <- student_ratio |>
+  inner_join(gdp_per_capita, by = c("country_code", "year")) |>
+  filter(!is.na(student_ratio))
+```
+
+## Distribution of Student-Teacher Ratios
+
+Before looking at relationships, let’s understand the shape of the
+student-teacher ratio distribution across all countries and years.
+
+``` r
+student_ratio_GDP |>
+  ggplot(aes(student_ratio)) + 
+  geom_histogram() + 
+  scale_x_log10()
+```
+
+![](outputs/unnamed-chunk-4-1.png)<!-- -->
+
+The distribution is right-skewed on a log scale, with most countries
+clustering between 10 and 30 students per teacher, but some developing
+nations reaching ratios above 100.
+
+## The Key Question: GDP vs. Student-Teacher Ratio
+
+Here’s the central visualization — a log-log scatter plot showing the
+relationship between national wealth and class sizes, with country
+labels for context.
+
+``` r
+student_ratio_GDP |>
+  ggplot(aes(gdp_per_capita, student_ratio, color = indicator)) +
+  geom_point() + 
+  scale_x_log10() + 
+  scale_y_log10() + 
+  geom_text(aes(label = paste(year, country, sep = ":")), vjust = 1, hjust = 1, check_overlap = TRUE) +
+  labs(x = "GDP per capita",
+       y = "Student/teacher ratio",
+       title = "GDP per capita and student/teacher ratio are negatively correlated",
+       subtitle = "2012 to 2018")
+```
+
+![](outputs/unnamed-chunk-5-1.png)<!-- -->
+
+The negative correlation is unmistakable: wealthier countries
+consistently have lower student-teacher ratios. On a log-log scale, the
+relationship is roughly linear, suggesting a power-law relationship
+between national income and educational investment. However, the scatter
+is wide — some middle-income countries achieve ratios comparable to
+wealthy nations, while others with similar GDP lag behind, pointing to
+differences in policy priorities.

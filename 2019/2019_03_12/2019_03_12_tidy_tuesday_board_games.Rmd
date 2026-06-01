@@ -1,0 +1,224 @@
+---
+title: "Predicting Board Game Ratings: From Sentiment Analysis to Linear Models"
+author: "Tony Galvan"
+date: "8/29/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.path = "outputs/")
+```
+
+Board games are experiencing a renaissance. From Catan to Gloomhaven, the hobby has exploded in popularity — and Board Game Geek (BGG) has become the definitive rating platform for the community. But what makes a board game highly rated? Is it the play time, the complexity, the theme? Let's explore the BGG dataset and see if we can build a model that predicts a game's rating from its attributes.
+
+## Loading the Data
+
+```{r ttsetup, echo=FALSE, warning=FALSE, message=FALSE}
+# Load libraries, set the default theme & caption, and grab the data
+library(tidyverse)
+theme_set(theme_light())
+
+default_caption <- "Source: Board Game Geeks  |  Designer: Tony Galvan @gdatascience1"
+
+board_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-12/board_games.csv")
+
+glimpse(board_games)
+```
+
+## Exploring Relationships with Rating
+
+Let's visualize how average rating correlates with several numeric variables — play time, minimum age, player count, year published, and number of user ratings.
+
+```{r}
+board_games |>
+  mutate(log_playtime = log(max_playtime+1)) |>
+  select(average_rating, log_playtime, min_age, min_players, 
+         year_published, users_rated) |>
+  gather(variable, value, -average_rating) |>
+  ggplot(aes(average_rating, value)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~variable, scales = "free")
+```
+
+The number of user ratings shows the strongest positive relationship with average rating — popular games tend to be well-rated games (or perhaps well-rated games attract more raters).
+
+## The Highest-Rated Games
+
+Which games sit at the very top of the BGG rankings?
+
+```{r}
+board_games |>
+  top_n(10, wt = average_rating) |>
+  mutate(name = fct_reorder(name, average_rating)) |>
+  ggplot(aes(name, average_rating, fill = name)) + 
+  geom_col(show.legend = FALSE) +
+  coord_flip()
+```
+
+## A Golden Age of Board Games?
+
+FiveThirtyEight famously asked whether we're in a "Golden Age" of board games. Let's recreate that analysis — are newer games rated higher than older ones?
+
+```{r}
+board_games |>
+  ggplot(aes(year_published, average_rating)) +
+  geom_point(alpha = 0.025) + 
+  geom_smooth(method = "loess", se = FALSE, color = "red") +
+  labs(x = "",
+       y = "Average user rating",
+       title = "A Golden Age Of Board Games?",
+       subtitle = "Average user ratings for games by original year of production",
+       caption = "Source: Board Game Geeks  |  Inspired by: FiveThirtyEight")
+```
+
+The upward trend is clear — games published in recent years tend to receive higher ratings. Whether that's because game design has genuinely improved or because of survivorship bias (only good modern games get rated) is an open question.
+
+## Which Categories Get the Highest Ratings?
+
+Let's split multi-category games into individual rows and find which game categories earn the best scores.
+
+```{r}
+categories <- board_games |>
+  unnest(category = strsplit(category, ","))
+
+glimpse(categories)
+```
+
+```{r}
+categories |>
+  mutate(total_rating = average_rating * users_rated) |>
+  group_by(category) |>
+  summarise(n = n(),
+            category_user_ratings = sum(users_rated),
+            category_rating = sum(total_rating),
+            category_avg_rating = category_rating / category_user_ratings) |>
+  ungroup() |>
+  top_n(10, wt = category_avg_rating) |>
+  mutate(category = fct_reorder(category, category_avg_rating)) |>
+  ggplot(aes(category, category_avg_rating, fill = category)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip()
+```
+
+## Text Mining: What Words Appear in Game Descriptions?
+
+Let's use text mining to explore the most common words in board game descriptions, filtering out generic terms like "game" and "player."
+
+```{r eval=FALSE}
+library(tidytext)
+
+board_games |>
+  unnest_tokens(tbl = ., output = word, input = description) |>
+  count(word, sort = TRUE) |>
+  mutate(word = str_to_lower(word)) |>
+  filter(is.na(as.numeric(word)) & !word %in% c("game", "player", "players")) |>
+  anti_join(get_stopwords()) |>
+  filter(n > 1000) |>
+  na.omit() |>
+  wordcloud2::wordcloud2(shape = "cardiod")
+```
+
+## Sentiment Analysis: Do Positive Descriptions Mean Higher Ratings?
+
+Intuitively, games with more positively-worded descriptions might also be better games. Let's test that hypothesis using sentiment analysis on the description text.
+
+```{r}
+library(sentimentr)
+
+game_sentiment <- board_games |>
+  pull(description) |>
+  get_sentences() |>
+  sentiment_by()
+
+glimpse(game_sentiment)
+```
+
+```{r}
+board_games |>
+  inner_join(game_sentiment, by = c("game_id" = "element_id")) |>
+  ggplot(aes(average_rating, ave_sentiment)) +
+  geom_point(alpha = 0.05) + 
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+There's a slight positive relationship — games with more positive description sentiment tend to have slightly higher ratings, though the effect is modest.
+
+## Building a Predictive Model
+
+Can we predict a board game's rating from its measurable attributes? Let's split the data into training and test sets and fit a linear model.
+
+```{r}
+#split the data into test/training sets
+n <- nrow(board_games)
+set.seed(1874)
+test_index <- sample.int(n,size=round(0.2*n))
+games_train <- board_games[test_index,]
+games_test <- board_games[-test_index,]
+
+lmod1 <- lm(average_rating ~ max_players + log(max_playtime+1) + min_age + 
+       min_players + log(min_playtime+1) + year_published + users_rated, 
+     data = games_train)
+
+summary(lmod1)
+```
+
+## Feature Selection with Stepwise AIC
+
+Let's use stepwise selection to find the most parsimonious model that still explains the variance well.
+
+```{r}
+lmod2 <- MASS::stepAIC(lmod1)
+summary(lmod2)
+```
+
+## Checking for Outliers
+
+We'll use Cook's distance to identify any observations that have outsized influence on the model.
+
+```{r}
+summary(cooks.distance(lmod2))
+```
+
+Since there are no values greater than 1, we assume there are no outliers. 
+
+## Validating Model Assumptions
+
+A residuals-vs-fitted plot helps us check whether the model's assumptions (constant variance, linearity) hold.
+
+```{r}
+ggplot(data = lmod2, aes(lmod2$fitted.values, lmod2$residuals)) + 
+  geom_point() +
+  scale_x_continuous(limits = c(0,10)) + 
+  scale_y_continuous(limits = c(-5,5))
+```
+
+The points are not in a cone shape. The variance appears to be constant.
+
+## Testing the Model on Held-Out Data
+
+The real test — how well does our model predict ratings for games it hasn't seen?
+
+```{r}
+games_test |>
+  mutate(pred = predict(lmod2, newdata = games_test),
+         error = abs(pred - average_rating)) |>
+  ggplot(aes(average_rating, pred, color = error)) +
+  geom_point(alpha = 0.75) + 
+  geom_abline(slope = 1, intercept = 0, color = "darkblue", linetype = 2) +
+  coord_equal() + 
+  scale_color_gradient2(low = "darkorange", mid = "black", high = "black", 
+                        midpoint = 2.5) + 
+  theme(legend.position = c(0.3, 0.8),
+        legend.direction = "horizontal") +
+  labs(x = "Actual Rating",
+       y = "Predicted Rating",
+       color = "Error",
+       title = "Predicting board game ratings: model performance",
+       subtitle = "Model is based on minimum players, minimum age, number of user ratings, \nyear published, and log of maximum play time",
+       caption = default_caption)
+
+#ggsave("outputs/2019_03_12_tidy_tuesday_board_games.png", height = 5.25, width = 5.25)
+```
+
+The model does a reasonable job — most predictions cluster near the diagonal line (perfect prediction), with the largest errors occurring for games at the extremes of the rating scale. The number of user ratings and year published are the strongest predictors, suggesting that popularity and recency are the best proxies for quality in this dataset.

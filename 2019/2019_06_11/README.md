@@ -1,10 +1,150 @@
-# Meteorites
+# Rocks from Space: Mapping 45,000 Meteorite Landings Across Earth
 
-Data comes from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-06-11).
+**[Source Code](2019_06_11_tidy_tuesday_meteorites.Rmd)** | Data from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-06-11) (2019-06-11)
 
-![](outputs/meteorites.png)
+![Rocks from Space: Mapping 45,000 Meteorite Landings Across Earth](outputs/meteorites.png)
 
-## Source Code
+The Meteoritical Society has cataloged over 45,000 cosmic visitors, recording their mass, classification, and landing coordinates. This analysis explores where meteorites fall, what they’re made of, and how our ability to find them has changed over the centuries.
 
-- [meteorites.Rmd](meteorites.Rmd)
+---
 
+Every year, thousands of meteorites survive the fiery plunge through
+Earth’s atmosphere and land on the surface. The Meteoritical Society has
+cataloged over 45,000 of these cosmic visitors — recording their mass,
+classification, and landing coordinates. This dataset lets us explore
+where meteorites fall, what they’re made of, and how our ability to find
+them has changed over the centuries.
+
+## Loading and Preparing the Data
+
+We’ll filter out records missing year or mass data and create a decade
+variable for temporal analysis.
+
+``` r
+library(tidyverse)
+theme_set(theme_light())
+
+meteorites <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-06-11/meteorites.csv") |>
+  filter(!is.na(year) & !is.na(mass)) |>
+  mutate(decade = 10 * (year %/% 10))
+```
+
+## When Were Meteorites Found?
+
+Let’s look at the temporal distribution of meteorite discoveries. The
+pattern tells us more about human search efforts than about actual fall
+rates.
+
+``` r
+meteorites |>
+  ggplot(aes(decade)) +
+  geom_histogram(binwidth = 30)
+```
+
+![](outputs/unnamed-chunk-2-1.png)<!-- -->
+
+There are some meteorites found a long time ago, but most were found
+after 1800. The explosion of discoveries in recent decades reflects
+systematic search programs in deserts and Antarctica, where meteorites
+are easier to spot against uniform backgrounds.
+
+## Most Common Meteorite Classes
+
+What classes of meteorites are found the most? The classification system
+groups meteorites by their mineral composition and structure.
+
+``` r
+meteorites |>
+  mutate(class = fct_lump(class, 24)) |>
+  count(class, sort = TRUE) |>
+  mutate(class = fct_reorder(class, n)) |>
+  ggplot(aes(class, n, fill = class)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip() + 
+  labs(x = "Class",
+       y = "# of meteorites",
+       title = "Top meteorite classes",
+       caption = "Designer: Tony Galvan @gdatascience1  |  Source: Meteoritical Society")
+```
+
+![](outputs/unnamed-chunk-3-1.png)<!-- -->
+
+L5 and H5 chondrites dominate — these are “ordinary chondrites,” the
+most common type of stony meteorite. They represent the building blocks
+of the early solar system.
+
+## Mass Distribution
+
+Meteorite masses span an enormous range — from tiny fragments to
+multi-ton behemoths. A log scale reveals the true distribution.
+
+``` r
+meteorites |>
+  mutate(log_mass = log10(mass)) |>
+  ggplot(aes(log_mass)) +
+  geom_histogram()
+```
+
+![](outputs/unnamed-chunk-4-1.png)<!-- -->
+
+The distribution is roughly normal on a log scale, centered around 100
+grams. Most meteorites are small enough to hold in your hand.
+
+## Global Map of Meteorite Landings by Class
+
+Where on Earth have meteorites been found? Let’s map them all, faceted
+by classification, to see if different types cluster in different
+regions.
+
+``` r
+meteorites |>
+  mutate(class = fct_lump(class, 24)) |>
+  ggplot(aes(long, lat, size = mass, color = class)) + 
+  geom_point(alpha = 0.5) + 
+  coord_map() + 
+  theme_void() + 
+  theme(legend.position = "none") +
+  facet_wrap(~class)
+```
+
+![](outputs/unnamed-chunk-5-1.png)<!-- -->
+
+The clustering patterns are fascinating — many finds concentrate in
+North Africa, the Middle East, and Antarctica, where dry conditions
+preserve meteorites and sparse vegetation makes them visible. The
+geographic distribution tells us as much about where humans look as
+where meteorites land.
+
+## Mass Statistics by Decade
+
+Let’s summarize how meteorite finds have changed over time in terms of
+quantity and size.
+
+``` r
+meteorites |>
+  filter(!is.na(mass) & mass > 0) |>
+  group_by(decade) |>
+  summarise(n = n(),
+            average = mean(mass),
+            heaviest = max(mass),
+            lightest = min(mass))
+```
+
+    ## # A tibble: 42 × 5
+    ##    decade     n   average heaviest  lightest
+    ##     <dbl> <int>     <dbl>    <dbl>     <dbl>
+    ##  1    860     1      472       472      472 
+    ##  2   1390     1   107000    107000   107000 
+    ##  3   1490     2    63552.   127000      103.
+    ##  4   1570     1 50000000  50000000 50000000 
+    ##  5   1580     1    15000     15000    15000 
+    ##  6   1600     1 10100000  10100000 10100000 
+    ##  7   1620     3    13789     29000     1967 
+    ##  8   1630     2     9020     17000     1040 
+    ##  9   1660     1       40        40       40 
+    ## 10   1670     1     4500      4500     4500 
+    ## # ℹ 32 more rows
+
+Recent decades show dramatically more finds but smaller average masses —
+consistent with systematic search programs that find many small
+specimens rather than relying on chance discoveries of large ones.
