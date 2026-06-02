@@ -849,6 +849,308 @@ ggplot(sample_points, aes(x = token_position, y = cumulative_types, color = docu
   )
 ```
 
+## Machine Learning: Can a Model Tell the Popes Apart?
+
+So far we've used descriptive techniques to compare the documents. Now let's flip the question: can a machine learning model reliably predict which encyclical a paragraph belongs to, based solely on its text features? If so, what features does it rely on most? This approach lets the *data* tell us what truly distinguishes the two voices, rather than us choosing what to look for.
+
+We'll fit two models using the [tidymodels](https://www.tidymodels.org/) framework:
+1. **Lasso logistic regression** — a [penalized regression](https://en.wikipedia.org/wiki/Lasso_(statistics)) that shrinks most word coefficients to zero, revealing the minimal set of words that best separate the documents. Words with non-zero coefficients are the "signature" vocabulary of each Pope.
+2. **Random forest** — an [ensemble method](https://en.wikipedia.org/wiki/Random_forest) that captures non-linear patterns and interactions. We'll compare its accuracy to the lasso as a baseline.
+
+```{r ml-setup}
+library(tidymodels)
+library(textrecipes)
+library(vip)
+
+# Create the modeling dataset with engineered text features
+ml_data <- encyclicals |>
+  select(document, text, paragraph) |>
+  mutate(
+    label = factor(if_else(document == "Magnifica Humanitas (2026)",
+                           "Magnifica Humanitas", "Rerum Novarum")),
+    # Structural features
+    word_count = str_count(text, "\\S+"),
+    sentence_count = str_count(text, "[.!?]+"),
+    avg_sentence_length = word_count / pmax(sentence_count, 1),
+    avg_word_length = nchar(str_remove_all(text, "\\s+")) /
+      pmax(str_count(text, "\\S+"), 1),
+    question_marks = str_count(text, "\\?"),
+    # Vocabulary richness (type-token ratio per paragraph)
+    ttr = map_dbl(text, function(t) {
+      words <- str_extract_all(str_to_lower(t), "[a-z]+")[[1]]
+      if (length(words) == 0) return(0)
+      n_distinct(words) / length(words)
+    }),
+    # Scripture reference density
+    scripture_refs = str_count(text, "(?:cf[.]|Gn|Mt|Lc|Jn|Rm|Co|Ef|Ap|Ps|Is|Ac|Ne|Pr|Ex|Dt)\\s*[0-9]"),
+    # Sentiment (using bing lexicon inline)
+    sentiment_score = map_dbl(text, function(t) {
+      words <- str_extract_all(str_to_lower(t), "[a-z]+")[[1]]
+      pos <- sum(words %in% (bing |> filter(sentiment == "positive") |> pull(word)))
+      neg <- sum(words %in% (bing |> filter(sentiment == "negative") |> pull(word)))
+      (pos - neg) / pmax(length(words), 1)
+    })
+  )
+
+# Split: stratified by label
+set.seed(42)
+ml_split <- initial_split(ml_data, prop = 0.75, strata = label)
+ml_train <- training(ml_split)
+ml_test <- testing(ml_split)
+
+cat("Training set:", nrow(ml_train), "paragraphs\n")
+cat("Test set:", nrow(ml_test), "paragraphs\n")
+cat("Class balance (train):\n")
+ml_train |> count(label) |> print()
+```
+
+```{r ml-recipe}
+# Recipe: TF-IDF word features + engineered numeric features
+ml_recipe <- recipe(label ~ text + word_count + avg_sentence_length +
+                      avg_word_length + question_marks + ttr +
+                      scripture_refs + sentiment_score,
+                    data = ml_train) |>
+  step_tokenize(text) |>
+  step_stopwords(text) |>
+  step_tokenfilter(text, max_tokens = 500) |>
+  step_tfidf(text) |>
+  step_normalize(all_numeric_predictors())
+```
+
+```{r ml-lasso}
+# Lasso logistic regression
+lasso_spec <- logistic_reg(penalty = tune(), mixture = 1) |>
+  set_engine("glmnet") |>
+  set_mode("classification")
+
+lasso_wf <- workflow() |>
+  add_recipe(ml_recipe) |>
+  add_model(lasso_spec)
+
+# Cross-validation to tune penalty
+set.seed(42)
+cv_folds <- vfold_cv(ml_train, v = 5, strata = label)
+
+lasso_grid <- grid_regular(penalty(range = c(-5, -1)), levels = 30)
+
+lasso_tune <- tune_grid(
+  lasso_wf,
+  resamples = cv_folds,
+  grid = lasso_grid,
+  metrics = metric_set(accuracy, roc_auc)
+)
+
+# Best penalty
+best_lasso <- select_best(lasso_tune, metric = "accuracy")
+cat("Best lasso penalty:", best_lasso$penalty, "\n")
+
+# Show tuning results
+autoplot(lasso_tune) +
+  labs(title = "Lasso Tuning: Accuracy and ROC AUC vs. Penalty") +
+  theme(panel.grid = element_blank())
+```
+
+```{r ml-lasso-final}
+# Fit final lasso model
+final_lasso_wf <- finalize_workflow(lasso_wf, best_lasso)
+final_lasso_fit <- fit(final_lasso_wf, data = ml_train)
+
+# Test set predictions
+lasso_preds <- predict(final_lasso_fit, ml_test) |>
+  bind_cols(ml_test |> select(label))
+
+lasso_acc <- accuracy(lasso_preds, truth = label, estimate = .pred_class)
+cat("Lasso test accuracy:", lasso_acc$.estimate, "\n")
+```
+
+```{r ml-lasso-coefs}
+# Extract non-zero lasso coefficients
+lasso_coefs <- final_lasso_fit |>
+  extract_fit_parsnip() |>
+  tidy() |>
+  filter(term != "(Intercept)", estimate != 0) |>
+  mutate(
+    direction = if_else(estimate > 0, "Predicts Magnifica Humanitas",
+                        "Predicts Rerum Novarum"),
+    term = str_remove(term, "tfidf_text_")
+  ) |>
+  arrange(desc(abs(estimate)))
+
+cat("Non-zero coefficients:", nrow(lasso_coefs), "\n")
+
+# Categorize: vocabulary vs. writing style
+style_features <- c("word_count", "avg_sentence_length", "avg_word_length",
+                    "question_marks", "ttr", "scripture_refs", "sentiment_score")
+
+lasso_coefs <- lasso_coefs |>
+  mutate(
+    feature_type = if_else(term %in% style_features, "Style", "Vocabulary"),
+    abs_estimate = abs(estimate)
+  )
+
+# Summary: style vs. vocabulary contribution
+type_summary <- lasso_coefs |>
+  group_by(feature_type) |>
+  summarise(
+    n_features = n(),
+    total_weight = sum(abs_estimate),
+    .groups = "drop"
+  ) |>
+  mutate(pct_weight = total_weight / sum(total_weight))
+
+cat("\nFeature importance by type:\n")
+type_summary |> print()
+```
+
+```{r ml-lasso-coefficients, fig.height=10}
+# Build a single plot: top features from each direction, with shape indicating type
+top_mh <- lasso_coefs |> filter(estimate > 0) |> slice_max(estimate, n = 12)
+top_rn <- lasso_coefs |> filter(estimate < 0) |> slice_max(abs(estimate), n = 12)
+
+top_coefs <- bind_rows(top_mh, top_rn) |>
+  mutate(
+    term_label = fct_reorder(term, estimate)
+  )
+
+# Style feature annotations positioned on the opposite side of the bar
+style_annotations <- top_coefs |>
+  filter(feature_type == "Style") |>
+  mutate(
+    label_x = if_else(estimate > 0,
+                      min(top_coefs$estimate) * 0.15,
+                      max(top_coefs$estimate) * 0.15)
+  )
+
+ggplot(top_coefs, aes(x = estimate, y = term_label, fill = direction)) +
+  geom_col(aes(alpha = feature_type)) +
+  geom_vline(xintercept = 0, linewidth = 0.5) +
+  geom_text(data = style_annotations,
+            aes(x = label_x, y = term_label, label = "STYLE"),
+            size = 2.5, fontface = "bold", color = "gray40",
+            family = "source_sans", inherit.aes = FALSE) +
+  scale_fill_manual(values = c("Predicts Magnifica Humanitas" = "#1B4F72",
+                               "Predicts Rerum Novarum" = "#8B4513")) +
+  scale_alpha_manual(values = c("Style" = 1, "Vocabulary" = 0.7),
+                     guide = "none") +
+  labs(
+    title = "Lasso Regression: What Separates the Two Popes?",
+    subtitle = paste0(
+      "Top 12 features per direction (STYLE tags mark writing style features)\n",
+      "Style contributes ",
+      scales::percent(type_summary$pct_weight[type_summary$feature_type == "Style"], accuracy = 1),
+      " of predictive weight; vocabulary contributes ",
+      scales::percent(type_summary$pct_weight[type_summary$feature_type == "Vocabulary"], accuracy = 1)
+    ),
+    x = "Lasso Coefficient (magnitude = predictive strength)",
+    y = NULL,
+    fill = NULL
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "top"
+  )
+```
+
+The star (★) marks writing style features — things like sentence length, vocabulary richness, and word complexity — as opposed to specific vocabulary terms. The percentage split tells us whether the model distinguishes the Popes more by *how* they write or *what* they write about. Style features like `avg_sentence_length` predicting Rerum Novarum confirm what any reader notices: Leo XIII's 19th-century prose uses dramatically longer sentences than Leo XIV's modern style.
+
+```{r ml-random-forest}
+# Random forest for comparison
+rf_spec <- rand_forest(trees = 500) |>
+  set_engine("ranger", importance = "impurity") |>
+  set_mode("classification")
+
+rf_wf <- workflow() |>
+  add_recipe(ml_recipe) |>
+  add_model(rf_spec)
+
+rf_fit <- fit(rf_wf, data = ml_train)
+
+# Test predictions
+rf_preds <- predict(rf_fit, ml_test) |>
+  bind_cols(ml_test |> select(label))
+
+rf_acc <- accuracy(rf_preds, truth = label, estimate = .pred_class)
+cat("Random forest test accuracy:", rf_acc$.estimate, "\n")
+
+# Compare models
+model_comparison <- tibble(
+  model = c("Lasso Logistic Regression", "Random Forest"),
+  accuracy = c(lasso_acc$.estimate, rf_acc$.estimate)
+)
+model_comparison |> knitr::kable(digits = 3, caption = "Model Accuracy Comparison")
+```
+
+```{r ml-rf-importance}
+# Random forest variable importance (top 20)
+rf_fit |>
+  extract_fit_parsnip() |>
+  vip(num_features = 20, aesthetics = list(fill = "#2E4057", alpha = 0.85)) +
+  labs(
+    title = "Random Forest: Top 20 Most Important Features",
+    subtitle = "Variable importance (impurity-based) — which words help classification most?",
+    x = "Importance",
+    y = NULL
+  ) +
+  theme(panel.grid = element_blank())
+```
+
+```{r ml-misclassified}
+# Find misclassified paragraphs — where one Pope sounds like the other
+lasso_full_preds <- predict(final_lasso_fit, ml_data) |>
+  bind_cols(ml_data |> select(label, text, document, paragraph))
+
+misclassified <- lasso_full_preds |>
+  filter(.pred_class != label)
+
+cat("Misclassified paragraphs:", nrow(misclassified), "out of", nrow(ml_data), "\n\n")
+```
+
+```{r ml-misclassified-detail}
+# For each misclassified paragraph, identify which lasso features fired
+# by checking which non-zero coefficient words appear in the text
+if (nrow(misclassified) > 0) {
+  misclass_features <- misclassified |>
+    mutate(
+      text_lower = str_to_lower(text),
+      # Find which predictive words from the lasso appear in this paragraph
+      mh_words_present = map_chr(text_lower, function(txt) {
+        mh_terms <- lasso_coefs |> filter(estimate > 0) |> pull(term)
+        found <- mh_terms[str_detect(txt, paste0("\\b", mh_terms, "\\b"))]
+        paste(head(found, 5), collapse = ", ")
+      }),
+      rn_words_present = map_chr(text_lower, function(txt) {
+        rn_terms <- lasso_coefs |> filter(estimate < 0) |> pull(term)
+        found <- rn_terms[str_detect(txt, paste0("\\b", rn_terms, "\\b"))]
+        paste(head(found, 5), collapse = ", ")
+      }),
+      word_count = str_count(text, "\\S+")
+    ) |>
+    select(document, paragraph, .pred_class, word_count,
+           mh_words_present, rn_words_present)
+
+  misclass_features |>
+    knitr::kable(
+      col.names = c("Actual Source", "§", "Model Predicted",
+                    "Words", "MH-predictive words found", "RN-predictive words found"),
+      caption = "Misclassified paragraphs and the lasso features that confused the model"
+    )
+}
+```
+
+**Why the model got confused — a paragraph-by-paragraph explanation:**
+
+- **RN §14** — Leo XIII discusses state intervention into family life and the limits of government power, using language about "citizens," "rights," and "public authority" that the lasso associates with MH's governance chapters. The paragraph even references "natural justice" and social structures — vocabulary more typical of 2026 than 1891.
+
+- **RN §48** — Describes mutual aid societies, benevolent foundations, and organizations for workers and their families. The lasso picks up on organizational/institutional language ("associations," "societies," "institutions") that dominates MH's extensive sections on civil society and intermediate bodies.
+
+- **RN §57** — Focuses on the moral formation and religious duties of workers' associations. Its emphasis on "religion," "God," and "morality" as guiding principles for social organization mirrors MH's repeated insistence that social structures must serve the person — not the technocratic paradigm.
+
+- **RN §58** — Discusses internal governance of organizations: offices, charges, prudence, disputes, and fair rules. This reads like MH's chapters on AI governance, accountability, and institutional design — the vocabulary of organizing and structuring collective life.
+
+- **MH §8** — The Nehemiah passage about rebuilding Jerusalem's walls. Leo XIV uses strikingly concrete, physical language — "families," "artisans," "stones," "walls," "work" — that echoes Rerum Novarum's industrial-era vocabulary about laborers and material conditions. It's the one moment where MH reaches back to Old Testament imagery and sounds most like a 19th-century social document.
+
+The misclassified paragraphs are especially revealing — these are passages where Leo XIV sounds like Leo XIII (perhaps when echoing traditional social teaching language about property and labor rights) or where Leo XIII sounds surprisingly modern (perhaps when discussing universal principles that transcend his era). They represent the moments of deepest continuity across 135 years and could spark rich discussion about what endures in Catholic Social Teaching.
+
 ## Shared Vocabulary: The Common Language of Catholic Social Teaching
 
 Despite 135 years of separation, both encyclicals share a core vocabulary rooted in Catholic Social Teaching. Let's identify the words that appear prominently in both documents.
