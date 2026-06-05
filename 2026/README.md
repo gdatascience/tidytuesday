@@ -1,6 +1,6 @@
 # 2026
 
-**16 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**17 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -74,5 +74,16 @@
 <td align="center"><a href="2026_05_12/">Twin Cities</a></td>
 <td align="center"><a href="2026_05_19/">Crossref</a></td>
 <td align="center"><a href="2026_05_26/">Energy</a></td>
+</tr>
+</table>
+
+## June
+
+<table>
+<tr>
+<td><a href="2026_06_02/"><img src="2026_06_02/outputs/2026_06_02_tidy_tuesday_parenting_leave.png" height="150"></a></td>
+</tr>
+<tr>
+<td align="center"><a href="2026_06_02/">Parenting Leave</a></td>
 </tr>
 </table>
