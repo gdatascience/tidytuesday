@@ -43,6 +43,13 @@
   - `Font Awesome 6 Free-Solid-900.otf` (table icon, etc.)
 - Register via `sysfonts::font_add()` for use with `showtext` + `ggtext::element_markdown()`
 
+### Machine Learning & Modeling
+- `tidymodels` - **Always use tidymodels for machine learning** (includes parsnip, recipes, workflows, rsample, tune, yardstick, broom). Never use standalone packages like `randomForest`, `glmnet`, or `caret` directly — wrap them through the tidymodels interface instead.
+- Common workflow: `recipe()` → `workflow()` → `fit()` → `predict()` → `metrics()`
+- For random forests use `rand_forest()` with `engine = "ranger"`
+- For logistic regression use `logistic_reg()` with `engine = "glm"`
+- For boosted trees use `boost_tree()` with `engine = "xgboost"`
+
 ### Data Import
 - `readr` - Reading CSV files (part of tidyverse)
 - `readxl` - Reading Excel files

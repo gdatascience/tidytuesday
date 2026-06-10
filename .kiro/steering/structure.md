@@ -113,7 +113,7 @@ Each week directory includes a `README.md` that serves as the full blog post for
 
 ### Generating the Week README
 
-The simplified workflow renders the Rmd directly to `README.md` in the week folder:
+The simplified workflow uses the `scripts/render_blog.R` script to handle rendering, hero section insertion, and cleanup in one command:
 
 1. **Set `fig.path = "outputs/"` in the setup chunk** so all generated plots go directly into the outputs folder:
    ```r
@@ -121,20 +121,33 @@ The simplified workflow renders the Rmd directly to `README.md` in the week fold
                          fig.width = 8, fig.height = 6, fig.path = "outputs/")
    ```
 
-2. **Render directly to README.md:**
-   ```r
-   rmarkdown::render(
-     "YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd",
-     output_format = rmarkdown::github_document(html_preview = FALSE),
-     output_file = "README.md",
-     output_dir = "YYYY/YYYY_MM_DD"
-   )
+2. **Run the render script:**
+   ```bash
+   Rscript scripts/render_blog.R \
+     --date "YYYY-MM-DD" \
+     --blurb "Short blurb about the analysis..." \
+     --week N
    ```
-   This produces `README.md` with all code, output, and images referencing `outputs/` — no intermediate `_files/` directory.
+   
+   The script automatically:
+   - Renders the Rmd to `README.md` via `github_document`
+   - Replaces the pandoc title block with the hero section (title, source link, image, blurb, `---`)
+   - Cleans up any `_files/` directories
+   
+   **Arguments:**
+   - `--date` (required): The TidyTuesday date, e.g. `"2026-06-09"`
+   - `--blurb` (optional): 2-3 sentence summary for the hero section
+   - `--week` (optional): TidyTuesday week number
+   - `--title` (optional): Override the title (defaults to YAML `title:` in the Rmd)
+   - `--topic` (optional): Override the topic slug (defaults to inferring from filename)
+   - `--image` (optional): Override the hero image filename (defaults to convention)
 
-3. **Replace the pandoc title block with the hero section.** The rendered README starts with 3 lines (title, `================`, date). Replace them with the hero (H1 title, source/data links, final image, blurb, `---`).
+   **Minimal usage** (infers title, topic, and image from the Rmd):
+   ```bash
+   Rscript scripts/render_blog.R --date "2026-06-09" --blurb "Your blurb here."
+   ```
 
-That's it — no Python scripts, no copying files between folders, no intermediate markdown files to clean up. The `<!-- -->` artifacts pandoc leaves after images are invisible HTML comments that GitHub doesn't render, so leave them in.
+That's it — one command handles render + hero + cleanup. The `<!-- -->` artifacts pandoc leaves after images are invisible HTML comments that GitHub doesn't render, so leave them in.
 
 **Key rule:** The only image files in `outputs/` should be:
 - The final shareable dataviz (polished PNG/GIF)
@@ -316,16 +329,11 @@ When creating a new TidyTuesday analysis for a given week date (e.g., 2026-03-04
    )
    ```
 
-4. **Render to README.md with every Rmd update.** After each change to the Rmd, render directly to `README.md` in the week folder so the user can see the blog post in real time:
-   ```r
-   rmarkdown::render(
-     "YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd",
-     output_format = rmarkdown::github_document(html_preview = FALSE),
-     output_file = "README.md",
-     output_dir = "YYYY/YYYY_MM_DD"
-   )
+4. **Render to README.md with every Rmd update.** After each change to the Rmd, use the render script to build the blog post:
+   ```bash
+   Rscript scripts/render_blog.R --date "YYYY-MM-DD" --blurb "Short blurb..." --week N
    ```
-   Then replace the pandoc title block with the hero section (see "Generating the Week README" above). This produces both the final dataviz PNG and the rendered blog post in one pass — no separate README generation step needed later.
+   This renders the Rmd to `README.md`, inserts the hero section (title, source link, image, blurb, `---`), and cleans up `_files/` directories — all in one command. The title and image filename are inferred from the Rmd unless overridden.
 
 5. **Once the user approves the final dataviz**, update thumbnails and draft social posts:
    - Add the thumbnail to the **root README** — append a new `<a><img></a>` element to the year's `<p>` block (use `width="80"` or `height="80"`). **Only use the final shareable dataviz** (e.g., `YYYY_MM_DD_tidy_tuesday_topic.png`) — never EDA or intermediate blog post plots.

@@ -1,6 +1,6 @@
 # 2026
 
-**17 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**18 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -82,8 +82,10 @@
 <table>
 <tr>
 <td><a href="2026_06_02/"><img src="2026_06_02/outputs/2026_06_02_tidy_tuesday_parenting_leave.png" height="150"></a></td>
+<td><a href="2026_06_09/"><img src="2026_06_09/outputs/2026_06_09_tidy_tuesday_game_films.png" width="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2026_06_02/">Parenting Leave</a></td>
+<td align="center"><a href="2026_06_09/">Games</a></td>
 </tr>
 </table>

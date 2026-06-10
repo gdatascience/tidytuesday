@@ -55,16 +55,11 @@ After the EDA, build the storytelling visualizations that serve the narrative:
 - See the "Final Shareable Image" section in `structure.md` for detailed guidance on the exported PNG/GIF
 
 ### 5. Iterate with Live README Rendering
-After every change to the Rmd, **render directly to README.md** in the week folder so the user can see the blog post taking shape in real time:
-```r
-rmarkdown::render(
-  "YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd",
-  output_format = rmarkdown::github_document(html_preview = FALSE),
-  output_file = "README.md",
-  output_dir = "YYYY/YYYY_MM_DD"
-)
+After every change to the Rmd, use the `scripts/render_blog.R` script to render and insert the hero section in one step:
+```bash
+Rscript scripts/render_blog.R --date "YYYY-MM-DD" --blurb "Short blurb..." --week N
 ```
-Then replace the pandoc title block with the hero section (see `structure.md`). This lets the user review both the final dataviz PNG and the full blog post layout during iteration — no separate "generate README" step at the end.
+This renders the Rmd to `README.md`, replaces the pandoc title block with the hero section, and cleans up `_files/` directories automatically. The user can review both the final dataviz PNG and the full blog post layout during iteration — no separate steps needed.
 
 ### 6. Write as a Blog Post
 The final Rmd/qmd should read as a self-contained article, not a code notebook:

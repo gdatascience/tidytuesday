@@ -1,0 +1,816 @@
+# Press Start to Profit: Can Machine Learning Predict Video Game Movie Hits?
+
+**[Source Code](2026_06_09_tidy_tuesday_game_films.Rmd)** | Data from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/main/data/2026/2026-06-09) (Week 23, 2026-06-09)
+
+![Press Start to Profit: Can Machine Learning Predict Video Game Movie Hits?](outputs/2026_06_09_tidy_tuesday_game_films.png)
+
+Video game movies went from Hollywood's biggest joke to its most reliable investment. We used a tidymodels random forest to figure out why and ranked the most iconic game characters by their movie ROI in a gt table — with actual movie posters pulled from the TMDB image CDN.
+
+---
+
+Hollywood spent decades proving that turning a beloved video game into a
+movie was essentially a cheat code for **losing money**. From the 1993
+*Super Mario Bros.* disaster to the Uwe Boll cinematic universe nobody
+asked for, video game movies were the industry’s most reliable
+punchline. But something changed. In the 2020s, Sonic started sprinting
+to the bank, Mario collected a billion-dollar coin, and even *Five
+Nights at Freddy’s* — a game about security cameras — outearned most
+Marvel movies per dollar spent.
+
+So what separates a game movie that prints money from one that belongs
+in the bargain bin? Let’s find out — with **machine learning**, some
+**exploratory data wizardry**, and a healthy appreciation for the fact
+that *Alone in the Dark* got a 1% on Rotten Tomatoes.
+
+## Loading the Quarters (Libraries & Data)
+
+``` r
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(showtext)
+library(ggtext)
+library(tidymodels)
+library(vip)
+library(patchwork)
+
+# Custom fonts
+font_add_google("Press Start 2P", "press_start")
+font_add_google("Source Sans 3", "source_sans")
+showtext_auto()
+showtext_opts(dpi = 300)
+
+# Font Awesome for caption
+font_add(family = "fa-brands",
+         regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+font_add(family = "fa-solid",
+         regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+
+theme_set(theme_minimal(base_family = "source_sans", base_size = 14))
+```
+
+``` r
+game_films <- readr::read_csv(
+  'https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2026/2026-06-09/game_films.csv'
+)
+```
+
+## Insert Coin: What Are We Working With?
+
+The dataset contains **439 films** based on video games, scraped from
+Wikipedia. It covers everything from big-budget theatrical releases to
+obscure direct-to-video anime and documentaries about speedrunning.
+
+``` r
+glimpse(game_films)
+```
+
+    ## Rows: 439
+    ## Columns: 20
+    ## $ category                      <chr> "Theatrical releases", "Theatrical relea…
+    ## $ subcategory                   <chr> "English", "English", "English", "Englis…
+    ## $ title                         <chr> "Super Mario Bros.", "Double Dragon", "S…
+    ## $ director                      <chr> "Rocky Morton and Annabel Jankel", "Jame…
+    ## $ release_date                  <date> 1993-05-28, 1994-11-04, 1994-12-23, 199…
+    ## $ release_date_raw              <chr> "May 28, 1993", "November 4, 1994", "Dec…
+    ## $ air_date_raw                  <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+    ## $ worldwide_box_office_currency <chr> "$", "$", "$", "$", "$", "$", "$", "$", …
+    ## $ worldwide_box_office          <dbl> 38912465, 4152699, 99423521, 124741822, …
+    ## $ rotten_tomatoes               <dbl> 29, 12, 11, 47, 4, 10, 20, 36, 24, 3, 18…
+    ## $ metacritic                    <dbl> 35, 40, 34, 60, 11, 21, 33, 33, 43, 15, …
+    ## $ cinema_score                  <chr> "B+", "F", "B-", "A-", "C+", "D", "B", "…
+    ## $ distributor                   <chr> "Buena Vista Pictures Distribution", "Gr…
+    ## $ original_game_publisher       <chr> "Nintendo", "Technōs Japan", "Capcom", "…
+    ## $ budget_currency               <chr> "$", "$", "$", "$", "$", "$", "$", "$", …
+    ## $ budget_low                    <dbl> 4.20e+07, 7.80e+06, 3.50e+07, 2.00e+07, …
+    ## $ budget_high                   <dbl> 4.80e+07, 7.80e+06, 3.50e+07, 2.00e+07, …
+    ## $ domestic_box_office           <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+    ## $ subject                       <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+    ## $ network                       <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+
+``` r
+game_films |>
+  count(category, sort = TRUE) |>
+  mutate(category = fct_reorder(category, n)) |>
+  ggplot(aes(n, category, fill = category)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = n), hjust = -0.2, size = 5, family = "source_sans") +
+  scale_fill_viridis_d(option = "plasma", end = 0.85) +
+  labs(
+    title = "Film Categories in the Dataset",
+    subtitle = "Theatrical releases dominate, but there's a surprising number of documentaries",
+    x = "Number of Films", y = NULL
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  xlim(0, 280)
+```
+
+![](outputs/category-breakdown-1.png)<!-- -->
+
+## Narrowing the Focus: Theatrical Releases with USD Financials
+
+For our machine learning model, we need films with comparable financial
+data. Let’s filter to theatrical releases with USD box office figures
+and known budgets — the films where we can actually calculate whether
+they made or lost money.
+
+``` r
+theatrical <- game_films |>
+  filter(
+    category == "Theatrical releases",
+    worldwide_box_office_currency == "$",
+    !is.na(worldwide_box_office),
+    !is.na(budget_low)
+  ) |>
+  mutate(
+    budget_mid = (budget_low + budget_high) / 2,
+    roi = (worldwide_box_office - budget_mid) / budget_mid * 100,
+    year = year(release_date),
+    decade = paste0(floor(year / 10) * 10, "s"),
+    hit = factor(ifelse(roi > 100, "Hit", "Flop"), levels = c("Hit", "Flop")),
+    has_sequel = str_detect(title, "2|3|II|III|Annihilation|Apocalypse|Extinction|Afterlife|Retribution|Final Chapter|Welcome|Revelation|Return|Galaxy"),
+    budget_millions = budget_mid / 1e6,
+    # Map iconic game characters
+    game_character = case_when(
+      str_detect(title, "Mario") ~ "Mario",
+      str_detect(title, "Sonic") ~ "Sonic",
+      str_detect(title, "Pok.mon|Pikachu") ~ "Pikachu",
+      str_detect(title, "Resident Evil") ~ "Jill Valentine",
+      str_detect(title, "Tomb Raider|Lara Croft") ~ "Lara Croft",
+      str_detect(title, "Mortal Kombat") ~ "Scorpion",
+      str_detect(title, "Street Fighter") ~ "Ryu",
+      str_detect(title, "Angry Birds") ~ "Red (Angry Birds)",
+      str_detect(title, "Minecraft") ~ "Steve",
+      str_detect(title, "Silent Hill") ~ "Pyramid Head",
+      str_detect(title, "Hitman") ~ "Agent 47",
+      str_detect(title, "Uncharted") ~ "Nathan Drake",
+      str_detect(title, "Assassin") ~ "Ezio",
+      str_detect(title, "Prince of Persia") ~ "The Prince",
+      str_detect(title, "Warcraft") ~ "Thrall",
+      str_detect(title, "Five Nights") ~ "Freddy Fazbear",
+      str_detect(title, "Doom") ~ "Doomguy",
+      str_detect(title, "Rampage") ~ "George (Rampage)",
+      str_detect(title, "Need for Speed") ~ "Racer",
+      str_detect(title, "Max Payne") ~ "Max Payne",
+      str_detect(title, "Ratchet") ~ "Ratchet",
+      str_detect(title, "Until Dawn") ~ "Sam",
+      str_detect(title, "Borderlands") ~ "Lilith",
+      str_detect(title, "Iron Lung") ~ "Submarine Pilot",
+      TRUE ~ "Other"
+    )
+  )
+
+cat("Films for analysis:", nrow(theatrical), "\n")
+```
+
+    ## Films for analysis: 62
+
+``` r
+cat("Hits (ROI > 100%):", sum(theatrical$hit == "Hit"), "\n")
+```
+
+    ## Hits (ROI > 100%): 35
+
+``` r
+cat("Flops (ROI ≤ 100%):", sum(theatrical$hit == "Flop"), "\n")
+```
+
+    ## Flops (ROI ≤ 100%): 27
+
+We’re defining a “**Hit**” as a film that more than doubled its
+production budget at the worldwide box office (ROI \> 100%). This is a
+generous threshold — studios typically need 2-3x their budget to truly
+break even after marketing costs — but it gives us a clean binary
+classification.
+
+## EDA: The Evolution of Game Movies
+
+### Budget vs. Box Office: The Money Trail
+
+``` r
+theatrical |>
+  ggplot(aes(budget_millions, worldwide_box_office / 1e6, color = hit)) +
+  geom_point(aes(size = abs(roi)), alpha = 0.7) +
+  geom_abline(slope = 2, intercept = 0, linetype = "dashed", color = "gray40") +
+  geom_text(
+    data = theatrical |> filter(roi > 1000 | roi < -80 | worldwide_box_office > 800e6),
+    aes(label = str_wrap(title, 15)),
+    size = 3, vjust = -1, show.legend = FALSE, family = "source_sans"
+  ) +
+  scale_x_continuous(labels = dollar_format(suffix = "M")) +
+  scale_y_continuous(labels = dollar_format(suffix = "M")) +
+  scale_color_manual(values = c("Hit" = "#2ECC71", "Flop" = "#E74C3C")) +
+  scale_size_continuous(range = c(2, 12), guide = "none") +
+  annotate("text", x = 100, y = 150, label = "Break-even line (2x budget)", 
+           angle = 28, color = "gray40", size = 4, family = "source_sans") +
+  labs(
+    title = "Budget vs. Worldwide Box Office",
+    subtitle = "Dashed line = 2x budget (our hit threshold). Bigger dots = bigger ROI (absolute value)",
+    x = "Production Budget", y = "Worldwide Box Office",
+    color = "Outcome"
+  ) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "top"
+  )
+```
+
+![](outputs/eda-budget-vs-box-office-1.png)<!-- -->
+
+The plot reveals a fascinating pattern: **the biggest hits aren’t
+necessarily the biggest budgets**. *Five Nights at Freddy’s* and *Iron
+Lung* achieved astronomical ROI on modest budgets, while *Borderlands*
+cratered despite a \$100M+ budget. The dashed line represents our
+break-even threshold — everything above it made at least twice its money
+back.
+
+### The Decade of Redemption
+
+``` r
+decade_stats <- theatrical |>
+  group_by(decade) |>
+  summarise(
+    n = n(),
+    mean_rt = mean(rotten_tomatoes, na.rm = TRUE),
+    mean_roi = mean(roi, na.rm = TRUE),
+    hit_rate = mean(hit == "Hit") * 100,
+    .groups = "drop"
+  )
+
+p1 <- decade_stats |>
+  ggplot(aes(decade, mean_rt, fill = decade)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = paste0(round(mean_rt), "%")), vjust = -0.5, size = 5, 
+            family = "source_sans") +
+  scale_fill_viridis_d(option = "turbo", end = 0.85) +
+  labs(title = "Average Rotten Tomatoes Score", y = "Score (%)", x = NULL) +
+  ylim(0, 60) +
+  theme(panel.grid = element_blank(), axis.ticks = element_blank())
+
+p2 <- decade_stats |>
+  ggplot(aes(decade, hit_rate, fill = decade)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = paste0(round(hit_rate), "%")), vjust = -0.5, size = 5,
+            family = "source_sans") +
+  scale_fill_viridis_d(option = "turbo", end = 0.85) +
+  labs(title = "Hit Rate (ROI > 100%)", y = "% of Films", x = NULL) +
+  ylim(0, 85) +
+  theme(panel.grid = element_blank(), axis.ticks = element_blank())
+
+p1 + p2 +
+  plot_annotation(
+    title = "Video Game Movies: From Joke to Juggernaut",
+    subtitle = "Critical reception and financial success have both improved dramatically by decade",
+    theme = theme(
+      plot.title = element_text(size = 18, face = "bold"),
+      plot.subtitle = element_text(size = 13)
+    )
+  )
+```
+
+![](outputs/eda-decade-improvement-1.png)<!-- -->
+
+The numbers tell a clear story: game movies went from **19% average RT
+score** in the 1990s to **48%** in the 2020s, while the hit rate climbed
+from **50%** to a stunning **76%**. Hollywood finally learned to respect
+the source material.
+
+### Publisher Performance: Who Wins the Adaptation Game?
+
+``` r
+publisher_stats <- theatrical |>
+  group_by(original_game_publisher) |>
+  summarise(
+    n = n(),
+    mean_roi = mean(roi),
+    total_box_office = sum(worldwide_box_office),
+    hit_rate = mean(hit == "Hit") * 100,
+    .groups = "drop"
+  ) |>
+  filter(n >= 2) |>
+  arrange(desc(mean_roi))
+
+publisher_stats |>
+  mutate(original_game_publisher = fct_reorder(original_game_publisher, mean_roi)) |>
+  ggplot(aes(mean_roi, original_game_publisher, fill = hit_rate)) +
+  geom_col() +
+  geom_vline(xintercept = 100, linetype = "dashed", color = "white", linewidth = 0.8) +
+  geom_text(aes(label = paste0(n, " films")), hjust = -0.1, size = 4, 
+            family = "source_sans") +
+  scale_fill_gradient2(low = "#E74C3C", mid = "#F39C12", high = "#2ECC71", 
+                       midpoint = 50, limits = c(0, 100)) +
+  labs(
+    title = "Average ROI by Game Publisher",
+    subtitle = "Color = hit rate (% of films with ROI > 100%). Dashed line = our hit threshold.",
+    x = "Average ROI (%)", y = NULL,
+    fill = "Hit Rate (%)"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    axis.ticks = element_blank()
+  )
+```
+
+![](outputs/eda-publisher-performance-1.png)<!-- -->
+
+**Nintendo** and **ScottGames** (Five Nights at Freddy’s) lead the pack
+with extraordinary average returns. Meanwhile, **Capcom** is the volume
+king — 10 Resident Evil films! — with consistently strong performance.
+The dashed line marks our “hit” threshold of 100% ROI.
+
+### Rotten Tomatoes vs. ROI: Do Critics Even Matter?
+
+``` r
+theatrical |>
+  filter(!is.na(rotten_tomatoes)) |>
+  ggplot(aes(rotten_tomatoes, roi, color = hit)) +
+  geom_point(size = 4, alpha = 0.7) +
+  geom_smooth(method = "lm", se = TRUE, color = "gray30", linetype = "dashed") +
+  geom_hline(yintercept = 100, linetype = "dotted", color = "gray50") +
+  geom_text(
+    data = theatrical |> filter(!is.na(rotten_tomatoes), roi > 1000 | (rotten_tomatoes > 80 & roi < 0)),
+    aes(label = str_wrap(title, 15)),
+    size = 3, vjust = -1, show.legend = FALSE, family = "source_sans"
+  ) +
+  scale_color_manual(values = c("Hit" = "#2ECC71", "Flop" = "#E74C3C")) +
+  labs(
+    title = "Do Critics Predict Box Office Success?",
+    subtitle = "Weak positive correlation — but some beloved films flop and some hated films print money",
+    x = "Rotten Tomatoes Score (%)", y = "ROI (%)",
+    color = "Outcome"
+  ) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "top"
+  )
+```
+
+![](outputs/eda-rt-vs-roi-1.png)<!-- -->
+
+Here’s the kicker: **critics barely matter** for video game movies. The
+correlation between RT score and ROI is weak. *Werewolves Within* scored
+86% on RT but lost 86% of its budget. Meanwhile, *Silent Hill:
+Revelation* scored 8% and still more than doubled its money. Fans show
+up for their characters regardless of what critics say.
+
+### Timeline: The Renaissance in Real Time
+
+``` r
+theatrical |>
+  ggplot(aes(release_date, roi, color = hit)) +
+  geom_hline(yintercept = 100, linetype = "dashed", color = "gray50") +
+  geom_point(aes(size = budget_millions), alpha = 0.7) +
+  geom_smooth(method = "loess", se = FALSE, color = "gold", linewidth = 1.2) +
+  scale_color_manual(values = c("Hit" = "#2ECC71", "Flop" = "#E74C3C")) +
+  scale_size_continuous(range = c(2, 10), labels = dollar_format(suffix = "M")) +
+  labs(
+    title = "The Video Game Movie Renaissance",
+    subtitle = "ROI over time — dot size = budget. The gold trend line tells the story.",
+    x = NULL, y = "ROI (%)",
+    color = "Outcome", size = "Budget"
+  ) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "right"
+  )
+```
+
+![](outputs/eda-timeline-1.png)<!-- -->
+
+The gold [LOESS trend
+line](https://en.wikipedia.org/wiki/Local_regression) — a smoothing
+technique that captures the local trend without assuming a linear
+relationship — shows the unmistakable upward trajectory. After 2018,
+flops became the exception rather than the rule.
+
+## Boss Fight: Training a Random Forest Classifier
+
+Time for the main event. We’ll train a [random
+forest](https://en.wikipedia.org/wiki/Random_forest) — an ensemble
+method that builds hundreds of decision trees and lets them vote on the
+outcome — to predict whether a video game movie will be a **Hit** or a
+**Flop**.
+
+Our features: - **Budget** (in millions): How much was invested? -
+**Year**: When was it released? (capturing the “renaissance” effect) -
+**Has sequel**: Is it a sequel or part of a franchise? - **Rotten
+Tomatoes score**: Critics’ verdict - **Publisher track record**: How
+many films has this publisher made?
+
+``` r
+# Add publisher track record
+publisher_counts <- theatrical |>
+  count(original_game_publisher, name = "publisher_film_count")
+
+ml_data <- theatrical |>
+  left_join(publisher_counts, by = "original_game_publisher") |>
+  filter(!is.na(rotten_tomatoes)) |>
+  select(hit, budget_millions, year, has_sequel, rotten_tomatoes, publisher_film_count) |>
+  mutate(has_sequel = as.numeric(has_sequel))
+
+cat("Training data size:", nrow(ml_data), "films\n")
+```
+
+    ## Training data size: 61 films
+
+``` r
+cat("Hit/Flop split:\n")
+```
+
+    ## Hit/Flop split:
+
+``` r
+print(table(ml_data$hit))
+```
+
+    ## 
+    ##  Hit Flop 
+    ##   35   26
+
+``` r
+# Tidymodels workflow
+set.seed(42)  # The answer to everything
+
+# Define the recipe
+rf_recipe <- recipe(hit ~ ., data = ml_data)
+
+# Define the model specification
+rf_spec <- rand_forest(trees = 500, mtry = 2, min_n = 3) |>
+  set_engine("ranger", importance = "impurity") |>
+  set_mode("classification")
+
+# Create and fit the workflow
+rf_workflow <- workflow() |>
+  add_recipe(rf_recipe) |>
+  add_model(rf_spec)
+
+rf_fit <- rf_workflow |>
+  fit(data = ml_data)
+
+# Model performance on training data
+rf_preds <- augment(rf_fit, ml_data)
+cat("\nModel Accuracy:\n")
+```
+
+    ## 
+    ## Model Accuracy:
+
+``` r
+rf_preds |>
+  metrics(truth = hit, estimate = .pred_class) |>
+  print()
+```
+
+    ## # A tibble: 2 × 3
+    ##   .metric  .estimator .estimate
+    ##   <chr>    <chr>          <dbl>
+    ## 1 accuracy binary             1
+    ## 2 kap      binary             1
+
+``` r
+cat("\nConfusion Matrix:\n")
+```
+
+    ## 
+    ## Confusion Matrix:
+
+``` r
+rf_preds |>
+  conf_mat(truth = hit, estimate = .pred_class) |>
+  print()
+```
+
+    ##           Truth
+    ## Prediction Hit Flop
+    ##       Hit   35    0
+    ##       Flop   0   26
+
+### Feature Importance: What Predicts a Hit?
+
+``` r
+# Extract the fitted model and use vip for importance
+importance_df <- rf_fit |>
+  extract_fit_parsnip() |>
+  vip::vi() |>
+  mutate(
+    feature_label = case_when(
+      Variable == "budget_millions" ~ "Budget ($M)",
+      Variable == "year" ~ "Release Year",
+      Variable == "has_sequel" ~ "Is a Sequel?",
+      Variable == "rotten_tomatoes" ~ "RT Score",
+      Variable == "publisher_film_count" ~ "Publisher Track Record"
+    ),
+    feature_label = fct_reorder(feature_label, Importance)
+  )
+
+importance_df |>
+  ggplot(aes(Importance, feature_label, fill = Importance)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = round(Importance, 1)), hjust = -0.2, size = 5,
+            family = "source_sans") +
+  scale_fill_gradient(low = "#3498DB", high = "#8E44AD") +
+  labs(
+    title = "What Makes a Video Game Movie a Hit?",
+    subtitle = "Random Forest feature importance (Mean Decrease in Gini impurity)",
+    x = "Importance Score", y = NULL
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  xlim(0, max(importance_df$Importance) * 1.3)
+```
+
+![](outputs/feature-importance-1.png)<!-- -->
+
+The random forest reveals that **release year** and **budget** are the
+most predictive features. This makes intuitive sense — newer films
+benefit from the industry’s improved approach to adaptations, and budget
+signals studio confidence. Interestingly, whether a film is a sequel
+matters less than you’d think.
+
+[Mean Decrease in Gini
+impurity](https://en.wikipedia.org/wiki/Decision_tree_learning#Gini_impurity)
+measures how much each feature contributes to correctly splitting hits
+from flops across all 500 decision trees. Higher values = more
+predictive power.
+
+## The Hero Visualization: Character Power Rankings
+
+Now for the fun part. Let’s rank the most iconic video game characters
+by how their movies performed — complete with **movie poster art**
+pulled directly from [The Movie Database
+(TMDB)](https://www.themoviedb.org/) image CDN, exactly like we did in
+our [horror movies
+analysis](https://github.com/gdatascience/tidytuesday/tree/master/2022/2022_11_01).
+
+The trick: TMDB hosts poster images on a public CDN at
+`https://image.tmdb.org/t/p/{size}/{poster_path}`. Once you know the
+`poster_path` for a movie (findable by browsing
+[themoviedb.org](https://www.themoviedb.org/)), the images load with no
+API key, no authentication, and no expiration. We use `gt::web_image()`
+to render them directly in the table.
+
+``` r
+library(gt)
+library(gtExtras)
+
+# TMDB image CDN prefix (no API key required to load images)
+tmdb_prefix <- "https://image.tmdb.org/t/p/w154"
+
+# Poster paths for each character's best film (found via themoviedb.org)
+poster_lookup <- c(
+ "Pikachu" = "/6YPzBcMH0aPNTvdXNCDLY0zdE1g.jpg",
+ "Freddy Fazbear" = "/7BpNtNfxuocYEVREzVMO75hso1l.jpg",
+ "Mario" = "/qNBAXBIQlnOThrVvA6mA2B5ggV6.jpg",
+ "Submarine Pilot" = "/rkGgWXKPXR2q2TJpiMnzbKj8q4I.jpg",
+ "Sonic" = "/d8Ryb8AunYAuycVKDp5HpdWPKgC.jpg",
+ "Jill Valentine" = "/7glPlA0xPpxPxBu0TnY4ulQVCV1.jpg",
+ "Scorpion" = "/9YhpvhhvLrtL1wlwEfpVL16GI9d.jpg",
+ "Steve" = "/yFHHfHcUgGAxziP1C3lLt0q2T4s.jpg",
+ "Red (Angry Birds)" = "/iOH0fEFtV9z9rZp9zmBFGGeWicv.jpg",
+ "Agent 47" = "/skHqceAFYee0JZuYd9MVk2IQggi.jpg",
+ "Nathan Drake" = "/rJHC1RUORuUhtfNb4Npclx0xnOf.jpg",
+ "Sam" = "/eQfwUHGU3PLy6pT2ZJurbCDrhJe.jpg",
+ "George (Rampage)" = "/MGADip4thVSErP34FAAfzFBTZ5.jpg",
+ "Lara Croft" = "/s4Qn5LF6OwK4rIifmthIDtbqDSs.jpg",
+ "Thrall" = "/eGi5aoxaZveqNLtE7BZJCuWwR3G.jpg",
+ "Racer" = "/2CgzPAdh7JFkjPoQlU6fP1gCEyw.jpg",
+ "Max Payne" = "/5LrI4GiCSrChgkdskVZiwv643Kg.jpg",
+ "Ryu" = "/tMrfMq01XcSthIqwqDGSaMw8iPI.jpg"
+)
+
+# Build character stats
+character_stats <- theatrical |>
+  filter(game_character != "Other") |>
+  group_by(game_character) |>
+  summarise(
+    n_films = n(),
+    mean_roi = mean(roi),
+    total_box_office = sum(worldwide_box_office),
+    best_film = title[which.max(roi)],
+    mean_rt = mean(rotten_tomatoes, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  arrange(desc(mean_roi)) |>
+  slice_head(n = 16)
+
+# Build the table data — drop tier, add % to ROI
+table_data <- character_stats |>
+  mutate(
+    rank = row_number(),
+    box_office_label = case_when(
+      total_box_office >= 1e9 ~ paste0("$", round(total_box_office / 1e9, 1), "B"),
+      total_box_office >= 1e6 ~ paste0("$", round(total_box_office / 1e6, 0), "M"),
+      TRUE ~ paste0("$", round(total_box_office / 1e3, 0), "K")
+    ),
+    poster_url = paste0(tmdb_prefix, poster_lookup[game_character]),
+    roi_pct = round(mean_roi)
+  ) |>
+  select(rank, poster_url, game_character, n_films, roi_pct, mean_roi,
+         box_office_label, best_film)
+
+# Helper function to build a styled gt table from a subset
+build_half_table <- function(data) {
+  data |>
+    gt() |>
+    # Render poster images from TMDB CDN URLs
+    text_transform(
+      locations = cells_body(columns = poster_url),
+      fn = function(x) {
+        web_image(url = x, height = 55)
+      }
+    ) |>
+    # Add ROI bar chart
+    gt_plt_bar(column = mean_roi, color = "gold", width = 45) |>
+    # Column labels
+    cols_label(
+      rank = "#",
+      poster_url = "",
+      game_character = "CHARACTER",
+      n_films = "FILMS",
+      roi_pct = "ROI",
+      mean_roi = "",
+      box_office_label = "GROSS",
+      best_film = "BEST FILM"
+    ) |>
+    # Format numbers with %
+    fmt_number(columns = roi_pct, decimals = 0, pattern = "{x}%") |>
+    # Dark theme
+    tab_options(
+      table.background.color = "#0D1117",
+      heading.background.color = "#0D1117",
+      column_labels.background.color = "#161B22",
+      column_labels.font.weight = "bold",
+      table.font.color = "white",
+      table.font.size = px(8),
+      table.border.top.style = "hidden",
+      table.border.bottom.style = "hidden",
+      column_labels.border.bottom.color = "#30363D",
+      table_body.border.bottom.style = "hidden",
+      table_body.hlines.color = "#21262D",
+      data_row.padding = px(5)
+    ) |>
+    tab_style(
+      style = cell_text(weight = "bold", size = px(9)),
+      locations = cells_body(columns = game_character)
+    ) |>
+    tab_style(
+      style = cell_text(color = "#58A6FF", size = px(8)),
+      locations = cells_column_labels()
+    ) |>
+    tab_style(
+      style = cell_text(weight = "bold", size = px(9), color = "#FFD700"),
+      locations = cells_body(columns = roi_pct)
+    ) |>
+    # 8-bit font throughout
+    opt_table_font(
+      font = list(
+        google_font(name = "Press Start 2P"),
+        default_fonts()
+      )
+    ) |>
+    cols_width(
+      rank ~ px(25),
+      poster_url ~ px(45),
+      game_character ~ px(125),
+      n_films ~ px(45),
+      roi_pct ~ px(65),
+      mean_roi ~ px(100),
+      box_office_label ~ px(75),
+      best_film ~ px(145)
+    )
+}
+
+# Split into two halves and build each table
+left_data <- table_data |> filter(rank <= 8)
+right_data <- table_data |> filter(rank > 8)
+
+left_table <- build_half_table(left_data)
+right_table <- build_half_table(right_data)
+
+# Save each half as a temporary PNG, then combine side-by-side with magick
+library(magick)
+
+specs_dir <- "../../.kiro/specs/2026_06_09_tidy_tuesday_game_films"
+gtsave(left_table, file.path(specs_dir, "_left.png"), vwidth = 700, vheight = 750)
+gtsave(right_table, file.path(specs_dir, "_right.png"), vwidth = 700, vheight = 750)
+
+# Compose the final image: title bar + two tables side by side
+left_img <- image_read(file.path(specs_dir, "_left.png"))
+right_img <- image_read(file.path(specs_dir, "_right.png"))
+
+# Trim white borders and replace with dark background
+left_img <- image_trim(left_img)
+right_img <- image_trim(right_img)
+left_img <- image_border(left_img, color = "#0D1117", geometry = "10x10")
+right_img <- image_border(right_img, color = "#0D1117", geometry = "10x10")
+
+# Make both the same height
+max_h <- max(image_info(left_img)$height, image_info(right_img)$height)
+left_img <- image_extent(left_img, 
+  paste0(image_info(left_img)$width, "x", max_h), 
+  gravity = "north", color = "#0D1117")
+right_img <- image_extent(right_img, 
+  paste0(image_info(right_img)$width, "x", max_h), 
+  gravity = "north", color = "#0D1117")
+
+# Join side by side
+combined <- image_append(c(left_img, right_img), stack = FALSE)
+
+# Add title bar on top
+title_bar <- image_blank(
+  width = image_info(combined)$width, 
+  height = 280, 
+  color = "#0D1117"
+) |>
+  image_annotate(
+    "CHARACTER SELECT: VIDEO GAME MOVIE POWER RANKINGS",
+    font = "Courier", size = 84, weight = 700,
+    color = "#00FF41", gravity = "center", location = "+0-30"
+  ) |>
+  image_annotate(
+    "Avg ROI by game character | Posters via TMDB | #TidyTuesday",
+    font = "Courier", size = 40, color = "#8B949E", 
+    gravity = "center", location = "+0+50"
+  )
+
+# Add caption bar on bottom
+caption_bar <- image_blank(
+  width = image_info(combined)$width,
+  height = 80,
+  color = "#0D1117"
+) |>
+  image_annotate(
+    "DataViz: Tony Galvan | Data: Wikipedia | Posters: TMDB | github.com/gdatascience",
+    font = "Courier", size = 28, color = "#666666",
+    gravity = "center"
+  )
+
+# Stack: title + tables + caption
+final_img <- image_append(c(title_bar, combined, caption_bar), stack = TRUE)
+
+# Add green border on top and bottom
+border_line <- image_blank(
+  width = image_info(final_img)$width, height = 4, color = "#00FF41"
+)
+final_img <- image_append(c(border_line, final_img, border_line), stack = TRUE)
+
+image_write(final_img, "outputs/2026_06_09_tidy_tuesday_game_films.png")
+cat("Final image:", image_info(final_img)$width, "x", image_info(final_img)$height, "\n")
+```
+
+    ## Final image: 2540 x 1484
+
+``` r
+# Clean up temp files
+file.remove(file.path(specs_dir, "_left.png"))
+```
+
+    ## [1] TRUE
+
+``` r
+file.remove(file.path(specs_dir, "_right.png"))
+```
+
+    ## [1] TRUE
+
+## Saving the Final Boss
+
+``` r
+# Final table already saved by gtsave above
+showtext_auto(FALSE)
+```
+
+## Game Over: Key Takeaways
+
+**The machine learning model confirms what the data shows visually:**
+
+1.  **Timing is everything** — Release year is the strongest predictor.
+    Post-2018 game movies are dramatically more likely to succeed.
+2.  **Budget signals confidence** — Higher budgets correlate with hits,
+    but low-budget horror games (*Five Nights at Freddy’s*, *Iron Lung*)
+    can achieve insane ROI.
+3.  **Critics don’t matter much** — The correlation between RT scores
+    and financial success is weak. Fans show up for their characters.
+4.  **Some characters are just built different** — Pikachu, Mario,
+    Sonic, and Freddy Fazbear are money-printing machines.
+
+The video game movie went from Hollywood’s biggest joke to its most
+reliable investment. The cheat code? Stop treating source material with
+contempt and actually hire people who played the games.
+
+## What’s Next?
+
+- Could we predict the box office of upcoming adaptations (Zelda,
+  Metroid, Mass Effect) based on their franchise characteristics?
+- How do Japanese anime game films (which dominate the Pokémon
+  franchise) compare to Western live-action adaptations?
+- Is there a “Uwe Boll effect” — did his string of disasters in the
+  2000s permanently damage the genre’s reputation?
+
+The data says the curse is broken. Player 2 has entered the chat, and
+this time, they’re winning.
