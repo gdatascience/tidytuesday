@@ -4,6 +4,10 @@
 - **Push directly to master** unless explicitly asked to create a branch. This is a personal repo — no PRs or branches needed for routine work.
 - Only create a branch when the user specifically requests one for a larger project.
 
+## Shell Command Rules
+- Never prepend `cd` to commands — use the `cwd` parameter instead.
+- Never chain commands with `&&`, `||`, `;`, or `|` — run each command as a separate invocation.
+
 ## Language & Environment
 - R (primary language)
 - RStudio project (`.Rproj` file)
@@ -38,9 +42,10 @@
 - `gtsummary` - Summary tables with gt
 
 ### Fonts & Icons
-- Font Awesome 6 OTF files installed at `~/Library/Fonts/` — used for icon captions
-  - `Font Awesome 6 Brands-Regular-400.otf` (GitHub, X, etc.)
-  - `Font Awesome 6 Free-Solid-900.otf` (table icon, etc.)
+- Font Awesome 7 OTF files installed at `~/Library/Fonts/` — used for icon captions
+  - `Font Awesome 7 Brands-Regular-400.otf` (GitHub, LinkedIn, etc.)
+  - `Font Awesome 7 Free-Solid-900.otf` (table icon, etc.)
+  - `Font Awesome 7 Free-Regular-400.otf` (outlined icons)
 - Register via `sysfonts::font_add()` for use with `showtext` + `ggtext::element_markdown()`
 
 ### Machine Learning & Modeling

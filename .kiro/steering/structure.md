@@ -443,9 +443,9 @@ library(ggtext)
 
 # Register Font Awesome (must be installed in ~/Library/Fonts/)
 font_add(family = "fa-brands",
-         regular = "~/Library/Fonts/Font Awesome 6 Brands-Regular-400.otf")
+         regular = "~/Library/Fonts/Font Awesome 7 Brands-Regular-400.otf")
 font_add(family = "fa-solid",
-         regular = "~/Library/Fonts/Font Awesome 6 Free-Solid-900.otf")
+         regular = "~/Library/Fonts/Font Awesome 7 Free-Solid-900.otf")
 
 # Build the caption with HTML spans for icon fonts
 tt_source <- "Data Source Name"
