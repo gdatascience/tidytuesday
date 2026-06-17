@@ -54,14 +54,26 @@ After the EDA, build the storytelling visualizations that serve the narrative:
 - Always include the attribution caption convention
 - See the "Final Shareable Image" section in `structure.md` for detailed guidance on the exported PNG/GIF
 
-### 5. Iterate with Live README Rendering
-After every change to the Rmd, use the `scripts/render_blog.R` script to render and insert the hero section in one step:
+### 5. Iterate on the Hero Dataviz (fast loop)
+When iterating on the final shareable image (position tweaks, font sizes, colors, annotations, compositing), **do NOT re-render the full Rmd**. Instead:
+
+1. Extract the hero viz code into a standalone `Rscript -e '...'` call that:
+   - Loads only the packages needed for the plot (ggplot2, showtext, ggtext, scales, magick, etc.)
+   - Reads the cached data from `.kiro/specs/YYYY_MM_DD_tidy_tuesday_topic/tt_cache.rds`
+   - Builds and saves only the hero plot to `YYYY/YYYY_MM_DD/outputs/`
+2. Run this standalone script after each tweak — it takes seconds instead of minutes.
+3. Once the user approves the hero image, update the Rmd to match the final code and do **one** full render with `scripts/render_blog.R`.
+
+This avoids re-running EDA, forecasting, clustering, and data downloads on every annotation nudge.
+
+### 6. Render the Full Blog Post
+After the hero image is finalized and the Rmd is updated, use the `scripts/render_blog.R` script to render and insert the hero section in one step:
 ```bash
 Rscript scripts/render_blog.R --date "YYYY-MM-DD" --blurb "Short blurb..." --week N
 ```
-This renders the Rmd to `README.md`, replaces the pandoc title block with the hero section, and cleans up `_files/` directories automatically. The user can review both the final dataviz PNG and the full blog post layout during iteration — no separate steps needed.
+This renders the Rmd to `README.md`, replaces the pandoc title block with the hero section, and cleans up `_files/` directories automatically. The user can review both the final dataviz PNG and the full blog post layout.
 
-### 6. Write as a Blog Post
+### 7. Write as a Blog Post
 The final Rmd/qmd should read as a self-contained article, not a code notebook:
 - Open with a hook that draws the reader in
 - Weave narrative prose between code chunks
@@ -69,13 +81,13 @@ The final Rmd/qmd should read as a self-contained article, not a code notebook:
 - End with open questions or forward-looking commentary
 - See the "Blog Post Rmd Structure" section in `structure.md` for the template
 
-### 7. Finalize Thumbnails and Social Posts (only after dataviz is approved)
+### 8. Finalize Thumbnails and Social Posts (only after dataviz is approved)
 Once the user is happy with the final shareable image, **then** do the following:
 - Update the yearly README with the new thumbnail
 - Update the root README with the new thumbnail and count
 - Draft social media posts (see `social.md`)
 
-The week README is already up to date from continuous rendering in step 5.
+The week README is already up to date from rendering in step 6.
 
 **IMPORTANT:** The root README and yearly README updates MUST happen before committing and pushing. If the user asks to "commit and push" or "stage, commit, push," that is the trigger to update these READMEs first. Never push without updating them.
 

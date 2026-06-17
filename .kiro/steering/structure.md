@@ -374,6 +374,7 @@ The image will primarily be viewed on phone screens. Design accordingly:
 - Use `plot.margin = margin(top, right, bottom, left)` with enough right margin (~50px) to keep content clear of corner logos
 - Prefer `fig.width = 8, fig.height = 10` (portrait) or `8 x 8` (square) over wide landscape formats
 - Avoid thin lines (use `linewidth >= 0.8` for key lines)
+- **Never combine `geom_line()` with `geom_point()` on the same series** — dots on lines add visual clutter at phone scale without adding information. Use line alone for time series; use points alone for scatter plots.
 - Ensure sufficient contrast between colors at small sizes
 
 **CRITICAL — showtext DPI:** When using `showtext` for custom fonts, you **must** set `showtext_opts(dpi = 300)` immediately after `showtext_auto()`. The default is 96 DPI, which means all font sizes render at roughly 1/3 their intended size in a 300 DPI `ggsave()` output. This is the #1 cause of "fonts look tiny" in the final PNG.
