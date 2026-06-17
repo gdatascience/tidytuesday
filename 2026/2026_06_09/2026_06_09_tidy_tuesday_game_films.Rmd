@@ -432,7 +432,7 @@ poster_lookup <- c(
  "Red (Angry Birds)" = "/iOH0fEFtV9z9rZp9zmBFGGeWicv.jpg",
  "Agent 47" = "/skHqceAFYee0JZuYd9MVk2IQggi.jpg",
  "Nathan Drake" = "/rJHC1RUORuUhtfNb4Npclx0xnOf.jpg",
- "Sam" = "/eQfwUHGU3PLy6pT2ZJurbCDrhJe.jpg",
+ "Sam" = "/bLY5yN4MKVynZ2HMZWElTOGBgBe.jpg",
  "George (Rampage)" = "/MGADip4thVSErP34FAAfzFBTZ5.jpg",
  "Lara Croft" = "/s4Qn5LF6OwK4rIifmthIDtbqDSs.jpg",
  "Thrall" = "/eGi5aoxaZveqNLtE7BZJCuWwR3G.jpg",
@@ -471,8 +471,11 @@ table_data <- character_stats |>
   select(rank, poster_url, game_character, n_films, roi_pct, mean_roi,
          box_office_label, best_film)
 
+# Get the global max ROI so bars are scaled consistently across both halves
+global_max_roi <- max(table_data$mean_roi)
+
 # Helper function to build a styled gt table from a subset
-build_half_table <- function(data) {
+build_half_table <- function(data, global_max) {
   data |>
     gt() |>
     # Render poster images from TMDB CDN URLs
@@ -482,8 +485,21 @@ build_half_table <- function(data) {
         web_image(url = x, height = 55)
       }
     ) |>
-    # Add ROI bar chart
-    gt_plt_bar(column = mean_roi, color = "gold", width = 45) |>
+    # Custom inline SVG bars scaled to global max
+    text_transform(
+      locations = cells_body(columns = mean_roi),
+      fn = function(x) {
+        values <- as.numeric(x)
+        purrr::map(values, function(val) {
+          pct <- val / global_max * 100
+          gt::html(glue::glue(
+            '<div style="width:100px;height:12px;background:#21262D;border-radius:2px;">
+              <div style="width:{pct}%;height:100%;background:gold;border-radius:2px;"></div>
+            </div>'
+          ))
+        })
+      }
+    ) |>
     # Column labels
     cols_label(
       rank = "#",
@@ -547,8 +563,8 @@ build_half_table <- function(data) {
 left_data <- table_data |> filter(rank <= 8)
 right_data <- table_data |> filter(rank > 8)
 
-left_table <- build_half_table(left_data)
-right_table <- build_half_table(right_data)
+left_table <- build_half_table(left_data, global_max_roi)
+right_table <- build_half_table(right_data, global_max_roi)
 
 # Save each half as a temporary PNG, then combine side-by-side with magick
 library(magick)
