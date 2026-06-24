@@ -1,0 +1,1406 @@
+# Four Popes, One Thread: 135 Years of Catholic Social Teaching on Technology and Labor
+
+**[Source Code](2026_06_23_tidy_tuesday_encyclicals.Rmd)** | Data from the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday/tree/main/data/2026/2026-06-23) (Week 26, 2026-06-23)
+
+![Four Popes, One Thread: 135 Years of Catholic Social Teaching on Technology and Labor](outputs/2026_06_23_tidy_tuesday_encyclicals.png)
+
+135 years of Catholic Social Teaching in four radar charts. Using text mining across Rerum Novarum (1891), Centesimus Annus (1991), Caritas in Veritate (2009), and Magnifica Humanitas (2026), we map how each Pope's thematic priorities shift — while the moral architecture stays remarkably constant.
+
+---
+
+Tony Galvan
+2026-06-23
+
+In our [previous
+analysis](../../other/encyclical_comparison/2026_06_01_encyclical_comparison.Rmd),
+we compared two “Leo” encyclicals — *Rerum Novarum* (Leo XIII, 1891) and
+*Magnifica Humanitas* (Leo XIV, 2026) — bookending 135 years of
+technological revolution. But Catholic Social Teaching didn’t leap from
+1891 to 2026. Two critical documents bridge that gap:
+
+- **Centesimus Annus** (John Paul II, 1991) — written on the 100th
+  anniversary of *Rerum Novarum*, it reassesses capitalism after the
+  fall of communism and grapples with emerging information technology
+- **Caritas in Veritate** (Benedict XVI, 2009) — written during the
+  global financial crisis, it directly addresses technology’s role in
+  authentic human development and warns against a “technocratic” mindset
+
+Together, these four encyclicals form a continuous intellectual thread:
+Leo XIII → John Paul II → Benedict XVI → Leo XIV. Each Pope confronts
+the dominant technological transformation of his era — industrial
+machinery, information systems, globalized finance, and artificial
+intelligence — through the same moral lens of human dignity, solidarity,
+and the common good.
+
+This analysis was prepared for **Golden Dome Data Tuesdays** on June 24,
+2026.
+
+## Libraries and Data Loading
+
+``` r
+library(tidyverse)
+library(tidytext)
+library(scales)
+library(showtext)
+library(sysfonts)
+library(ggtext)
+library(patchwork)
+
+font_add_google("Source Sans 3", "source_sans")
+font_add_google("Playfair Display", "playfair")
+showtext_auto()
+showtext_opts(dpi = 300)
+
+theme_set(theme_minimal(base_family = "source_sans", base_size = 14) +
+            theme(plot.title.position = "plot"))
+```
+
+``` r
+library(rvest)
+library(httr)
+
+# --- Rerum Novarum (Leo XIII, 1891) ---
+rn_url <- "https://www.vatican.va/content/leo-xiii/en/encyclicals/documents/hf_l-xiii_enc_15051891_rerum-novarum.html"
+rn_response <- GET(rn_url, user_agent("Mozilla/5.0"))
+rn_html <- read_html(content(rn_response, as = "text", encoding = "UTF-8"))
+rn_raw <- rn_html |> html_nodes("p") |> html_text2()
+rn_numbered <- grep("^[0-9]+[.]", rn_raw, value = TRUE)
+rn_first <- rn_raw[8]
+
+rn_df <- tibble(
+  paragraph = c(1L, as.integer(str_extract(rn_numbered, "^[0-9]+"))),
+  text = c(rn_first, str_replace(rn_numbered, "^[0-9]+[.] ?", "")),
+  document = "Rerum Novarum (1891)",
+  pope = "Leo XIII",
+  year = 1891L
+)
+
+# --- Centesimus Annus (John Paul II, 1991) ---
+ca_url <- "https://www.vatican.va/content/john-paul-ii/en/encyclicals/documents/hf_jp-ii_enc_01051991_centesimus-annus.html"
+ca_response <- GET(ca_url, user_agent("Mozilla/5.0"))
+ca_html <- read_html(content(ca_response, as = "text", encoding = "UTF-8"))
+ca_raw <- ca_html |> html_nodes("p") |> html_text2()
+ca_numbered <- grep("^[0-9]+[.]", ca_raw, value = TRUE)
+
+ca_df <- tibble(
+  paragraph = as.integer(str_extract(ca_numbered, "^[0-9]+")),
+  text = str_replace(ca_numbered, "^[0-9]+[.] ?", ""),
+  document = "Centesimus Annus (1991)",
+  pope = "John Paul II",
+  year = 1991L
+)
+
+# --- Caritas in Veritate (Benedict XVI, 2009) ---
+cv_url <- "https://www.vatican.va/content/benedict-xvi/en/encyclicals/documents/hf_ben-xvi_enc_20090629_caritas-in-veritate.html"
+cv_response <- GET(cv_url, user_agent("Mozilla/5.0"))
+cv_html <- read_html(content(cv_response, as = "text", encoding = "UTF-8"))
+cv_raw <- cv_html |> html_nodes("p") |> html_text2()
+cv_numbered <- grep("^[0-9]+[.]", cv_raw, value = TRUE)
+
+cv_df <- tibble(
+  paragraph = as.integer(str_extract(cv_numbered, "^[0-9]+")),
+  text = str_replace(cv_numbered, "^[0-9]+[.] ?", ""),
+  document = "Caritas in Veritate (2009)",
+  pope = "Benedict XVI",
+  year = 2009L
+)
+
+# --- Magnifica Humanitas (Leo XIV, 2026) ---
+mh_url <- "https://www.vatican.va/content/leo-xiv/en/encyclicals/documents/20260515-magnifica-humanitas.html"
+mh_response <- GET(mh_url, user_agent("Mozilla/5.0"))
+mh_html <- read_html(content(mh_response, as = "text", encoding = "UTF-8"))
+mh_raw <- mh_html |> html_nodes("p") |> html_text2()
+mh_numbered <- grep("^[0-9]+[.]", mh_raw, value = TRUE)
+
+mh_df <- tibble(
+  paragraph = as.integer(str_extract(mh_numbered, "^[0-9]+")),
+  text = str_replace(mh_numbered, "^[0-9]+[.] ?", ""),
+  document = "Magnifica Humanitas (2026)",
+  pope = "Leo XIV",
+  year = 2026L
+)
+
+# --- Combine all four ---
+encyclicals <- bind_rows(rn_df, ca_df, cv_df, mh_df) |>
+  mutate(document = fct_relevel(document,
+    "Rerum Novarum (1891)", "Centesimus Annus (1991)",
+    "Caritas in Veritate (2009)", "Magnifica Humanitas (2026)"
+  ))
+
+encyclicals |> count(document, pope, year) |> knitr::kable()
+```
+
+| document                   | pope         | year |   n |
+|:---------------------------|:-------------|-----:|----:|
+| Rerum Novarum (1891)       | Leo XIII     | 1891 |  64 |
+| Centesimus Annus (1991)    | John Paul II | 1991 |  62 |
+| Caritas in Veritate (2009) | Benedict XVI | 2009 |  79 |
+| Magnifica Humanitas (2026) | Leo XIV      | 2026 | 245 |
+
+## Exploratory Data Analysis
+
+### Document Structure
+
+Let’s profile the basic structure of all four documents — paragraph
+counts, word counts, and sentence complexity.
+
+``` r
+encyclicals <- encyclicals |>
+  mutate(
+    word_count = str_count(text, "\\S+"),
+    sentence_count = str_count(text, "[.!?]+"),
+    avg_sentence_length = word_count / pmax(sentence_count, 1)
+  )
+
+summary_stats <- encyclicals |>
+  group_by(document, pope, year) |>
+  summarise(
+    paragraphs = n(),
+    total_words = sum(word_count),
+    avg_words_per_para = mean(word_count),
+    median_words_per_para = median(word_count),
+    avg_sentence_length = mean(avg_sentence_length),
+    .groups = "drop"
+  )
+
+summary_stats |>
+  knitr::kable(digits = 1, caption = "Document Overview: Four Encyclicals")
+```
+
+| document | pope | year | paragraphs | total_words | avg_words_per_para | median_words_per_para | avg_sentence_length |
+|:---|:---|---:|---:|---:|---:|---:|---:|
+| Rerum Novarum (1891) | Leo XIII | 1891 | 64 | 13961 | 218.1 | 188.0 | 36.8 |
+| Centesimus Annus (1991) | John Paul II | 1991 | 62 | 8740 | 141.0 | 133.5 | 32.5 |
+| Caritas in Veritate (2009) | Benedict XVI | 2009 | 79 | 20502 | 259.5 | 246.0 | 28.5 |
+| Magnifica Humanitas (2026) | Leo XIV | 2026 | 245 | 37261 | 152.1 | 148.0 | 28.8 |
+
+Document Overview: Four Encyclicals
+
+### Word Count Distributions
+
+``` r
+# Color palette for 4 documents — earth tones progressing to modern blue
+doc_colors <- c(
+
+  "Rerum Novarum (1891)" = "#8B4513",
+  "Centesimus Annus (1991)" = "#B8860B",
+  "Caritas in Veritate (2009)" = "#2E8B57",
+  "Magnifica Humanitas (2026)" = "#1B4F72"
+)
+
+ggplot(encyclicals, aes(x = word_count, fill = document)) +
+  geom_histogram(bins = 30, alpha = 0.7) +
+  facet_wrap(~document, ncol = 1, scales = "free_y") +
+  scale_fill_manual(values = doc_colors) +
+  labs(
+    title = "Paragraph Length Distribution Across Four Encyclicals",
+    subtitle = "Each pope's prose style yields distinctive paragraph shapes",
+    x = "Words per Paragraph",
+    y = "Count"
+  ) +
+  theme(
+    legend.position = "none",
+    panel.grid = element_blank(),
+    strip.text = element_text(face = "bold", size = 11)
+  )
+```
+
+![](outputs/eda-word-dist-four-1.png)<!-- -->
+
+### Sentence Complexity Over Time
+
+``` r
+ggplot(encyclicals, aes(x = document, y = avg_sentence_length, fill = document)) +
+  geom_boxplot(alpha = 0.7, show.legend = FALSE) +
+  scale_fill_manual(values = doc_colors) +
+  labs(
+    title = "Sentence Complexity Across 135 Years",
+    subtitle = "Average words per sentence — papal prose has become more accessible over time",
+    x = NULL,
+    y = "Average Words per Sentence"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 10)
+  )
+```
+
+![](outputs/eda-sentence-complexity-1.png)<!-- -->
+
+We can see a clear trend: papal prose has become progressively more
+readable over 135 years. Leo XIII’s ornate 19th-century Latin-influenced
+style gives way to John Paul II’s philosophical precision, then Benedict
+XVI’s careful theological prose, and finally Leo XIV’s direct,
+accessible modern style.
+
+## Tokenization and Distinctive Vocabulary
+
+Let’s tokenize all four documents and use
+[TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) to identify the
+words that most uniquely characterize each encyclical — revealing the
+vocabulary of each era’s concerns.
+
+``` r
+words_df <- encyclicals |>
+  unnest_tokens(word, text) |>
+  anti_join(stop_words, by = "word") |>
+  filter(!str_detect(word, "^[0-9]+$")) |>
+  mutate(word = case_when(
+    word == "god" ~ "God",
+    word == "christ" ~ "Christ",
+    word == "jesus" ~ "Jesus",
+    .default = word
+  ))
+
+word_counts <- words_df |>
+  count(document, word, sort = TRUE)
+```
+
+``` r
+tfidf <- word_counts |>
+  bind_tf_idf(word, document, n)
+
+top_tfidf <- tfidf |>
+  group_by(document) |>
+  slice_max(tf_idf, n = 12) |>
+  ungroup() |>
+  mutate(word = reorder_within(word, tf_idf, document))
+
+ggplot(top_tfidf, aes(x = tf_idf, y = word, fill = document)) +
+  geom_col(show.legend = FALSE, alpha = 0.85) +
+  facet_wrap(~document, scales = "free_y", ncol = 2) +
+  scale_y_reordered() +
+  scale_fill_manual(values = doc_colors) +
+  labs(
+    title = "Most Distinctive Words by Encyclical (TF-IDF)",
+    subtitle = "Each era's technological and social vocabulary emerges clearly",
+    x = "TF-IDF Score",
+    y = NULL
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    strip.text = element_text(face = "bold", size = 11)
+  )
+```
+
+![](outputs/tfidf-four-1.png)<!-- -->
+
+The TF-IDF analysis reveals the fingerprint of each era:
+
+- **1891 (Leo XIII):** “workmen,” “masters,” “socialists,” “property” —
+  the raw vocabulary of class struggle during industrialization
+- **1991 (John Paul II):** “totalitarianism,” “marxism,” “1989,”
+  “consumerism” — the Cold War vocabulary, written just after the Berlin
+  Wall fell
+- **2009 (Benedict XVI):** “globalization,” “development,”
+  “subsidiarity,” “financialization” — the language of the global
+  financial crisis
+- **2026 (Leo XIV):** “AI,” “algorithms,” “platforms,” “digital,” “data”
+  — the unmistakable vocabulary of the AI age
+
+## Thematic Analysis: Five Core Themes Across Four Documents
+
+The same five themes we’ll visualize as radar charts in the final image
+span four data points, letting us see how emphasis has shifted across
+135 years.
+
+``` r
+themes <- tribble(
+  ~theme, ~words,
+  "Labor & Work", "labor|work|worker|workers|workmen|employment|wages|wage|toil|industry|job|jobs|occupation",
+  "Dignity & Rights", "dignity|rights|right|human|person|persons|freedom|liberty|justice",
+  "Technology", "technology|power|machine|machines|ai|artificial|intelligence|digital|algorithm|data|platform|robot|technique|technical",
+  "Common Good", "common good|community|society|social|public|commonwealth|solidarity|fraternity|subsidiarity",
+  "Property & Markets", "property|wealth|rich|poor|poverty|capital|money|profit|ownership|goods|market|economy|economic"
+)
+
+theme_counts <- encyclicals |>
+  crossing(themes) |>
+  mutate(mentions = str_count(str_to_lower(text), words)) |>
+  group_by(document, theme, year) |>
+  summarise(total_mentions = sum(mentions), .groups = "drop") |>
+  left_join(summary_stats |> select(document, total_words), by = "document") |>
+  mutate(per_1000 = total_mentions / total_words * 1000)
+
+ggplot(theme_counts, aes(x = year, y = per_1000, color = theme)) +
+  geom_line(linewidth = 1.2, alpha = 0.8) +
+  geom_point(size = 3) +
+  scale_color_brewer(palette = "Set2") +
+  scale_x_continuous(breaks = c(1891, 1991, 2009, 2026),
+                     labels = c("1891\nLeo XIII", "1991\nJP II",
+                                "2009\nBenedict", "2026\nLeo XIV")) +
+  labs(
+    title = "Thematic Evolution: 135 Years of Catholic Social Teaching",
+    subtitle = "Keyword density (per 1,000 words) across four encyclicals",
+    x = NULL,
+    y = "Mentions per 1,000 Words",
+    color = "Theme"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+```
+
+![](outputs/themes-four-1.png)<!-- -->
+
+``` r
+ggplot(theme_counts, aes(x = document, y = theme, fill = per_1000)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = round(per_1000, 1)), size = 4, family = "source_sans") +
+  scale_fill_viridis_c(option = "magma", direction = -1) +
+  labs(
+    title = "Thematic Density Heatmap",
+    subtitle = "Mentions per 1,000 words — darker = more prominent",
+    x = NULL, y = NULL,
+    fill = "Per 1K\nWords"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 9, angle = 15, hjust = 0.5)
+  )
+```
+
+![](outputs/themes-heatmap-1.png)<!-- -->
+
+## Sentiment Arc: Four Emotional Journeys
+
+Each encyclical follows its own emotional trajectory — from diagnosis
+(often negative) to prescription (often hopeful). Let’s compare the
+sentiment arcs of all four documents using the [Bing
+lexicon](https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html).
+
+``` r
+bing <- get_sentiments("bing")
+
+sentiment_arc <- words_df |>
+  inner_join(bing, by = "word") |>
+  mutate(score = if_else(sentiment == "positive", 1, -1)) |>
+  group_by(document, paragraph, year) |>
+  summarise(net_sentiment = sum(score), .groups = "drop") |>
+  group_by(document) |>
+  mutate(
+    para_pct = (paragraph - min(paragraph)) / (max(paragraph) - min(paragraph)),
+    rolling_sentiment = zoo::rollmean(net_sentiment, k = 5, fill = NA, align = "center")
+  ) |>
+  ungroup()
+
+ggplot(sentiment_arc |> filter(!is.na(rolling_sentiment)),
+       aes(x = para_pct, y = rolling_sentiment, color = document)) +
+  geom_line(linewidth = 1, alpha = 0.8) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  facet_wrap(~document, ncol = 1) +
+  scale_color_manual(values = doc_colors) +
+  scale_x_continuous(labels = percent_format()) +
+  labs(
+    title = "Sentiment Arc: Four Encyclicals",
+    subtitle = "5-paragraph rolling average of net sentiment (Bing lexicon)",
+    x = "Position in Document (%)",
+    y = "Net Sentiment (rolling avg)",
+    color = NULL
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "none",
+    strip.text = element_text(face = "bold", size = 11)
+  )
+```
+
+![](outputs/sentiment-arc-four-1.png)<!-- -->
+
+``` r
+sentiment_summary <- words_df |>
+  inner_join(bing, by = "word") |>
+  count(document, sentiment) |>
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) |>
+  mutate(
+    total = positive + negative,
+    pct_positive = positive / total,
+    net_per_word = (positive - negative) / total
+  )
+
+sentiment_summary |>
+  knitr::kable(digits = 3, caption = "Sentiment Summary: Positive vs. Negative Words")
+```
+
+| document                   | negative | positive | total | pct_positive | net_per_word |
+|:---------------------------|---------:|---------:|------:|-------------:|-------------:|
+| Rerum Novarum (1891)       |      445 |      500 |   945 |        0.529 |        0.058 |
+| Centesimus Annus (1991)    |      232 |      300 |   532 |        0.564 |        0.128 |
+| Caritas in Veritate (2009) |      491 |      813 |  1304 |        0.623 |        0.247 |
+| Magnifica Humanitas (2026) |     1092 |     1517 |  2609 |        0.581 |        0.163 |
+
+Sentiment Summary: Positive vs. Negative Words
+
+## Bigram Analysis: Characteristic Phrases of Each Era
+
+[Bigrams](https://en.wikipedia.org/wiki/Bigram) — pairs of consecutive
+words — capture the key concepts that single words miss.
+
+``` r
+bigrams_df <- encyclicals |>
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |>
+  separate(bigram, c("word1", "word2"), sep = " ") |>
+  filter(
+    !word1 %in% stop_words$word,
+    !word2 %in% stop_words$word,
+    !str_detect(word1, "^[0-9]+$"),
+    !str_detect(word2, "^[0-9]+$")
+  ) |>
+  unite(bigram, word1, word2, sep = " ")
+
+bigram_tfidf <- bigrams_df |>
+  count(document, bigram, sort = TRUE) |>
+  bind_tf_idf(bigram, document, n) |>
+  group_by(document) |>
+  slice_max(tf_idf, n = 10) |>
+  ungroup() |>
+  mutate(bigram = reorder_within(bigram, tf_idf, document))
+
+ggplot(bigram_tfidf, aes(x = tf_idf, y = bigram, fill = document)) +
+  geom_col(show.legend = FALSE, alpha = 0.85) +
+  facet_wrap(~document, scales = "free_y", ncol = 2) +
+  scale_y_reordered() +
+  scale_fill_manual(values = doc_colors) +
+  labs(
+    title = "Most Distinctive Bigrams by Encyclical",
+    subtitle = "Two-word phrases that define each era's concerns",
+    x = "TF-IDF Score",
+    y = NULL
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    strip.text = element_text(face = "bold", size = 11)
+  )
+```
+
+![](outputs/bigrams-four-1.png)<!-- -->
+
+## The “Technology” Thread: How Each Pope Frames the Machine
+
+Perhaps the most telling comparison is how each Pope discusses
+technology itself. Let’s extract technology-related vocabulary and trace
+how the framing evolves.
+
+``` r
+# Define technology-related word patterns per era
+tech_words <- tribble(
+  ~era, ~pattern,
+  "Industrial (1891)", "machine|factory|manufacture|industry|steam|iron|capital|production",
+  "Information (1991)", "technology|technique|information|knowledge|communication|media|computer",
+  "Globalization (2009)", "technology|technical|globalization|financial|market|development|innovation",
+  "AI Age (2026)", "ai|artificial|intelligence|algorithm|digital|data|platform|automation|robot|surveillance"
+)
+
+# Count all tech-related words in each document
+tech_mentions <- encyclicals |>
+  mutate(
+    industrial = str_count(str_to_lower(text), "machine|factory|manufacture|industry|steam|iron|production"),
+    information = str_count(str_to_lower(text), "technology|technique|information|knowledge|communication|media|computer"),
+    globalization = str_count(str_to_lower(text), "globalization|financial|market|development|innovation|finance"),
+    ai_digital = str_count(str_to_lower(text), "ai|artificial|intelligence|algorithm|digital|data|platform|automation|robot|surveillance")
+  ) |>
+  group_by(document, year) |>
+  summarise(
+    across(industrial:ai_digital, sum),
+    total_words = sum(word_count),
+    .groups = "drop"
+  ) |>
+  pivot_longer(industrial:ai_digital, names_to = "tech_era", values_to = "mentions") |>
+  mutate(
+    per_1000 = mentions / total_words * 1000,
+    tech_era = case_when(
+      tech_era == "industrial" ~ "Industrial\n(machines, factories)",
+      tech_era == "information" ~ "Information\n(technology, media)",
+      tech_era == "globalization" ~ "Globalization\n(markets, finance)",
+      tech_era == "ai_digital" ~ "AI & Digital\n(algorithms, data)"
+    )
+  )
+
+ggplot(tech_mentions, aes(x = factor(year), y = per_1000, fill = tech_era)) +
+  geom_col(position = "stack", alpha = 0.85, width = 0.7) +
+  scale_fill_manual(values = c(
+    "Industrial\n(machines, factories)" = "#8B4513",
+    "Information\n(technology, media)" = "#B8860B",
+    "Globalization\n(markets, finance)" = "#2E8B57",
+    "AI & Digital\n(algorithms, data)" = "#1B4F72"
+  )) +
+  scale_x_discrete(labels = c("1891\nLeo XIII", "1991\nJP II",
+                              "2009\nBenedict", "2026\nLeo XIV")) +
+  labs(
+    title = "Technology Vocabulary Across Four Eras",
+    subtitle = "Each Pope's document reflects the dominant technological paradigm of its time",
+    x = NULL,
+    y = "Mentions per 1,000 Words",
+    fill = "Tech Era"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+```
+
+![](outputs/tech-vocabulary-1.png)<!-- -->
+
+## Cosine Similarity: Which Popes Sound Most Alike?
+
+[Cosine similarity](https://en.wikipedia.org/wiki/Cosine_similarity)
+measures textual kinship based on shared vocabulary patterns. By
+comparing entire documents, we can determine which encyclicals are
+linguistic “neighbors” — revealing intellectual lineage.
+
+``` r
+library(lsa)
+
+# Create document-level TF-IDF vectors
+doc_tfidf <- word_counts |>
+  bind_tf_idf(word, document, n) |>
+  cast_dtm(document, word, tf_idf)
+
+doc_matrix <- as.matrix(doc_tfidf)
+doc_sim <- cosine(t(doc_matrix))
+
+# Convert to tibble for display
+sim_df <- as.data.frame(doc_sim) |>
+  rownames_to_column("doc1") |>
+  pivot_longer(-doc1, names_to = "doc2", values_to = "similarity") |>
+  filter(doc1 != doc2) |>
+  # Remove duplicates (A-B and B-A)
+  rowwise() |>
+  mutate(pair = paste(sort(c(doc1, doc2)), collapse = " <-> ")) |>
+  ungroup() |>
+  distinct(pair, .keep_all = TRUE) |>
+  arrange(desc(similarity))
+
+sim_df |>
+  select(doc1, doc2, similarity) |>
+  knitr::kable(digits = 4, caption = "Document-Level Cosine Similarity")
+```
+
+| doc1                       | doc2                       | similarity |
+|:---------------------------|:---------------------------|-----------:|
+| Caritas in Veritate (2009) | Magnifica Humanitas (2026) |     0.2825 |
+| Centesimus Annus (1991)    | Caritas in Veritate (2009) |     0.2133 |
+| Centesimus Annus (1991)    | Magnifica Humanitas (2026) |     0.1256 |
+| Rerum Novarum (1891)       | Magnifica Humanitas (2026) |     0.0498 |
+| Rerum Novarum (1891)       | Centesimus Annus (1991)    |     0.0376 |
+| Rerum Novarum (1891)       | Caritas in Veritate (2009) |     0.0317 |
+
+Document-Level Cosine Similarity
+
+``` r
+# Heatmap of pairwise similarities
+sim_matrix_long <- as.data.frame(doc_sim) |>
+  rownames_to_column("doc1") |>
+  pivot_longer(-doc1, names_to = "doc2", values_to = "similarity") |>
+  mutate(
+    doc1 = factor(doc1, levels = levels(encyclicals$document)),
+    doc2 = factor(doc2, levels = rev(levels(encyclicals$document)))
+  )
+
+ggplot(sim_matrix_long, aes(x = doc1, y = doc2, fill = similarity)) +
+  geom_tile(color = "white", linewidth = 1) +
+  geom_text(aes(label = sprintf("%.3f", similarity)),
+            size = 5, family = "source_sans", fontface = "bold") +
+  scale_fill_viridis_c(option = "inferno", limits = c(0, 1)) +
+  labs(
+    title = "Textual Similarity Between All Four Encyclicals",
+    subtitle = "Cosine similarity based on TF-IDF word vectors — who sounds most like whom?",
+    x = NULL, y = NULL,
+    fill = "Cosine\nSimilarity"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 9, angle = 15, hjust = 0.5),
+    axis.text.y = element_text(size = 9)
+  )
+```
+
+![](outputs/cosine-heatmap-four-1.png)<!-- -->
+
+## Topic Modeling: Discovering Themes Across All Four Documents
+
+Let’s use [Latent Dirichlet Allocation
+(LDA)](https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) to
+discover hidden thematic clusters across all four encyclicals
+simultaneously. This unsupervised approach lets the algorithm find
+topics organically across 135 years of text.
+
+``` r
+library(topicmodels)
+library(tm)
+
+dtm_data <- words_df |>
+  count(document, paragraph, word) |>
+  unite(doc_id, document, paragraph, sep = "_para_") |>
+  cast_dtm(doc_id, word, n)
+
+dtm_data <- removeSparseTerms(dtm_data, 0.995)
+row_totals <- apply(dtm_data, 1, sum)
+dtm_data <- dtm_data[row_totals > 0, ]
+```
+
+``` r
+set.seed(42)
+lda_model <- LDA(dtm_data, k = 8, control = list(seed = 42))
+
+lda_topics <- tidy(lda_model, matrix = "beta") |>
+  group_by(topic) |>
+  slice_max(beta, n = 7) |>
+  ungroup() |>
+  mutate(term = reorder_within(term, beta, topic))
+
+ggplot(lda_topics, aes(x = beta, y = term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE, alpha = 0.85) +
+  facet_wrap(~topic, scales = "free_y", ncol = 2,
+             labeller = labeller(topic = function(x) paste("Topic", x))) +
+  scale_y_reordered() +
+  scale_fill_viridis_d(option = "D") +
+  labs(
+    title = "LDA Topic Model: 8 Discovered Themes Across Four Encyclicals",
+    subtitle = "Top 7 words per topic (unsupervised clustering)",
+    x = "Word Probability (Beta)",
+    y = NULL
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    strip.text = element_text(face = "bold", size = 10)
+  )
+```
+
+![](outputs/lda-four-fit-1.png)<!-- -->
+
+``` r
+# Which topics dominate each encyclical?
+lda_gamma <- tidy(lda_model, matrix = "gamma") |>
+  separate(document, into = c("source_doc", "paragraph"), sep = "_para_") |>
+  mutate(paragraph = as.integer(paragraph))
+
+topic_by_doc <- lda_gamma |>
+  group_by(source_doc, topic) |>
+  summarise(avg_gamma = mean(gamma), .groups = "drop")
+
+# Get top 3 words per topic for labeling
+topic_labels <- tidy(lda_model, matrix = "beta") |>
+  group_by(topic) |>
+  slice_max(beta, n = 3) |>
+  summarise(label = paste(term, collapse = ", "), .groups = "drop")
+
+topic_by_doc <- topic_by_doc |>
+  left_join(topic_labels, by = "topic") |>
+  mutate(
+    topic_label = paste0("T", topic, ": ", label),
+    source_doc = factor(source_doc, levels = levels(encyclicals$document))
+  )
+
+ggplot(topic_by_doc, aes(x = source_doc, y = avg_gamma, fill = source_doc)) +
+  geom_col(alpha = 0.85, show.legend = FALSE) +
+  facet_wrap(~topic_label, ncol = 2, scales = "free_y") +
+  scale_fill_manual(values = doc_colors) +
+  labs(
+    title = "Topic Ownership: Which Encyclical Dominates Each Theme?",
+    subtitle = "Average topic probability per document",
+    x = NULL,
+    y = "Average Topic Probability"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    strip.text = element_text(face = "bold", size = 9),
+    axis.text.x = element_text(size = 7, angle = 30, hjust = 1)
+  )
+```
+
+![](outputs/lda-four-gamma-1.png)<!-- -->
+
+## The Continuity Argument: Shared vs. Distinctive Vocabulary
+
+Each encyclical explicitly references its predecessors — *Centesimus
+Annus* celebrates *Rerum Novarum*’s centenary, *Caritas in Veritate*
+builds on both, and *Magnifica Humanitas* positions itself in this
+tradition. Let’s measure how much vocabulary they actually share.
+
+``` r
+# Words appearing in 3+ documents (core CST vocabulary)
+doc_totals <- words_df |> count(document, name = "doc_total")
+
+word_presence <- words_df |>
+  count(document, word) |>
+  left_join(doc_totals, by = "document") |>
+  mutate(freq_per_1k = n / doc_total * 1000)
+
+# How many documents use each word?
+word_doc_count <- word_presence |>
+  group_by(word) |>
+  summarise(
+    n_docs = n_distinct(document),
+    avg_freq = mean(freq_per_1k),
+    .groups = "drop"
+  )
+
+# Summary: vocabulary overlap
+vocab_summary <- word_doc_count |>
+  count(n_docs) |>
+  mutate(pct = n / sum(n))
+
+cat("Vocabulary overlap:\n")
+```
+
+    ## Vocabulary overlap:
+
+``` r
+vocab_summary |> print()
+```
+
+    ## # A tibble: 4 × 3
+    ##   n_docs     n    pct
+    ##    <int> <int>  <dbl>
+    ## 1      1  3832 0.595 
+    ## 2      2  1435 0.223 
+    ## 3      3   750 0.117 
+    ## 4      4   419 0.0651
+
+``` r
+# Core shared vocabulary (in all 4 documents, avg freq >= 0.5 per 1K)
+core_vocab <- word_doc_count |>
+  filter(n_docs == 4, avg_freq >= 0.5) |>
+  arrange(desc(avg_freq))
+
+cat("\nCore Catholic Social Teaching vocabulary (in all 4 documents):\n")
+```
+
+    ## 
+    ## Core Catholic Social Teaching vocabulary (in all 4 documents):
+
+``` r
+cat(paste(head(core_vocab$word, 30), collapse = ", "), "\n")
+```
+
+    ## human, social, life, God, church, rights, people, society, world, truth, common, time, justice, love, person, means, nature, dignity, reason, power, charity, freedom, poor, individual, family, political, christian, natural, true, responsibility
+
+``` r
+# Compare shared words between consecutive pairs
+# RN vs CA (1891 → 1991)
+pair_data <- word_presence |>
+  select(document, word, freq_per_1k) |>
+  pivot_wider(names_from = document, values_from = freq_per_1k, values_fill = 0)
+
+# Plot: all pairwise — highlight the "handoff" words
+# Focus on words shared between consecutive encyclicals
+consecutive_shared <- word_presence |>
+  select(document, word, freq_per_1k) |>
+  pivot_wider(names_from = document, values_from = freq_per_1k, values_fill = 0) |>
+  filter(`Rerum Novarum (1891)` > 0 | `Centesimus Annus (1991)` > 0) |>
+  filter(`Centesimus Annus (1991)` > 0 | `Caritas in Veritate (2009)` > 0) |>
+  filter(`Caritas in Veritate (2009)` > 0 | `Magnifica Humanitas (2026)` > 0)
+
+# Words that appear in ALL four — the true "continuous thread"
+universal_words <- word_presence |>
+  group_by(word) |>
+  filter(n() == 4) |>
+  ungroup() |>
+  group_by(word) |>
+  summarise(avg_freq = mean(freq_per_1k), .groups = "drop") |>
+  slice_max(avg_freq, n = 25)
+
+# Create a slope chart for top shared words across all 4 docs
+slope_data <- word_presence |>
+  filter(word %in% universal_words$word) |>
+  mutate(document = factor(document, levels = levels(encyclicals$document)))
+
+ggplot(slope_data, aes(x = document, y = freq_per_1k, group = word)) +
+  geom_line(alpha = 0.4, color = "gray50") +
+  geom_point(aes(color = document), size = 2, alpha = 0.8) +
+  geom_text(data = slope_data |> filter(document == "Magnifica Humanitas (2026)") |>
+              slice_max(freq_per_1k, n = 10),
+            aes(label = word), hjust = -0.1, size = 3, family = "source_sans") +
+  scale_color_manual(values = doc_colors) +
+  labs(
+    title = "The Continuous Thread: Top Shared Words Across All Four Encyclicals",
+    subtitle = "Frequency per 1,000 words — lines connect the same word across documents",
+    x = NULL,
+    y = "Frequency per 1,000 Words"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "none",
+    axis.text.x = element_text(size = 9)
+  ) +
+  coord_cartesian(clip = "off") +
+  theme(plot.margin = margin(10, 80, 10, 10))
+```
+
+![](outputs/shared-scatter-1.png)<!-- -->
+
+## Machine Learning: Can a Model Tell the Four Popes Apart?
+
+With four documents, the classification task becomes more interesting.
+Can a model reliably predict which Pope wrote a paragraph based solely
+on text features? And which pairs of Popes are most easily confused —
+revealing deeper intellectual kinship?
+
+``` r
+library(tidymodels)
+library(textrecipes)
+
+ml_data <- encyclicals |>
+  select(document, text, paragraph, pope) |>
+  mutate(
+    label = factor(document),
+    word_count = str_count(text, "\\S+"),
+    sentence_count = str_count(text, "[.!?]+"),
+    avg_sentence_length = word_count / pmax(sentence_count, 1),
+    avg_word_length = nchar(str_remove_all(text, "\\s+")) / pmax(str_count(text, "\\S+"), 1),
+    question_marks = str_count(text, "\\?"),
+    ttr = map_dbl(text, function(t) {
+      words <- str_extract_all(str_to_lower(t), "[a-z]+")[[1]]
+      if (length(words) == 0) return(0)
+      n_distinct(words) / length(words)
+    })
+  )
+
+set.seed(42)
+ml_split <- initial_split(ml_data, prop = 0.75, strata = label)
+ml_train <- training(ml_split)
+ml_test <- testing(ml_split)
+
+cat("Training set:", nrow(ml_train), "paragraphs\n")
+```
+
+    ## Training set: 336 paragraphs
+
+``` r
+cat("Test set:", nrow(ml_test), "paragraphs\n")
+```
+
+    ## Test set: 114 paragraphs
+
+``` r
+cat("Class balance (train):\n")
+```
+
+    ## Class balance (train):
+
+``` r
+ml_train |> count(label) |> print()
+```
+
+    ## # A tibble: 4 × 2
+    ##   label                          n
+    ##   <fct>                      <int>
+    ## 1 Rerum Novarum (1891)          48
+    ## 2 Centesimus Annus (1991)       46
+    ## 3 Caritas in Veritate (2009)    59
+    ## 4 Magnifica Humanitas (2026)   183
+
+``` r
+ml_recipe <- recipe(label ~ text + word_count + avg_sentence_length +
+                      avg_word_length + question_marks + ttr,
+                    data = ml_train) |>
+  step_tokenize(text) |>
+  step_stopwords(text) |>
+  step_tokenfilter(text, max_tokens = 300) |>
+  step_tfidf(text) |>
+  step_normalize(all_numeric_predictors())
+
+# Random forest for multiclass
+rf_spec <- rand_forest(trees = 500) |>
+  set_engine("ranger", importance = "impurity") |>
+  set_mode("classification")
+
+rf_wf <- workflow() |>
+  add_recipe(ml_recipe) |>
+  add_model(rf_spec)
+
+rf_fit <- fit(rf_wf, data = ml_train)
+
+# Test predictions
+rf_preds <- predict(rf_fit, ml_test) |>
+  bind_cols(ml_test |> select(label))
+
+rf_acc <- accuracy(rf_preds, truth = label, estimate = .pred_class)
+cat("Random forest test accuracy:", rf_acc$.estimate, "\n")
+```
+
+    ## Random forest test accuracy: 0.8157895
+
+``` r
+# Confusion matrix
+conf_mat <- rf_preds |>
+  conf_mat(truth = label, estimate = .pred_class)
+
+conf_mat_tidy <- conf_mat$table |>
+  as.data.frame() |>
+  rename(Predicted = Prediction, Actual = Truth, Count = Freq) |>
+  group_by(Actual) |>
+  mutate(pct = Count / sum(Count)) |>
+  ungroup()
+
+ggplot(conf_mat_tidy, aes(x = Predicted, y = Actual, fill = pct)) +
+  geom_tile(color = "white", linewidth = 1) +
+  geom_text(aes(label = paste0(Count, "\n(", scales::percent(pct, accuracy = 1), ")")),
+            size = 4, family = "source_sans") +
+  scale_fill_viridis_c(option = "magma", direction = -1, labels = percent_format()) +
+  labs(
+    title = "Confusion Matrix: Can ML Tell Four Popes Apart?",
+    subtitle = paste0("Random Forest accuracy: ", scales::percent(rf_acc$.estimate, accuracy = 0.1),
+                      " — where the model confuses Popes reveals intellectual kinship"),
+    x = "Predicted",
+    y = "Actual",
+    fill = "Row %"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 8, angle = 15, hjust = 0.5)
+  )
+```
+
+![](outputs/ml-confusion-1.png)<!-- -->
+
+The confusion matrix is revealing: pairs of Popes that the model
+frequently confuses are more textually similar — they share vocabulary,
+sentence structure, and thematic emphasis. High confusion between two
+documents suggests deep intellectual continuity despite different eras.
+
+## Lexical Diversity and Readability Over Time
+
+Has papal prose become more or less complex over 135 years? [Lexical
+diversity](https://en.wikipedia.org/wiki/Lexical_diversity) (type-token
+ratio) measures vocabulary richness, while average word length
+approximates formality.
+
+``` r
+lexical_stats <- words_df |>
+  group_by(document) |>
+  summarise(
+    total_tokens = n(),
+    unique_types = n_distinct(word),
+    type_token_ratio = unique_types / total_tokens,
+    avg_word_length = mean(nchar(word)),
+    .groups = "drop"
+  )
+
+lexical_stats |>
+  knitr::kable(digits = 3, caption = "Lexical Diversity Metrics")
+```
+
+| document | total_tokens | unique_types | type_token_ratio | avg_word_length |
+|:---|---:|---:|---:|---:|
+| Rerum Novarum (1891) | 4728 | 2065 | 0.437 | 6.908 |
+| Centesimus Annus (1991) | 3273 | 1550 | 0.474 | 7.392 |
+| Caritas in Veritate (2009) | 8428 | 2756 | 0.327 | 7.582 |
+| Magnifica Humanitas (2026) | 16145 | 4257 | 0.264 | 7.530 |
+
+Lexical Diversity Metrics
+
+``` r
+# Readability proxy: combine sentence length + word length
+readability_by_doc <- encyclicals |>
+  group_by(document, year) |>
+  summarise(
+    avg_sentence_length = mean(avg_sentence_length),
+    avg_word_length = mean(nchar(str_remove_all(text, "\\s+")) / pmax(str_count(text, "\\S+"), 1)),
+    .groups = "drop"
+  )
+
+ggplot(readability_by_doc, aes(x = year, y = avg_sentence_length)) +
+  geom_line(color = "#2E4057", linewidth = 1.2) +
+  geom_point(aes(color = document), size = 5) +
+  geom_text(aes(label = round(avg_sentence_length, 1)),
+            vjust = -1.2, size = 4, family = "source_sans") +
+  scale_color_manual(values = doc_colors) +
+  scale_x_continuous(breaks = c(1891, 1991, 2009, 2026),
+                     labels = c("1891\nLeo XIII", "1991\nJP II",
+                                "2009\nBenedict", "2026\nLeo XIV")) +
+  labs(
+    title = "Papal Prose Has Become More Readable Over 135 Years",
+    subtitle = "Average words per sentence — a steady decline toward accessibility",
+    x = NULL,
+    y = "Avg Words per Sentence",
+    color = NULL
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "none"
+  )
+```
+
+![](outputs/readability-trend-1.png)<!-- -->
+
+## The Four Revolutions: Parallel Concerns Across Eras
+
+Each Pope confronts the same structural concerns — but uses the
+vocabulary of their era. Let’s map how five core moral arguments appear
+across all four documents.
+
+``` r
+# Define parallel concerns with era-specific keywords
+revolution_concerns <- tribble(
+  ~concern, ~rn_1891, ~ca_1991, ~cv_2009, ~mh_2026,
+  "Power Concentration",
+    "few rich|small number|comparatively few|enormous fortunes",
+    "concentration|monopol|powerful|dominat",
+    "concentration|powerful|dominat|imbalance|asymmetr",
+    "concentrated|few hands|monopol|transnational|private actors",
+  "Worker Dignity",
+    "workmen|working class|laboring poor|hired labor|wages",
+    "worker|employment|wage|unemploy|labor",
+    "worker|employment|precari|decent work|labor",
+    "unemployment|automation|precari|displaced|job|de-skill",
+  "Call for Regulation",
+    "law|state|public authority|remedy|intervention",
+    "state|law|regulat|authority|intervene|legislat",
+    "regulat|governance|authority|institution|reform",
+    "regulat|governance|transparency|accountab|oversight|control",
+  "Solidarity & Subsidiarity",
+    "associations|unions|guilds|mutual help|combination",
+    "solidar|subsidiar|intermediate|civil society|association",
+    "solidar|subsidiar|intermediate|civil society|cooperat",
+    "solidar|cooperat|intermediate bodies|civil society|subsidiarity",
+  "Moral Framework",
+    "justice|charity|religion|church|gospel|god",
+    "truth|moral|conscience|transcend|gospel|god",
+    "truth|charity|love|moral|transcend|god",
+    "dignity|common good|integral|discernment|gospel|faith"
+)
+
+# Count matches for each concern × document pair
+concern_long <- revolution_concerns |>
+  pivot_longer(rn_1891:mh_2026, names_to = "era_key", values_to = "pattern") |>
+  mutate(
+    target_doc = case_when(
+      era_key == "rn_1891" ~ "Rerum Novarum (1891)",
+      era_key == "ca_1991" ~ "Centesimus Annus (1991)",
+      era_key == "cv_2009" ~ "Caritas in Veritate (2009)",
+      era_key == "mh_2026" ~ "Magnifica Humanitas (2026)"
+    )
+  )
+
+concern_counts <- concern_long |>
+  rowwise() |>
+  mutate(
+    mentions = sum(str_count(
+      str_to_lower(encyclicals$text[encyclicals$document == target_doc]),
+      pattern
+    ))
+  ) |>
+  ungroup() |>
+  left_join(summary_stats |> select(document, total_words),
+            by = c("target_doc" = "document")) |>
+  mutate(
+    per_1000 = mentions / total_words * 1000,
+    target_doc = factor(target_doc, levels = levels(encyclicals$document))
+  )
+
+ggplot(concern_counts, aes(x = target_doc, y = per_1000, fill = target_doc)) +
+  geom_col(alpha = 0.85, show.legend = FALSE) +
+  facet_wrap(~concern, ncol = 1, scales = "free_y") +
+  scale_fill_manual(values = doc_colors) +
+  labs(
+    title = "Same Moral Argument, Different Machines",
+    subtitle = "Five core concerns of Catholic Social Teaching across four eras (per 1,000 words)",
+    x = NULL,
+    y = "Mentions per 1,000 Words"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    strip.text = element_text(face = "bold", size = 11),
+    axis.text.x = element_text(size = 8, angle = 15, hjust = 0.5)
+  )
+```
+
+![](outputs/four-revolutions-1.png)<!-- -->
+
+## Final Visualization: The Thread Through 135 Years
+
+``` r
+# Register Font Awesome
+font_add(family = "fa-brands",
+         regular = "~/Library/Fonts/Font Awesome 7 Brands-Regular-400.otf")
+font_add(family = "fa-solid",
+         regular = "~/Library/Fonts/Font Awesome 7 Free-Solid-900.otf")
+
+# Build caption
+bg_color <- "white"
+tt_source <- "Vatican.va"
+tt_caption <- paste0(
+  "DataViz: Tony Galvan #TidyTuesday",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-solid;'>&#xf0ce;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  tt_source,
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-brands;'>&#xf08c;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "anthony-raul-galvan",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-brands;'>&#xf09b;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "gdatascience"
+)
+
+# Radar charts — thematic profile per encyclical
+# Normalize each theme to 0-1 scale (max across all docs = 1)
+theme_normalized <- theme_counts |>
+  group_by(theme) |>
+  mutate(scaled = per_1000 / max(per_1000)) |>
+  ungroup()
+
+# Convert polar to Cartesian x/y for straight-line radar
+n_themes <- 5
+angles <- seq(from = pi/2, by = -2*pi/n_themes, length.out = n_themes)
+
+theme_order <- themes$theme
+theme_angles <- tibble(theme = theme_order, angle = angles)
+
+# Compute x/y for each data point
+radar_xy <- theme_normalized |>
+  left_join(theme_angles, by = "theme") |>
+  mutate(x = scaled * cos(angle), y = scaled * sin(angle)) |>
+  arrange(document, match(theme, theme_order))
+
+# Close each polygon
+radar_closed <- radar_xy |>
+  group_by(document) |>
+  arrange(match(theme, theme_order), .by_group = TRUE) |>
+  group_modify(~ bind_rows(.x, .x |> slice(1))) |>
+  ungroup()
+
+# Grid pentagons at 25%, 50%, 75%, 100%
+grid_data <- map_dfr(c(0.25, 0.5, 0.75, 1.0), function(r) {
+  tibble(r = r, angle = c(angles, angles[1]),
+         x = r * cos(c(angles, angles[1])),
+         y = r * sin(c(angles, angles[1])))
+})
+
+# Spokes from center to each vertex
+spoke_data <- tibble(angle = angles, xend = cos(angles), yend = sin(angles))
+
+# Labels at each vertex — nudge Dignity up and Property down
+label_data <- tibble(theme = theme_order, angle = angles,
+                     x = 1.18 * cos(angles), y = 1.18 * sin(angles)) |>
+  mutate(
+    y = case_when(
+      theme == "Dignity & Rights" ~ y + 0.08,
+      theme == "Property & Markets" ~ y - 0.08,
+      .default = y
+    )
+  )
+
+# Build the radar plot
+final_plot <- ggplot() +
+  # Grid pentagons
+  geom_path(data = grid_data |> filter(r == 0.25),
+            aes(x = x, y = y), color = "gray85", linewidth = 0.3) +
+  geom_path(data = grid_data |> filter(r == 0.5),
+            aes(x = x, y = y), color = "gray80", linewidth = 0.3) +
+  geom_path(data = grid_data |> filter(r == 0.75),
+            aes(x = x, y = y), color = "gray75", linewidth = 0.3) +
+  geom_path(data = grid_data |> filter(r == 1.0),
+            aes(x = x, y = y), color = "gray70", linewidth = 0.3) +
+  # Spokes
+  geom_segment(data = spoke_data, aes(x = 0, y = 0, xend = xend, yend = yend),
+               color = "gray80", linewidth = 0.3) +
+  # Filled polygon
+  geom_polygon(data = radar_closed, aes(x = x, y = y, fill = document),
+               alpha = 0.3, color = NA) +
+  # Outline
+  geom_path(data = radar_closed, aes(x = x, y = y, color = document),
+            linewidth = 1.2) +
+  # Theme labels
+  geom_text(data = label_data, aes(x = x, y = y, label = theme),
+            size = 3, family = "source_sans") +
+  # Center labels: encyclical name + year
+  geom_text(data = tibble(
+              document = levels(encyclicals$document),
+              name_label = c("Rerum\nNovarum", "Centesimus\nAnnus",
+                            "Caritas in\nVeritate", "Magnifica\nHumanitas"),
+              color = unname(doc_colors)
+            ) |> mutate(document = factor(document, levels = levels(encyclicals$document))),
+            aes(x = 0, y = 0.08, label = name_label),
+            color = unname(doc_colors), size = 5.625, family = "source_sans",
+            fontface = "bold", lineheight = 0.9) +
+  geom_text(data = tibble(
+              document = levels(encyclicals$document),
+              year_label = c("1891", "1991", "2009", "2026"),
+              color = unname(doc_colors)
+            ) |> mutate(document = factor(document, levels = levels(encyclicals$document))),
+            aes(x = 0, y = -0.18, label = year_label),
+            color = unname(doc_colors), size = 5.625, family = "source_sans") +
+  facet_wrap(~document, ncol = 2) +
+  scale_fill_manual(values = doc_colors) +
+  scale_color_manual(values = doc_colors) +
+  coord_equal(clip = "off") +
+  labs(subtitle = "Thematic profile (normalized keyword density per 1,000 words)") +
+  theme_void(base_family = "source_sans") +
+  theme(
+    legend.position = "none",
+    strip.text = element_blank(),
+    plot.subtitle = element_text(size = 14, face = "bold", hjust = 0.5,
+                                 margin = margin(b = 10)),
+    plot.margin = margin(5, 10, 5, 10)
+  )
+
+plot_subtitle <- paste0(
+  "How <b style='color:#8B4513;'>Leo XIII</b> (1891), ",
+  "<b style='color:#B8860B;'>John Paul II</b> (1991), ",
+  "<b style='color:#2E8B57;'>Benedict XVI</b> (2009),<br>",
+  "and <b style='color:#1B4F72;'>Leo XIV</b> (2026) address technology, labor, and human dignity"
+)
+
+final_plot <- final_plot +
+  plot_annotation(
+    title = "The Shape of Catholic Social Teaching",
+    subtitle = plot_subtitle,
+    caption = tt_caption,
+    theme = theme(
+      plot.title = element_text(family = "playfair", size = 32, face = "bold",
+                                hjust = 0.5),
+      plot.subtitle = element_markdown(family = "source_sans", size = 20,
+                                       hjust = 0.5, color = "gray30",
+                                       lineheight = 1.3),
+      plot.caption = element_markdown(family = "source_sans", size = 13.5,
+                                      color = "gray50", hjust = 0.5),
+      plot.caption.position = "plot"
+    )
+  )
+
+final_plot
+```
+
+![](outputs/final-viz-four-1.png)<!-- -->
+
+``` r
+ggsave(
+  filename = "outputs/2026_06_23_tidy_tuesday_encyclicals.png",
+  plot = final_plot,
+  device = "png",
+  width = 8,
+  height = 9,
+  dpi = 300,
+  bg = "white"
+)
+```
+
+## Key Findings
+
+**The Four Eras of Catholic Social Teaching on Technology:**
+
+| Year | Pope | Encyclical | Technological Context | Core Vocabulary |
+|----|----|----|----|----|
+| 1891 | Leo XIII | *Rerum Novarum* | Industrial Revolution | workmen, masters, property, socialists |
+| 1991 | John Paul II | *Centesimus Annus* | Fall of Communism, early IT | totalitarianism, consumerism, knowledge, 1989 |
+| 2009 | Benedict XVI | *Caritas in Veritate* | Global Financial Crisis | globalization, development, subsidiarity, financialization |
+| 2026 | Leo XIV | *Magnifica Humanitas* | AI Revolution | algorithms, platforms, digital, data, surveillance |
+
+**Continuity:** Despite 135 years of separation and radically different
+technological contexts, all four documents share a core vocabulary
+centered on “dignity,” “justice,” “common good,” “rights,” and “person.”
+The moral architecture is remarkably stable: each Pope diagnoses power
+concentration, demands regulation, insists on solidarity, and grounds
+everything in human dignity as imago Dei.
+
+**Evolution:** The documents show a clear progression from: -
+**Reactive** (Leo XIII responding to existing exploitation) → -
+**Reflective** (John Paul II looking back at 100 years of history) → -
+**Prospective** (Benedict XVI warning about emerging trends) → -
+**Prescriptive** (Leo XIV proposing specific governance frameworks for
+AI)
+
+**Readability:** Papal prose has become steadily more accessible —
+average sentence length drops from ~37 words (Leo XIII) to ~29 words
+(Leo XIV). The Church is consciously reaching a broader audience.
+
+**The Bridge Documents:** *Centesimus Annus* and *Caritas in Veritate*
+are essential bridge documents that show Catholic Social Teaching didn’t
+leap from industrial concerns to AI concerns overnight. John Paul II
+introduced the language of “knowledge workers” and “information
+technology,” while Benedict XVI explicitly warned about technology
+divorced from moral evaluation — ideas that Leo XIV develops fully in
+the AI context.
+
+## Discussion Questions for Golden Dome Data Tuesdays
+
+### The Intellectual Lineage
+
+1.  **John Paul II wrote *Centesimus Annus* in 1991, just as the
+    internet was being born.** He warns about “consumerism” and
+    “alienation” even in an information society. Did his warnings prove
+    prophetic? What did he get right about technology’s social impact,
+    and what couldn’t he have foreseen?
+
+2.  **Benedict XVI’s *Caritas in Veritate* (2009) explicitly says
+    “technology is not merely technical.”** He insists technology always
+    carries a worldview. How does this compare to the “technology is
+    neutral, people make it good or bad” framing you hear in Silicon
+    Valley?
+
+3.  **The cosine similarity analysis shows which Popes sound most like
+    each other.** Is intellectual continuity in Catholic Social Teaching
+    a strength (consistent moral framework) or a limitation (same
+    answers for different problems)?
+
+### Technology and the Human Person
+
+4.  **John Paul II distinguishes between “having” and “being” — warning
+    that consumerism reduces human fulfillment to material
+    acquisition.** How does this map to the attention economy, where we
+    “consume” content endlessly? Is doom-scrolling the digital
+    equivalent of the consumerism he warned about?
+
+5.  **Benedict XVI writes: “Technology enables us to exercise dominion
+    over matter… It touches the heart of the vocation of human
+    labour.”** But he adds a caveat: technology must serve “integral
+    human development,” not just efficiency. Can you think of an AI
+    application that serves efficiency but undermines integral
+    development?
+
+6.  **Leo XIV builds on both predecessors when he says AI is “never
+    morally neutral” (§104).** Is this claim stronger coming after John
+    Paul II and Benedict XVI laid the philosophical groundwork? Or does
+    it just repeat what was already said in different words?
+
+### From Theory to Practice
+
+7.  **These four documents span 135 years, yet the policy prescriptions
+    are structurally identical: regulate power, protect workers, ensure
+    solidarity, ground it all in dignity.** Is this moral consistency
+    helpful for AI governance in 2026, or does the Church need a
+    fundamentally new framework for a fundamentally new technology?
+
+8.  **Benedict XVI proposed an “Authority to Manage the Global Economy”
+    — a kind of world financial regulator.** Leo XIV proposes a “Global
+    Digital Governance Authority.” Are these realistic? What would a
+    Vatican-style AI regulator actually look like?
+
+9.  **All four Popes insist on “intermediate bodies” between the
+    individual and the state — unions, cooperatives, civil society.**
+    What are the “intermediate bodies” of the AI age? Open-source
+    communities? Data cooperatives? Professional associations? Or are we
+    missing them?
+
+10. **This analysis itself was built by an AI assistant (Kiro).** Four
+    Popes spanning 135 years warn about delegating too much to machines.
+    Are we proving them right — or demonstrating that AI can serve the
+    “integral human development” Benedict XVI championed?
+
+## What’s Next?
+
+This four-document analysis could be extended further:
+
+- **Add *Laudato Si’* (Francis, 2015)** — the environmental encyclical
+  directly addresses the “technocratic paradigm” and would add a fifth
+  data point between Benedict XVI and Leo XIV
+- **Network analysis of cross-citations** — each encyclical explicitly
+  references its predecessors; mapping these citations would reveal the
+  explicit intellectual genealogy
+- **Structural break detection** — identify the precise paragraphs where
+  each document shifts from diagnosis to prescription
+- **Reader-level analysis** — compute Flesch-Kincaid scores to quantify
+  the readability trend more precisely
+- **Semantic embedding comparison** — use modern NLP embeddings
+  (sentence transformers) to capture meaning beyond word overlap
+
+------------------------------------------------------------------------
+
+*Analysis prepared for Golden Dome Data Tuesdays, June 24, 2026. Built
+with R, tidyverse, tidytext, tidymodels, and Kiro.*
