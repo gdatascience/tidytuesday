@@ -1146,7 +1146,7 @@ plot_ly(x = umap_result[,1], y = umap_result[,2],
  hoverinfo = "text", text = ~hover_text)
 ```
 
-**[Explore the interactive UMAP map](https://htmlpreview.github.io/?https://raw.githubusercontent.com/gdatascience/tidytuesday/master/2026/2026_06_23/outputs/umap_plotly.html)**
+**[Download the interactive UMAP map (HTML)](outputs/umap_plotly.html)** — download and open in your browser to explore
 
 ### Network Graph
 
@@ -1165,7 +1165,7 @@ visNetwork(nodes, edges) |>
  visInteraction(hover = TRUE, tooltipDelay = 100)
 ```
 
-**[Explore the interactive network graph](https://htmlpreview.github.io/?https://raw.githubusercontent.com/gdatascience/tidytuesday/master/2026/2026_06_23/outputs/visnetwork.html)**
+**[Download the interactive network graph (HTML)](outputs/visnetwork.html)** — download and open in your browser to explore
 
 
 
