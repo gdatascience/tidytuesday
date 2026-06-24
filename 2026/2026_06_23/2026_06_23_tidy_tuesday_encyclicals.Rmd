@@ -1114,6 +1114,61 @@ ggsave(
 ```
 
 
+## Interactive Exploration
+
+Beyond static charts, we built two interactive tools for exploring the relationships between paragraphs across all four encyclicals. Both use TF-IDF vectors to measure textual similarity â paragraphs with similar vocabulary land near each other.
+
+### UMAP Semantic Map
+
+[UMAP](https://umap-learn.readthedocs.io/) (Uniform Manifold Approximation and Projection) reduces each paragraph's 500-dimensional TF-IDF vector down to 2D coordinates while preserving local structure. The result: paragraphs that use similar vocabulary cluster together spatially, revealing thematic neighborhoods that cross encyclical boundaries.
+
+```{r umap-plotly, eval=FALSE}
+library(uwot)
+library(plotly)
+
+para_matrix <- words_df |>
+ count(doc_id, word) |>
+ bind_tf_idf(word, doc_id, n) |>
+ group_by(word) |>
+ mutate(total_tfidf = sum(tf_idf)) |>
+ ungroup() |>
+ filter(dense_rank(-total_tfidf) <= 500) |>
+ select(doc_id, word, tf_idf) |>
+ pivot_wider(names_from = word, values_from = tf_idf, values_fill = 0)
+
+set.seed(42)
+umap_result <- umap(as.matrix(para_matrix |> select(-doc_id)),
+ n_neighbors = 15, min_dist = 0.1, metric = "cosine")
+
+plot_ly(x = umap_result[,1], y = umap_result[,2],
+ color = ~document, colors = doc_colors,
+ type = "scatter", mode = "markers",
+ hoverinfo = "text", text = ~hover_text)
+```
+
+**[Explore the interactive UMAP map](https://htmlpreview.github.io/?https://raw.githubusercontent.com/gdatascience/tidytuesday/master/2026/2026_06_23/outputs/umap_plotly.html)**
+
+### Network Graph
+
+The network graph connects paragraphs with edges wherever their cosine similarity exceeds 0.15. A force-directed layout then pulls connected nodes together, naturally clustering paragraphs by theme. Click any node to highlight its connections; use the dropdown to filter by encyclical.
+
+```{r visnetwork, eval=FALSE}
+library(lsa)
+library(visNetwork)
+
+cos_sim <- cosine(t(para_matrix))
+
+visNetwork(nodes, edges) |>
+ visPhysics(solver = "forceAtlas2Based") |>
+ visOptions(highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE),
+ selectedBy = "group") |>
+ visInteraction(hover = TRUE, tooltipDelay = 100)
+```
+
+**[Explore the interactive network graph](https://htmlpreview.github.io/?https://raw.githubusercontent.com/gdatascience/tidytuesday/master/2026/2026_06_23/outputs/visnetwork.html)**
+
+
+
 ## Key Findings
 
 **The Four Eras of Catholic Social Teaching on Technology:**
