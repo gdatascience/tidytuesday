@@ -805,7 +805,7 @@ tt_caption <- paste0(
   "<span style='color:", bg_color, ";'>..</span>",
   "<span style='font-family:fa-solid;'>&#xf0ce;</span>",
   "<span style='color:", bg_color, ";'>.</span>",
-  "NDERF, Van Lommel 2001, Kellehear 2009, Martial 2017",
+  "NDERF (search.nderf.org)",
   "<span style='color:", bg_color, ";'>..</span>",
   "<span style='font-family:fa-brands;'>&#xf08c;</span>",
   "<span style='color:", bg_color, ";'>.</span>",
@@ -872,7 +872,7 @@ p_c <- ggplot(life_changes_data) +
 p_c
 ```
 
-![](outputs/near_death_experiences.png)<!-- -->
+![](outputs/hero-viz-life-changes-1.png)<!-- -->
 
 ``` r
 ggsave("outputs/near_death_experiences.png", p_c,
