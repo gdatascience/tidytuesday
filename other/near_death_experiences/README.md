@@ -1,31 +1,40 @@
 # Beyond the Flatline: What 50 Years of Near-Death Experience Research Reveals
 
-**[Source Code](near_death_experiences.Rmd)** | Data from [NDERF](https://search.nderf.org/), [AWARE II](https://www.resuscitationjournal.com/article/S0300-9572(23)00216-2/fulltext), [Van Lommel et al. 2001](https://doi.org/10.1016/S0140-6736(01)07100-8), and [IANDS 2025 Poll](https://iands.org/media-center/iands-press-releases/twenty-three-percent-of-americans-say-theyve-had-near-death-experiences-according-to-major-survey/)
+**[Source Code](near_death_experiences.Rmd)** | Data scraped from [NDERF Search](https://search.nderf.org/)
 
 ![Life changes 8 years after cardiac arrest: NDE experiencers vs. controls](outputs/viz_c_life_changes.png)
 
-589 individual NDE records scraped from NDERF reveal that 57% involve out-of-body experiences, 89% occur during confirmed clinical death, and only 8% are distressing. Combined with 50 years of prospective research, the data shows people who have NDEs are permanently transformed in ways that cardiac arrest alone cannot explain.
+589 individual NDE records scraped from NDERF reveal that 57% involve out-of-body experiences, 89% occur during confirmed clinical death, and only 8% are distressing. The dataset spans 20+ countries and 25 years of submissions — a unique window into thousands of people's encounters with death.
 
 ---
 
 ## The Question That Won’t Go Away
 
-In 1991, Pam Reynolds lay on an operating table in Phoenix, Arizona
-while surgeons drained the blood from her brain. Her body temperature
-was lowered to 60 degrees. Her heart stopped. Her EEG flatlined. By
-every medical definition, she was dead.
+<figure>
+<img src="outputs/nde_maria_shoe.png"
+alt="Maria’s spirit hovering outside Harborview Medical Center, seeing a shoe on the third-floor ledge while doctors work to revive her body inside" />
+<figcaption aria-hidden="true">Maria’s spirit hovering outside
+Harborview Medical Center, seeing a shoe on the third-floor ledge while
+doctors work to revive her body inside</figcaption>
+</figure>
 
-And yet, when she was revived, she described the surgical instruments
-used on her — a pneumatic bone saw she said looked like an electric
-toothbrush — and recounted specific conversations between the surgical
-team. All confirmed accurate.
+In 1977 at Harborview Medical Center in Seattle, a migrant worker named
+Maria suffered a cardiac arrest. After resuscitation she told her social
+worker, Kimberly Clark Sharp, that she had floated outside the hospital
+and seen a dark blue tennis shoe on a third-floor window ledge. She
+described the shoe in detail: worn over the little toe, with a shoelace
+tucked under the heel.
 
-Reynolds is not alone. Over the past 50 years, researchers at
-institutions like NYU, the University of Virginia, the University of
-Connecticut, and the University of Liège have accumulated thousands of
-cases that challenge our understanding of consciousness. The [Near Death
-Experience Research Foundation](https://nderf.org) (NDERF) has collected
-over 6,000 firsthand accounts. The [AWARE II
+Sharp went to look. The shoe was there — exactly as described — on a
+ledge not visible from any window inside the hospital or from the
+ground.
+
+Maria is not alone. Over the past 50 years, researchers at institutions
+like NYU, the University of Virginia, the University of Connecticut, and
+the University of Liège have accumulated thousands of cases that
+challenge our understanding of consciousness. The [Near Death Experience
+Research Foundation](https://nderf.org) (NDERF) has collected over 6,000
+firsthand accounts. The [AWARE II
 study](https://www.resuscitationjournal.com/article/S0300-9572(23)00216-2/fulltext)
 at NYU monitored 567 cardiac arrest patients across 25 hospitals. And in
 2025, a [national poll by
@@ -231,192 +240,14 @@ glimpse(nde_experiences)
     ## $ ai_world_future  <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALS…
     ## $ ai_aliens        <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALS…
 
-### Reshaping Into Tidy Tables
+### The TidyTuesday Dataset
 
-From the scraped individual records, we construct the three tidy tables
-that power the analysis. We also enrich with published aggregate
-statistics from peer-reviewed studies that provide context the
-individual records cannot (prevalence rates, life-change follow-ups,
-cross-cultural comparisons).
-
-``` r
-# Table 1: Study-level metadata — combines NDERF with published studies
-nde_studies <- bind_rows(
-  # The NDERF scraped data as a study
-  tibble(
-    study_id = "nderf_scraped",
-    authors = "NDERF contributors",
-    year = 2025L,
-    journal = "NDERF (nderf.org)",
-    country = "Global",
-    setting = "Self-reported NDE accounts submitted online",
-    methodology = "Retrospective online survey",
-    n_total = nrow(nde_experiences),
-    n_nde = sum(nde_experiences$greyson_score >= 7, na.rm = TRUE),
-    prevalence_pct = NA_real_,
-    nde_definition = "Greyson Scale >= 7 (self-scored)",
-    doi = NA_character_
-  ),
-  # Published prospective and survey studies for comparison
-  tribble(
-    ~study_id, ~authors, ~year, ~journal, ~country, ~setting, ~methodology, ~n_total, ~n_nde, ~prevalence_pct, ~nde_definition, ~doi,
-    "van_lommel_2001", "Van Lommel et al.", 2001L, "The Lancet", "Netherlands", "Cardiac arrest (10 hospitals)", "Prospective", 344L, 62L, 18.0, "Greyson Scale >= 7", "10.1016/S0140-6736(01)07100-8",
-    "parnia_aware1_2014", "Parnia et al.", 2014L, "Resuscitation", "UK/US/Austria", "Cardiac arrest (15 hospitals)", "Prospective", 2060L, 101L, 4.9, "Greyson Scale >= 7", "10.1016/j.resuscitation.2014.09.004",
-    "parnia_aware2_2023", "Parnia et al.", 2023L, "Resuscitation", "US/UK", "Cardiac arrest (25 hospitals)", "Prospective", 567L, 53L, 9.3, "Greyson Scale >= 7", "10.1016/j.resuscitation.2023.109903",
-    "greyson_2003", "Greyson", 2003L, "General Hospital Psychiatry", "USA", "Cardiac arrest (1 hospital)", "Prospective", 1595L, 27L, 10.0, "Greyson Scale >= 7", "10.1016/S0163-8343(03)00042-2",
-    "klemenc_ketis_2010", "Klemenc-Ketis et al.", 2010L, "Critical Care", "Slovenia", "Cardiac arrest (3 hospitals)", "Prospective", 52L, 11L, 21.2, "Greyson Scale >= 7", "10.1186/cc9025",
-    "nelson_2019", "Nelson et al.", 2019L, "bioRxiv", "35 countries", "General population survey", "Cross-sectional survey", 1034L, 106L, 10.2, "Self-reported NDE", "10.1101/532341",
-    "iands_centiment_2025", "IANDS/Centiment", 2025L, "Press release", "USA", "General population survey", "Cross-sectional survey", 2100L, 483L, 23.0, "Self-reported NDE", NA_character_
-  )
-)
-
-glimpse(nde_studies)
-```
-
-    ## Rows: 8
-    ## Columns: 12
-    ## $ study_id       <chr> "nderf_scraped", "van_lommel_2001", "parnia_aware1_2014…
-    ## $ authors        <chr> "NDERF contributors", "Van Lommel et al.", "Parnia et a…
-    ## $ year           <int> 2025, 2001, 2014, 2023, 2003, 2010, 2019, 2025
-    ## $ journal        <chr> "NDERF (nderf.org)", "The Lancet", "Resuscitation", "Re…
-    ## $ country        <chr> "Global", "Netherlands", "UK/US/Austria", "US/UK", "USA…
-    ## $ setting        <chr> "Self-reported NDE accounts submitted online", "Cardiac…
-    ## $ methodology    <chr> "Retrospective online survey", "Prospective", "Prospect…
-    ## $ n_total        <int> 589, 344, 2060, 567, 1595, 52, 1034, 2100
-    ## $ n_nde          <int> 53, 62, 101, 53, 27, 11, 106, 483
-    ## $ prevalence_pct <dbl> NA, 18.0, 4.9, 9.3, 10.0, 21.2, 10.2, 23.0
-    ## $ nde_definition <chr> "Greyson Scale >= 7 (self-scored)", "Greyson Scale >= 7…
-    ## $ doi            <chr> NA, "10.1016/S0140-6736(01)07100-8", "10.1016/j.resusci…
-
-``` r
-# Table 2: Derive nde_features from scraped individual records + published aggregates
-# First, summarize the scraped NDERF data into feature-level observations
-nderf_feature_summary <- nde_experiences |>
-  summarize(
-    n = n(),
-    pct_female = round(100 * mean(gender == "F", na.rm = TRUE), 1),
-    pct_male = round(100 * mean(gender == "M", na.rm = TRUE), 1),
-    pct_obe = round(100 * mean(ai_obe, na.rm = TRUE), 1),
-    pct_unity = round(100 * mean(ai_unity, na.rm = TRUE), 1),
-    pct_hellish = round(100 * mean(ai_hellish, na.rm = TRUE), 1),
-    pct_clinical = round(100 * mean(ai_clinical, na.rm = TRUE), 1),
-    pct_esp = round(100 * mean(ai_esp, na.rm = TRUE), 1),
-    pct_past_lives = round(100 * mean(ai_past_lives, na.rm = TRUE), 1),
-    pct_world_future = round(100 * mean(ai_world_future, na.rm = TRUE), 1),
-    pct_aliens = round(100 * mean(ai_aliens, na.rm = TRUE), 1),
-    median_greyson = median(greyson_score, na.rm = TRUE),
-    mean_narrative_length = round(mean(narrative_length, na.rm = TRUE))
-  )
-
-# Pivot scraped data into tidy feature rows
-nde_features_scraped <- bind_rows(
-  tibble(study_id = "nderf_scraped", feature = "Female", category = "demographic",
-         value_type = "percentage", value = nderf_feature_summary$pct_female,
-         n_respondents = nderf_feature_summary$n, subgroup = "all"),
-  tibble(study_id = "nderf_scraped", feature = "Male", category = "demographic",
-         value_type = "percentage", value = nderf_feature_summary$pct_male,
-         n_respondents = nderf_feature_summary$n, subgroup = "all"),
-  tibble(study_id = "nderf_scraped", feature = "Out-of-body experience", category = "paranormal",
-         value_type = "percentage", value = nderf_feature_summary$pct_obe,
-         n_respondents = nderf_feature_summary$n, subgroup = "all"),
-  tibble(study_id = "nderf_scraped", feature = "Feeling of harmony/unity", category = "affective",
-         value_type = "percentage", value = nderf_feature_summary$pct_unity,
-         n_respondents = nderf_feature_summary$n, subgroup = "all"),
-  tibble(study_id = "nderf_scraped", feature = "Hellish/distressing imagery", category = "valence",
-         value_type = "percentage", value = nderf_feature_summary$pct_hellish,
-         n_respondents = nderf_feature_summary$n, subgroup = "all"),
-  tibble(study_id = "nderf_scraped", feature = "Clinical death confirmed", category = "clinical",
-         value_type = "percentage", value = nderf_feature_summary$pct_clinical,
-         n_respondents = nderf_feature_summary$n, subgroup = "all"),
-  tibble(study_id = "nderf_scraped", feature = "ESP/seeing distant events", category = "paranormal",
-         value_type = "percentage", value = nderf_feature_summary$pct_esp,
-         n_respondents = nderf_feature_summary$n, subgroup = "all"),
-  tibble(study_id = "nderf_scraped", feature = "Past lives recalled", category = "cognitive",
-         value_type = "percentage", value = nderf_feature_summary$pct_past_lives,
-         n_respondents = nderf_feature_summary$n, subgroup = "all"),
-  tibble(study_id = "nderf_scraped", feature = "World future visions", category = "paranormal",
-         value_type = "percentage", value = nderf_feature_summary$pct_world_future,
-         n_respondents = nderf_feature_summary$n, subgroup = "all"),
-  tibble(study_id = "nderf_scraped", feature = "Alien/extraterrestrial encounter", category = "paranormal",
-         value_type = "percentage", value = nderf_feature_summary$pct_aliens,
-         n_respondents = nderf_feature_summary$n, subgroup = "all")
-)
-
-# Combine with published aggregate data from other studies
-nde_features <- bind_rows(
-  nde_features_scraped,
-  # --- Published studies: Van Lommel 2001 life-change follow-up ---
-  tribble(
-    ~study_id, ~feature, ~category, ~value_type, ~value, ~n_respondents, ~subgroup,
-    "van_lommel_2001", "Positive emotions", "affective", "percentage", 56, 62L, "nde_group",
-    "van_lommel_2001", "Out-of-body experience", "paranormal", "percentage", 24, 62L, "nde_group",
-    "van_lommel_2001", "Seeing a bright light", "transcendental", "percentage", 23, 62L, "nde_group",
-    "van_lommel_2001", "Experiencing a tunnel", "transcendental", "percentage", 31, 62L, "nde_group",
-    "van_lommel_2001", "Encountering deceased persons", "transcendental", "percentage", 32, 62L, "nde_group",
-    "van_lommel_2001", "More loving/empathetic (8yr)", "life_change", "percentage", 73, 37L, "nde_group",
-    "van_lommel_2001", "Fear of death decreased (8yr)", "life_change", "percentage", 47, 37L, "nde_group",
-    "van_lommel_2001", "Belief in afterlife increased (8yr)", "life_change", "percentage", 42, 37L, "nde_group",
-    "van_lommel_2001", "More loving/empathetic (8yr)", "life_change", "percentage", 41, 37L, "control",
-    "van_lommel_2001", "Fear of death decreased (8yr)", "life_change", "percentage", 16, 37L, "control",
-    "van_lommel_2001", "Belief in afterlife increased (8yr)", "life_change", "percentage", 16, 37L, "control",
-    # --- Kellehear 2009: Cross-cultural ---
-    "kellehear_2009", "Tunnel experience", "cross_cultural", "percentage", 36, NA_integer_, "western",
-    "kellehear_2009", "Tunnel experience", "cross_cultural", "percentage", 4, NA_integer_, "non_western",
-    "kellehear_2009", "Feeling of peace", "cross_cultural", "percentage", 80, NA_integer_, "western",
-    "kellehear_2009", "Feeling of peace", "cross_cultural", "percentage", 78, NA_integer_, "non_western",
-    "kellehear_2009", "Religious figures", "cross_cultural", "percentage", 28, NA_integer_, "western",
-    "kellehear_2009", "Religious figures", "cross_cultural", "percentage", 52, NA_integer_, "non_western",
-    "kellehear_2009", "Otherworldly realm", "cross_cultural", "percentage", 37, NA_integer_, "western",
-    "kellehear_2009", "Otherworldly realm", "cross_cultural", "percentage", 68, NA_integer_, "non_western",
-    # --- AWARE II 2023 ---
-    "parnia_aware2_2023", "Survivors reporting awareness during CPR", "awareness", "percentage", 39, 53L, "survivors",
-    "parnia_aware2_2023", "Survivors with transcendent experience", "awareness", "percentage", 21, 28L, "interviewed",
-    "parnia_aware2_2023", "Survival rate", "clinical", "percentage", 9.3, 567L, "all"
-  )
-)
-
-cat("nde_features:", nrow(nde_features), "rows\n")
-```
-
-    ## nde_features: 32 rows
-
-``` r
-cat("Categories:", paste(sort(unique(nde_features$category)), collapse = ", "), "\n")
-```
-
-    ## Categories: affective, awareness, clinical, cognitive, cross_cultural, demographic, life_change, paranormal, transcendental, valence
-
-``` r
-# Table 3: Notable veridical NDE cases — manually curated from published sources
-nde_veridical_cases <- tribble(
-  ~case_id, ~name, ~year, ~location, ~country, ~type, ~age_at_event, ~gender, ~religious_background, ~verified_detail, ~verification_method, ~source,
-  1L, "Maria (The Shoe)", 1977L, "Seattle WA", "USA", "Out-of-body visual perception", NA_integer_, "Female", "Catholic", "Found blue tennis shoe on 3rd-floor ledge exactly as described by clinically dead patient", "Independent witness retrieval", "Clark Sharp 1984",
-  2L, "Pam Reynolds", 1991L, "Phoenix AZ", "USA", "Perception during verified clinical death", 35L, "Female", "Christian", "Described surgical bone saw and surgeon conversation while brain drained of blood and EEG flat", "Surgical team confirmation", "Sabom 1998",
-  3L, "Vicki Noratuk", 1973L, "Seattle WA", "USA", "Blind-from-birth visual perception", 22L, "Female", "None specified", "Born blind; saw own body and wedding ring for first time during NDE; identified radiant Jesus figure", "Researcher interview and documentation", "Ring & Cooper 1999",
-  4L, "Al Sullivan", 1988L, "Hartford CT", "USA", "Out-of-body perception during surgery", 56L, "Male", "Catholic", "Described surgeon flapping elbows during bypass — an idiosyncratic habit unknown to patient", "Surgeon confirmation", "Cook et al. 1998",
-  5L, "Dentures Man", 1979L, "Netherlands", "Netherlands", "Perception while deeply comatose", 44L, "Male", "Not reported", "Identified nurse and exact drawer where dentures were placed while deeply comatose", "Nurse confirmation (prospective study)", "Van Lommel et al. 2001",
-  6L, "Child meeting miscarried sibling", 2002L, "Idaho", "USA", "Knowledge of unknown deceased relative", 3L, "Male", "Christian", "Met sister in NDE; parents never told child about miscarriage", "Parent confirmation", "Long 2010 (NDERF)",
-  7L, "Vasudev Pandey", 1975L, "Uttar Pradesh", "India", "Cross-cultural figure encounter", NA_integer_, "Male", "Hindu", "Taken by Yamraj messengers; told wrong person collected; physical marks on knees documented", "Researcher documentation", "Pasricha & Stevenson 1986",
-  8L, "Colton Burpo", 2003L, "Nebraska", "USA", "Child NDE with verifiable details", 4L, "Male", "Christian", "Described great-grandfather appearance from old photos never seen; knew of undisclosed miscarriage", "Parent verification", "Burpo 2010"
-)
-
-glimpse(nde_veridical_cases)
-```
-
-    ## Rows: 8
-    ## Columns: 12
-    ## $ case_id              <int> 1, 2, 3, 4, 5, 6, 7, 8
-    ## $ name                 <chr> "Maria (The Shoe)", "Pam Reynolds", "Vicki Noratu…
-    ## $ year                 <int> 1977, 1991, 1973, 1988, 1979, 2002, 1975, 2003
-    ## $ location             <chr> "Seattle WA", "Phoenix AZ", "Seattle WA", "Hartfo…
-    ## $ country              <chr> "USA", "USA", "USA", "USA", "Netherlands", "USA",…
-    ## $ type                 <chr> "Out-of-body visual perception", "Perception duri…
-    ## $ age_at_event         <int> NA, 35, 22, 56, 44, 3, NA, 4
-    ## $ gender               <chr> "Female", "Female", "Female", "Male", "Male", "Ma…
-    ## $ religious_background <chr> "Catholic", "Christian", "None specified", "Catho…
-    ## $ verified_detail      <chr> "Found blue tennis shoe on 3rd-floor ledge exactl…
-    ## $ verification_method  <chr> "Independent witness retrieval", "Surgical team c…
-    ## $ source               <chr> "Clark Sharp 1984", "Sabom 1998", "Ring & Cooper …
+The scraped `nde_experiences` table is the dataset — **589 individual
+NDE records** representing a subset of the 5,000+ accounts on NDERF.
+Many page IDs return no structured data due to how the search site
+indexes them, but the records we have span 1999–2025 and cover 20+
+countries. Each record has demographics, a Greyson Scale score, and
+AI-detected experience features.
 
 ## Exploratory Data Analysis
 
@@ -428,58 +259,65 @@ is a profound subjective experience reported by people who have been
 close to death or clinically dead. Researchers use the [Greyson NDE
 Scale](https://iands.org/nde-research/quantifying-the-phenomenon-greyson-near-death-experience-scale/)
 — a validated 16-item questionnaire scoring 0–32 — to distinguish
-genuine NDEs (score ≥ 7) from other near-death encounters. Let’s look at
-how prevalence estimates have evolved across studies.
+genuine NDEs (score ≥ 7) from other near-death encounters.
 
 ``` r
-prevalence_data <- nde_studies |>
-  filter(!is.na(prevalence_pct),
-         !str_detect(setting, "follow-up|Near-death survivors|Blind")) |>
+# What proportion of NDERF submissions meet the NDE threshold?
+greyson_summary <- nde_experiences |>
+  filter(!is.na(greyson_score)) |>
   mutate(
-    study_type = case_when(
-      methodology == "Prospective" ~ "Prospective (cardiac arrest)",
-      str_detect(methodology, "Cross-sectional") ~ "Population survey",
-      TRUE ~ "Retrospective"
+    category = case_when(
+      greyson_score >= 15 ~ "Deep NDE (≥ 15)",
+      greyson_score >= 7 ~ "NDE (7–14)",
+      greyson_score >= 1 ~ "Sub-threshold (1–6)",
+      TRUE ~ "No NDE features (0)"
     ),
-    study_label = paste0(authors, " (", year, ")"),
-    study_label = fct_reorder(study_label, prevalence_pct)
-  )
+    category = factor(category, levels = c("No NDE features (0)",
+                                            "Sub-threshold (1–6)",
+                                            "NDE (7–14)",
+                                            "Deep NDE (≥ 15)"))
+  ) |>
+  count(category) |>
+  mutate(pct = round(100 * n / sum(n), 1))
 
-ggplot(prevalence_data, aes(x = prevalence_pct, y = study_label, fill = study_type)) +
-  geom_col(alpha = 0.85, width = 0.7) +
-  geom_text(aes(label = paste0(prevalence_pct, "%")),
-            hjust = -0.15, size = 3.5, family = "source_sans") +
-  scale_x_continuous(limits = c(0, 55), labels = percent_format(scale = 1)) +
+ggplot(greyson_summary, aes(x = pct, y = category, fill = category)) +
+  geom_col(width = 0.7, alpha = 0.85) +
+  geom_text(aes(label = paste0(pct, "% (n=", n, ")")),
+            hjust = -0.05, size = 3.5, family = "source_sans") +
+  scale_x_continuous(limits = c(0, 80), labels = percent_format(scale = 1)) +
   scale_fill_manual(values = c(
-    "Prospective (cardiac arrest)" = "#5B4A9E",
-    "Population survey" = "#10B981",
-    "Retrospective" = "#F59E0B"
+    "No NDE features (0)" = "#D1D5DB",
+    "Sub-threshold (1–6)" = "#9CA3AF",
+    "NDE (7–14)" = "#5B4A9E",
+    "Deep NDE (≥ 15)" = "#7C3AED"
   )) +
   labs(
-    title = "How Common Are Near-Death Experiences?",
-    subtitle = "Prevalence varies by study design — but consistently above 5%",
-    x = "Prevalence (%)",
+    title = "Greyson Scale Classification of NDERF Reports",
+    subtitle = paste0("n = ", sum(greyson_summary$n),
+                      " records with Greyson scores"),
+    x = "Percentage of Records",
     y = NULL,
-    fill = "Study Type",
-    caption = "Sources: Published studies 1980–2025"
+    fill = NULL,
+    caption = "Source: NDERF scraped metadata | Score ≥ 7 = validated NDE"
   ) +
   theme(
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
+    legend.position = "none",
     plot.title = element_text(face = "bold", size = 16),
-    plot.subtitle = element_text(color = "gray40"),
-    legend.position = "bottom"
+    plot.subtitle = element_text(color = "gray40")
   )
 ```
 
 ![](outputs/prevalence-plot-1.png)<!-- -->
 
-Prospective studies in cardiac arrest patients consistently find
-**10–23%** report NDEs. But notice the 2025 IANDS population survey:
-when you ask the general public, the number jumps to **23%** —
-suggesting many NDEs go unreported in clinical settings, or that people
-who nearly drowned, had allergic reactions, or faced other threats also
-have these experiences without ever being hospitalized.
+Published prospective studies find **10–23%** of cardiac arrest
+survivors report NDEs (Van Lommel 2001: 18% of 344 patients;
+Klemenc-Ketis 2010: 21% of 52; Greyson 2003: 10% of 1595). In the AWARE
+II study (Parnia 2023), 39% of survivors reported some awareness during
+CPR. Our NDERF data shows a different slice — these are self-selected
+reports submitted to an online database, so the Greyson score
+distribution reflects who chooses to share their experience.
 
 ### Who Has NDEs?
 
@@ -616,22 +454,43 @@ appear across cultures, religions, and even in people with **no prior
 belief** in an afterlife. But some elements show cultural variation.
 
 ``` r
-cultural_data <- nde_features |>
-  filter(category == "cross_cultural") |>
-  mutate(subgroup_label = if_else(subgroup == "western", "Western", "Non-Western"))
+# Cross-cultural comparison derived from our own scraped NDERF data
+# Compare US vs non-US NDE features
+cultural_comparison <- nde_experiences |>
+  mutate(region = if_else(country == "United States", "United States", "Other Countries")) |>
+  group_by(region) |>
+  summarize(
+    n = n(),
+    pct_obe = round(100 * mean(ai_obe, na.rm = TRUE), 1),
+    pct_unity = round(100 * mean(ai_unity, na.rm = TRUE), 1),
+    pct_hellish = round(100 * mean(ai_hellish, na.rm = TRUE), 1),
+    pct_clinical = round(100 * mean(ai_clinical, na.rm = TRUE), 1),
+    pct_esp = round(100 * mean(ai_esp, na.rm = TRUE), 1),
+    .groups = "drop"
+  ) |>
+  pivot_longer(cols = starts_with("pct_"), names_to = "feature", values_to = "pct") |>
+  mutate(
+    feature = case_when(
+      feature == "pct_obe" ~ "Out-of-body experience",
+      feature == "pct_unity" ~ "Feeling of unity",
+      feature == "pct_hellish" ~ "Distressing/hellish",
+      feature == "pct_clinical" ~ "Clinical death confirmed",
+      feature == "pct_esp" ~ "ESP/seeing distant events"
+    ),
+    feature = fct_reorder(feature, pct, .fun = mean)
+  )
 
-ggplot(cultural_data, aes(x = value, y = fct_reorder(feature, value, .fun = mean),
-                           fill = subgroup_label)) +
+ggplot(cultural_comparison, aes(x = pct, y = feature, fill = region)) +
   geom_col(position = "dodge", width = 0.7, alpha = 0.85) +
-  scale_fill_manual(values = c("Western" = "#3B82F6", "Non-Western" = "#F59E0B")) +
+  scale_fill_manual(values = c("United States" = "#3B82F6", "Other Countries" = "#F59E0B")) +
   scale_x_continuous(labels = percent_format(scale = 1)) +
   labs(
-    title = "NDEs Across Cultures: What's Universal, What's Not",
-    subtitle = "Peace is universal; tunnels are almost exclusively Western",
+    title = "NDE Features: US vs. International Reports",
+    subtitle = "AI-detected features in NDERF records by country of experiencer",
     x = "Percentage Reporting Feature",
     y = NULL,
     fill = NULL,
-    caption = "Source: Kellehear 2009 (systematic cross-cultural review)"
+    caption = "Source: NDERF scraped metadata (n = 589)"
   ) +
   theme(
     panel.grid.major.y = element_blank(),
@@ -642,13 +501,14 @@ ggplot(cultural_data, aes(x = value, y = fct_reorder(feature, value, .fun = mean
 
 ![](outputs/cross-cultural-1.png)<!-- -->
 
-**Universal features** (peace, light, OBE) are remarkably consistent.
-But the **tunnel** is almost exclusively Western (36% vs 4%), while
+The core features — out-of-body experience, clinical death confirmation
+— appear at similar rates regardless of country. Published
+cross-cultural research (Kellehear 2009) finds that some elements are
+culturally shaped: the **tunnel** is almost exclusively Western, while
 **religious figures** and **otherworldly realms** are more common in
-non-Western accounts. Notably, cases like Vicki Noratuk (blind from
-birth, identified Jesus with no visual reference) and the Indian cases
-documented by Pasricha & Stevenson challenge the idea that NDEs are
-simply cultural wish fulfillment.
+non-Western accounts. Our NDERF data is predominantly English-speaking
+(66% US), so deep cross-cultural analysis requires the published
+literature.
 
 ### NDEs Transform Lives — But Only for Those Who Had Them
 
@@ -657,22 +517,35 @@ cardiac arrest survivors who did **not** have NDEs for 8 years. This
 gives us a true control group.
 
 ``` r
-life_data <- nde_features |>
-  filter(study_id == "van_lommel_2001", category == "life_change") |>
-  mutate(subgroup_label = if_else(subgroup == "nde_group", "Had NDE", "No NDE (Control)"))
+# Compare NDE features by Greyson score threshold (≥7 = validated NDE)
+# This uses our own scraped data to show how experiences differ by NDE depth
+life_data <- nde_experiences |>
+  filter(!is.na(greyson_score)) |>
+  mutate(nde_group = if_else(greyson_score >= 7, "NDE (Greyson ≥ 7)", "Sub-threshold (< 7)")) |>
+  group_by(nde_group) |>
+  summarize(
+    n = n(),
+    `Out-of-body experience` = round(100 * mean(ai_obe, na.rm = TRUE), 1),
+    `Feeling of unity` = round(100 * mean(ai_unity, na.rm = TRUE), 1),
+    `Distressing imagery` = round(100 * mean(ai_hellish, na.rm = TRUE), 1),
+    `ESP/distant perception` = round(100 * mean(ai_esp, na.rm = TRUE), 1),
+    `Clinical death` = round(100 * mean(ai_clinical, na.rm = TRUE), 1),
+    .groups = "drop"
+  ) |>
+  pivot_longer(cols = -c(nde_group, n), names_to = "feature", values_to = "value") |>
+  mutate(feature = fct_reorder(feature, value, .fun = max))
 
-ggplot(life_data, aes(x = value, y = fct_reorder(feature, value, .fun = max),
-                       fill = subgroup_label)) +
+ggplot(life_data, aes(x = value, y = feature, fill = nde_group)) +
   geom_col(position = "dodge", width = 0.7, alpha = 0.85) +
-  scale_fill_manual(values = c("Had NDE" = "#5B4A9E", "No NDE (Control)" = "#9CA3AF")) +
-  scale_x_continuous(labels = percent_format(scale = 1), limits = c(0, 80)) +
+  scale_fill_manual(values = c("NDE (Greyson ≥ 7)" = "#5B4A9E", "Sub-threshold (< 7)" = "#9CA3AF")) +
+  scale_x_continuous(labels = percent_format(scale = 1), limits = c(0, 100)) +
   labs(
-    title = "NDEs Permanently Change People",
-    subtitle = "8-year follow-up: <span style='color:#5B4A9E;'>**NDE group**</span> vs. <span style='color:#9CA3AF;'>**cardiac arrest controls**</span>",
-    x = "% Reporting Increase",
+    title = "What Distinguishes a 'True' NDE?",
+    subtitle = "AI-detected features: <span style='color:#5B4A9E;'>**validated NDEs (Greyson ≥ 7)**</span> vs. <span style='color:#9CA3AF;'>**sub-threshold experiences**</span>",
+    x = "% of Records with Feature",
     y = NULL,
     fill = NULL,
-    caption = "Source: Van Lommel et al. 2001, 8-year follow-up (n = 37 per group)"
+    caption = "Source: NDERF scraped metadata | Greyson Scale ≥ 7 = validated NDE"
   ) +
   theme(
     panel.grid.major.y = element_blank(),
@@ -684,11 +557,13 @@ ggplot(life_data, aes(x = value, y = fct_reorder(feature, value, .fun = max),
 
 ![](outputs/life-changes-1.png)<!-- -->
 
-The gap is striking: **73% of NDErs** became more loving/empathetic vs
-41% of controls. **47% lost their fear of death** vs 16% of controls.
-Both groups nearly died — but only those who had the NDE were
-permanently transformed. This is difficult to explain as a mere side
-effect of cardiac arrest or oxygen deprivation.
+The gap between validated NDEs and sub-threshold experiences shows that
+Greyson Scale ≥ 7 captures a meaningfully different category of
+experience. Van Lommel’s 8-year follow-up study (2001, *The Lancet*)
+found even more dramatic differences: **73% of NDErs** became more
+loving/empathetic vs 41% of controls, and **47% lost their fear of
+death** vs only 16% of controls. Both groups nearly died — but only
+those who had the NDE were permanently transformed.
 
 ### Pleasant vs. Distressing: Not All NDEs Are the Same
 
@@ -737,18 +612,17 @@ The data patterns are compelling, but individual cases carry the real
 punch. These are situations where the dying person reported **specific,
 verifiable information** that they had no normal way of knowing.
 
-### The Shoe on the Ledge
+### Pam Reynolds: Dead by Every Measure
 
-In 1977 at Harborview Medical Center in Seattle, a migrant worker named
-Maria suffered a cardiac arrest. After resuscitation she told her social
-worker, Kimberly Clark Sharp, that she had floated outside the hospital
-and seen a dark blue tennis shoe on a third-floor window ledge. She
-described the shoe in detail: worn over the little toe, with a shoelace
-tucked under the heel.
+In 1991, Pam Reynolds lay on an operating table in Phoenix, Arizona
+while surgeons drained the blood from her brain. Her body temperature
+was lowered to 60 degrees. Her heart stopped. Her EEG flatlined. By
+every medical definition, she was dead.
 
-Sharp went to look. The shoe was there — exactly as described — on a
-ledge not visible from any window inside the hospital or from the
-ground.
+And yet, when she was revived, she described the surgical instruments
+used on her — a pneumatic bone saw she said looked like an electric
+toothbrush — and recounted specific conversations between the surgical
+team. All confirmed accurate.
 
 ### The Blind Woman Who Saw
 
@@ -772,8 +646,18 @@ Lommel’s Lancet study and is particularly strong because it occurred
 within a rigorous prospective research protocol.
 
 ``` r
-nde_veridical_cases |>
-  select(name, year, country, type, verification_method) |>
+# Notable veridical cases from published research (narrative context, not part of dataset)
+tribble(
+  ~case, ~year, ~country, ~type, ~how_verified,
+  "Maria (The Shoe)", 1977L, "USA", "Out-of-body visual perception", "Independent witness retrieval",
+  "Pam Reynolds", 1991L, "USA", "Perception during clinical death", "Surgical team confirmation",
+  "Vicki Noratuk", 1973L, "USA", "Blind-from-birth visual perception", "Researcher documentation",
+  "Al Sullivan", 1988L, "USA", "Out-of-body perception during surgery", "Surgeon confirmation",
+  "Dentures Man", 1979L, "Netherlands", "Perception while comatose", "Nurse confirmation",
+  "Child meeting sibling", 2002L, "USA", "Knowledge of unknown deceased", "Parent confirmation",
+  "Vasudev Pandey", 1975L, "India", "Cross-cultural figure encounter", "Researcher documentation",
+  "Colton Burpo", 2003L, "USA", "Child NDE with verifiable details", "Parent verification"
+) |>
   knitr::kable(
     col.names = c("Case", "Year", "Country", "Type of Perception", "How Verified"),
     caption = "Notable veridical NDE cases from the research literature"
@@ -783,11 +667,11 @@ nde_veridical_cases |>
 | Case | Year | Country | Type of Perception | How Verified |
 |:---|---:|:---|:---|:---|
 | Maria (The Shoe) | 1977 | USA | Out-of-body visual perception | Independent witness retrieval |
-| Pam Reynolds | 1991 | USA | Perception during verified clinical death | Surgical team confirmation |
-| Vicki Noratuk | 1973 | USA | Blind-from-birth visual perception | Researcher interview and documentation |
+| Pam Reynolds | 1991 | USA | Perception during clinical death | Surgical team confirmation |
+| Vicki Noratuk | 1973 | USA | Blind-from-birth visual perception | Researcher documentation |
 | Al Sullivan | 1988 | USA | Out-of-body perception during surgery | Surgeon confirmation |
-| Dentures Man | 1979 | Netherlands | Perception while deeply comatose | Nurse confirmation (prospective study) |
-| Child meeting miscarried sibling | 2002 | USA | Knowledge of unknown deceased relative | Parent confirmation |
+| Dentures Man | 1979 | Netherlands | Perception while comatose | Nurse confirmation |
+| Child meeting sibling | 2002 | USA | Knowledge of unknown deceased | Parent confirmation |
 | Vasudev Pandey | 1975 | India | Cross-cultural figure encounter | Researcher documentation |
 | Colton Burpo | 2003 | USA | Child NDE with verifiable details | Parent verification |
 
@@ -799,24 +683,54 @@ The most recent large-scale study (2023) monitored cardiac arrest
 patients with EEG during and after resuscitation. Key findings:
 
 ``` r
-aware2_data <- nde_features |>
-  filter(study_id == "parnia_aware2_2023")
+# Summary of our NDERF data in context of published findings
+nde_summary <- tibble(
+  metric = c(
+    "Total NDERF records scraped",
+    "Meet NDE threshold (Greyson ≥ 7)",
+    "Out-of-body experience detected",
+    "Clinical death confirmed",
+    "Distressing/hellish experience",
+    "ESP or distant perception"
+  ),
+  value = c(
+    nrow(nde_experiences),
+    sum(nde_experiences$greyson_score >= 7, na.rm = TRUE),
+    sum(nde_experiences$ai_obe, na.rm = TRUE),
+    sum(nde_experiences$ai_clinical, na.rm = TRUE),
+    sum(nde_experiences$ai_hellish, na.rm = TRUE),
+    sum(nde_experiences$ai_esp, na.rm = TRUE)
+  ),
+  pct = c(
+    NA_real_,
+    round(100 * mean(nde_experiences$greyson_score >= 7, na.rm = TRUE), 1),
+    round(100 * mean(nde_experiences$ai_obe, na.rm = TRUE), 1),
+    round(100 * mean(nde_experiences$ai_clinical, na.rm = TRUE), 1),
+    round(100 * mean(nde_experiences$ai_hellish, na.rm = TRUE), 1),
+    round(100 * mean(nde_experiences$ai_esp, na.rm = TRUE), 1)
+  )
+)
 
-aware2_data |>
-  select(feature, value_type, value, n_respondents, subgroup) |>
+nde_summary |>
+  mutate(display = if_else(is.na(pct), as.character(value),
+                           paste0(value, " (", pct, "%)"))) |>
+  select(metric, display) |>
   knitr::kable(
-    col.names = c("Metric", "Type", "Value", "N", "Subgroup"),
-    caption = "AWARE II Study: Key findings from 567 cardiac arrest patients"
+    col.names = c("Metric", "Value"),
+    caption = "NDERF Dataset Summary: Key findings from 589 scraped records"
   )
 ```
 
-| Metric                                   | Type       | Value |   N | Subgroup    |
-|:-----------------------------------------|:-----------|------:|----:|:------------|
-| Survivors reporting awareness during CPR | percentage |  39.0 |  53 | survivors   |
-| Survivors with transcendent experience   | percentage |  21.0 |  28 | interviewed |
-| Survival rate                            | percentage |   9.3 | 567 | all         |
+| Metric                           | Value       |
+|:---------------------------------|:------------|
+| Total NDERF records scraped      | 589         |
+| Meet NDE threshold (Greyson ≥ 7) | 53 (9%)     |
+| Out-of-body experience detected  | 337 (57.2%) |
+| Clinical death confirmed         | 527 (89.5%) |
+| Distressing/hellish experience   | 46 (7.8%)   |
+| ESP or distant perception        | 90 (15.3%)  |
 
-AWARE II Study: Key findings from 567 cardiac arrest patients
+NDERF Dataset Summary: Key findings from 589 scraped records
 
 **39% of survivors** reported some perception of awareness during CPR —
 even though they showed no external signs of consciousness. **Gamma wave
@@ -885,16 +799,13 @@ Open questions that the data raises:
 ## Save Datasets
 
 ``` r
-# Save the three tidy tables for TidyTuesday submission
+# Save the single TidyTuesday dataset — 589 individual NDE records
 write_csv(nde_experiences, file.path(cache_dir, "nde_experiences.csv"))
-write_csv(nde_studies, file.path(cache_dir, "nde_studies.csv"))
-write_csv(nde_features, file.path(cache_dir, "nde_features.csv"))
-write_csv(nde_veridical_cases, file.path(cache_dir, "nde_veridical_cases.csv"))
 
-cat("Saved 4 datasets:\n")
+cat("Saved dataset:\n")
 ```
 
-    ## Saved 4 datasets:
+    ## Saved dataset:
 
 ``` r
 cat("  nde_experiences.csv:", nrow(nde_experiences), "individual NDE records\n")
@@ -903,22 +814,16 @@ cat("  nde_experiences.csv:", nrow(nde_experiences), "individual NDE records\n")
     ##   nde_experiences.csv: 589 individual NDE records
 
 ``` r
-cat("  nde_studies.csv:", nrow(nde_studies), "study-level metadata rows\n")
+cat("  Columns:", ncol(nde_experiences), "\n")
 ```
 
-    ##   nde_studies.csv: 8 study-level metadata rows
+    ##   Columns: 18
 
 ``` r
-cat("  nde_features.csv:", nrow(nde_features), "aggregated feature observations\n")
+cat("  ", paste(names(nde_experiences), collapse = ", "), "\n")
 ```
 
-    ##   nde_features.csv: 32 aggregated feature observations
-
-``` r
-cat("  nde_veridical_cases.csv:", nrow(nde_veridical_cases), "verified perception cases\n")
-```
-
-    ##   nde_veridical_cases.csv: 8 verified perception cases
+    ##    entry_id, gender, classification, country, category, language, greyson_score, post_date, exp_date, narrative_length, ai_obe, ai_unity, ai_hellish, ai_clinical, ai_esp, ai_past_lives, ai_world_future, ai_aliens
 
 ## Session Info
 
@@ -944,21 +849,22 @@ sessionInfo()
     ## [1] stats     graphics  grDevices utils     datasets  methods   base     
     ## 
     ## other attached packages:
-    ##  [1] showtext_0.9-8  showtextdb_3.0  sysfonts_0.8.9  ggtext_0.1.2   
-    ##  [5] scales_1.4.0    lubridate_1.9.5 forcats_1.0.1   stringr_1.6.0  
-    ##  [9] dplyr_1.2.1     purrr_1.2.2     readr_2.2.0     tidyr_1.3.2    
-    ## [13] tibble_3.3.1    ggplot2_4.0.3   tidyverse_2.0.0 rmarkdown_2.31 
+    ##  [1] jsonlite_2.0.0  httr2_1.2.2     showtext_0.9-8  showtextdb_3.0 
+    ##  [5] sysfonts_0.8.9  ggtext_0.1.2    scales_1.4.0    lubridate_1.9.5
+    ##  [9] forcats_1.0.1   stringr_1.6.0   dplyr_1.2.1     purrr_1.2.2    
+    ## [13] readr_2.2.0     tidyr_1.3.2     tibble_3.3.1    ggplot2_4.0.3  
+    ## [17] tidyverse_2.0.0 rmarkdown_2.31 
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] generics_0.1.4     xml2_1.5.2         stringi_1.8.7      hms_1.1.4         
-    ##  [5] digest_0.6.39      magrittr_2.0.5     evaluate_1.0.5     grid_4.6.0        
-    ##  [9] timechange_0.4.0   RColorBrewer_1.1-3 fastmap_1.2.0      jsonlite_2.0.0    
-    ## [13] cli_3.6.6          crayon_1.5.3       rlang_1.2.0        litedown_0.9      
-    ## [17] bit64_4.8.2        commonmark_2.0.0   withr_3.0.2        yaml_2.3.12       
-    ## [21] otel_0.2.0         parallel_4.6.0     tools_4.6.0        tzdb_0.5.0        
-    ## [25] curl_7.1.0         vctrs_0.7.3        R6_2.6.1           lifecycle_1.0.5   
-    ## [29] bit_4.6.0          vroom_1.7.1        pkgconfig_2.0.3    pillar_1.11.1     
-    ## [33] gtable_0.3.6       glue_1.8.1         Rcpp_1.1.1-1.1     xfun_0.58         
-    ## [37] tidyselect_1.2.1   knitr_1.51         farver_2.1.2       htmltools_0.5.9   
-    ## [41] labeling_0.4.3     compiler_4.6.0     S7_0.2.2           markdown_2.0      
-    ## [45] gridtext_0.1.6
+    ##  [1] rappdirs_0.3.4     generics_0.1.4     xml2_1.5.2         stringi_1.8.7     
+    ##  [5] hms_1.1.4          digest_0.6.39      magrittr_2.0.5     evaluate_1.0.5    
+    ##  [9] grid_4.6.0         timechange_0.4.0   RColorBrewer_1.1-3 fastmap_1.2.0     
+    ## [13] codetools_0.2-20   cli_3.6.6          crayon_1.5.3       rlang_1.2.0       
+    ## [17] litedown_0.9       commonmark_2.0.0   bit64_4.8.2        withr_3.0.2       
+    ## [21] yaml_2.3.12        otel_0.2.0         parallel_4.6.0     tools_4.6.0       
+    ## [25] tzdb_0.5.0         curl_7.1.0         vctrs_0.7.3        R6_2.6.1          
+    ## [29] lifecycle_1.0.5    bit_4.6.0          vroom_1.7.1        pkgconfig_2.0.3   
+    ## [33] pillar_1.11.1      gtable_0.3.6       glue_1.8.1         Rcpp_1.1.1-1.1    
+    ## [37] xfun_0.58          tidyselect_1.2.1   knitr_1.51         farver_2.1.2      
+    ## [41] htmltools_0.5.9    labeling_0.4.3     compiler_4.6.0     S7_0.2.2          
+    ## [45] markdown_2.0       gridtext_0.1.6
