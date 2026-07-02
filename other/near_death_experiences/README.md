@@ -2,7 +2,7 @@
 
 **[Source Code](near_death_experiences.Rmd)** | Data scraped from [NDERF Search](https://search.nderf.org/)
 
-![Life changes 8 years after cardiac arrest: NDE experiencers vs. controls](outputs/viz_c_life_changes.png)
+![Life changes 8 years after cardiac arrest: NDE experiencers vs. controls](outputs/near_death_experiences.png)
 
 589 individual NDE records scraped from NDERF reveal that 57% involve out-of-body experiences, 89% occur during confirmed clinical death, and only 8% are distressing. The dataset spans 20+ countries and 25 years of submissions — a unique window into thousands of people's encounters with death.
 
@@ -796,6 +796,89 @@ Open questions that the data raises:
   than earlier estimates. Is this a shift in willingness to report, a
   broader definition of NDE, or a genuine change?
 
+## Final Visualization: Changed Forever
+
+``` r
+bg_color <- "white"
+tt_caption <- paste0(
+  "DataViz: Tony Galvan",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-solid;'>&#xf0ce;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "NDERF, Van Lommel 2001, Kellehear 2009, Martial 2017",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-brands;'>&#xf08c;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "anthony-raul-galvan",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-brands;'>&#xf09b;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "gdatascience"
+)
+
+life_changes_data <- tribble(
+  ~feature, ~nde_pct, ~control_pct,
+  "More loving/empathetic", 73, 41,
+  "Understanding others", 63, 38,
+  "Interest in meaning of life", 52, 33,
+  "Fear of death decreased", 47, 16,
+  "Feeling of inner meaning", 47, 25,
+  "Family involvement", 47, 33,
+  "Belief in afterlife", 42, 16,
+  "Acceptance of others", 42, 27,
+  "Showing emotions", 42, 16,
+  "Less interest in material", 32, 14
+) |>
+  mutate(
+    gap = nde_pct - control_pct,
+    feature = fct_reorder(feature, gap)
+  )
+
+p_c <- ggplot(life_changes_data) +
+  geom_segment(aes(x = control_pct, xend = nde_pct,
+                   y = feature, yend = feature),
+               color = "gray70", linewidth = 1.5) +
+  geom_point(aes(x = control_pct, y = feature),
+             color = "#9CA3AF", size = 5) +
+  geom_point(aes(x = nde_pct, y = feature),
+             color = "#5B4A9E", size = 5) +
+  geom_text(aes(x = nde_pct, y = feature, label = paste0(nde_pct, "%")),
+            hjust = -0.4, size = 3.5, color = "#5B4A9E", family = "source_sans") +
+  geom_text(aes(x = control_pct, y = feature, label = paste0(control_pct, "%")),
+            hjust = 1.4, size = 3.5, color = "#9CA3AF", family = "source_sans") +
+  scale_x_continuous(limits = c(0, 95), labels = percent_format(scale = 1)) +
+  labs(
+    title = "Changed Forever",
+    subtitle = "Life changes 8 years after cardiac arrest:<br><span style='color:#5B4A9E;'>**NDE experiencers**</span> vs. <span style='color:#9CA3AF;'>**controls (no NDE)**</span><br>Both groups nearly died — only those who had the NDE were transformed",
+    x = "% Reporting This Change",
+    y = NULL,
+    caption = tt_caption
+  ) +
+  theme_minimal(base_family = "source_sans", base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 32, hjust = 0.5,
+                              family = "playfair"),
+    plot.title.position = "plot",
+    plot.subtitle = element_markdown(size = 14, hjust = 0.5, color = "gray40",
+                                      margin = margin(b = 20), lineheight = 1.4),
+    plot.caption = element_markdown(size = 9, color = "gray50", hjust = 0.5),
+    plot.caption.position = "plot",
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.margin = margin(20, 30, 20, 30),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
+
+p_c
+```
+
+![](outputs/near_death_experiences.png)<!-- -->
+
+``` r
+ggsave("outputs/near_death_experiences.png", p_c,
+       width = 8, height = 10, dpi = 300, bg = "white")
+```
+
 ## Save Datasets
 
 ``` r
@@ -859,12 +942,13 @@ sessionInfo()
     ##  [1] rappdirs_0.3.4     generics_0.1.4     xml2_1.5.2         stringi_1.8.7     
     ##  [5] hms_1.1.4          digest_0.6.39      magrittr_2.0.5     evaluate_1.0.5    
     ##  [9] grid_4.6.0         timechange_0.4.0   RColorBrewer_1.1-3 fastmap_1.2.0     
-    ## [13] codetools_0.2-20   cli_3.6.6          crayon_1.5.3       rlang_1.2.0       
-    ## [17] litedown_0.9       commonmark_2.0.0   bit64_4.8.2        withr_3.0.2       
-    ## [21] yaml_2.3.12        otel_0.2.0         parallel_4.6.0     tools_4.6.0       
-    ## [25] tzdb_0.5.0         curl_7.1.0         vctrs_0.7.3        R6_2.6.1          
-    ## [29] lifecycle_1.0.5    bit_4.6.0          vroom_1.7.1        pkgconfig_2.0.3   
-    ## [33] pillar_1.11.1      gtable_0.3.6       glue_1.8.1         Rcpp_1.1.1-1.1    
-    ## [37] xfun_0.58          tidyselect_1.2.1   knitr_1.51         farver_2.1.2      
-    ## [41] htmltools_0.5.9    labeling_0.4.3     compiler_4.6.0     S7_0.2.2          
-    ## [45] markdown_2.0       gridtext_0.1.6
+    ## [13] textshaping_1.0.5  codetools_0.2-20   cli_3.6.6          crayon_1.5.3      
+    ## [17] rlang_1.2.0        litedown_0.9       commonmark_2.0.0   bit64_4.8.2       
+    ## [21] withr_3.0.2        yaml_2.3.12        otel_0.2.0         parallel_4.6.0    
+    ## [25] tools_4.6.0        tzdb_0.5.0         curl_7.1.0         vctrs_0.7.3       
+    ## [29] R6_2.6.1           lifecycle_1.0.5    bit_4.6.0          vroom_1.7.1       
+    ## [33] ragg_1.5.2         pkgconfig_2.0.3    pillar_1.11.1      gtable_0.3.6      
+    ## [37] glue_1.8.1         Rcpp_1.1.1-1.1     systemfonts_1.3.2  xfun_0.58         
+    ## [41] tidyselect_1.2.1   knitr_1.51         farver_2.1.2       htmltools_0.5.9   
+    ## [45] labeling_0.4.3     compiler_4.6.0     S7_0.2.2           markdown_2.0      
+    ## [49] gridtext_0.1.6

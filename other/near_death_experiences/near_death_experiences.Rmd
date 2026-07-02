@@ -700,6 +700,85 @@ Open questions that the data raises:
   earlier estimates. Is this a shift in willingness to report, a broader definition
   of NDE, or a genuine change?
 
+## Final Visualization: Changed Forever
+
+```{r hero-viz-life-changes, fig.width=8, fig.height=10}
+bg_color <- "white"
+tt_caption <- paste0(
+  "DataViz: Tony Galvan",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-solid;'>&#xf0ce;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "NDERF, Van Lommel 2001, Kellehear 2009, Martial 2017",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-brands;'>&#xf08c;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "anthony-raul-galvan",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-brands;'>&#xf09b;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "gdatascience"
+)
+
+life_changes_data <- tribble(
+  ~feature, ~nde_pct, ~control_pct,
+  "More loving/empathetic", 73, 41,
+  "Understanding others", 63, 38,
+  "Interest in meaning of life", 52, 33,
+  "Fear of death decreased", 47, 16,
+  "Feeling of inner meaning", 47, 25,
+  "Family involvement", 47, 33,
+  "Belief in afterlife", 42, 16,
+  "Acceptance of others", 42, 27,
+  "Showing emotions", 42, 16,
+  "Less interest in material", 32, 14
+) |>
+  mutate(
+    gap = nde_pct - control_pct,
+    feature = fct_reorder(feature, gap)
+  )
+
+p_c <- ggplot(life_changes_data) +
+  geom_segment(aes(x = control_pct, xend = nde_pct,
+                   y = feature, yend = feature),
+               color = "gray70", linewidth = 1.5) +
+  geom_point(aes(x = control_pct, y = feature),
+             color = "#9CA3AF", size = 5) +
+  geom_point(aes(x = nde_pct, y = feature),
+             color = "#5B4A9E", size = 5) +
+  geom_text(aes(x = nde_pct, y = feature, label = paste0(nde_pct, "%")),
+            hjust = -0.4, size = 3.5, color = "#5B4A9E", family = "source_sans") +
+  geom_text(aes(x = control_pct, y = feature, label = paste0(control_pct, "%")),
+            hjust = 1.4, size = 3.5, color = "#9CA3AF", family = "source_sans") +
+  scale_x_continuous(limits = c(0, 95), labels = percent_format(scale = 1)) +
+  labs(
+    title = "Changed Forever",
+    subtitle = "Life changes 8 years after cardiac arrest:<br><span style='color:#5B4A9E;'>**NDE experiencers**</span> vs. <span style='color:#9CA3AF;'>**controls (no NDE)**</span><br>Both groups nearly died — only those who had the NDE were transformed",
+    x = "% Reporting This Change",
+    y = NULL,
+    caption = tt_caption
+  ) +
+  theme_minimal(base_family = "source_sans", base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 32, hjust = 0.5,
+                              family = "playfair"),
+    plot.title.position = "plot",
+    plot.subtitle = element_markdown(size = 14, hjust = 0.5, color = "gray40",
+                                      margin = margin(b = 20), lineheight = 1.4),
+    plot.caption = element_markdown(size = 9, color = "gray50", hjust = 0.5),
+    plot.caption.position = "plot",
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.margin = margin(20, 30, 20, 30),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
+
+p_c
+
+ggsave("outputs/near_death_experiences.png", p_c,
+       width = 8, height = 10, dpi = 300, bg = "white")
+```
+
 ## Save Datasets
 
 ```{r save-datasets}
