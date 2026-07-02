@@ -668,7 +668,7 @@ ggplot(life_data, aes(x = value, y = fct_reorder(feature, value, .fun = max),
   scale_x_continuous(labels = percent_format(scale = 1), limits = c(0, 80)) +
   labs(
     title = "NDEs Permanently Change People",
-    subtitle = "8-year follow-up: NDE group vs cardiac arrest controls",
+    subtitle = "8-year follow-up: <span style='color:#5B4A9E;'>**NDE group**</span> vs. <span style='color:#9CA3AF;'>**cardiac arrest controls**</span>",
     x = "% Reporting Increase",
     y = NULL,
     fill = NULL,
@@ -677,7 +677,8 @@ ggplot(life_data, aes(x = value, y = fct_reorder(feature, value, .fun = max),
   theme(
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
-    legend.position = "top"
+    legend.position = "none",
+    plot.subtitle = element_markdown()
   )
 ```
 
@@ -943,21 +944,21 @@ sessionInfo()
     ## [1] stats     graphics  grDevices utils     datasets  methods   base     
     ## 
     ## other attached packages:
-    ##  [1] jsonlite_2.0.0  httr2_1.2.2     showtext_0.9-8  showtextdb_3.0 
-    ##  [5] sysfonts_0.8.9  ggtext_0.1.2    scales_1.4.0    lubridate_1.9.5
-    ##  [9] forcats_1.0.1   stringr_1.6.0   dplyr_1.2.1     purrr_1.2.2    
-    ## [13] readr_2.2.0     tidyr_1.3.2     tibble_3.3.1    ggplot2_4.0.3  
-    ## [17] tidyverse_2.0.0 rmarkdown_2.31 
+    ##  [1] showtext_0.9-8  showtextdb_3.0  sysfonts_0.8.9  ggtext_0.1.2   
+    ##  [5] scales_1.4.0    lubridate_1.9.5 forcats_1.0.1   stringr_1.6.0  
+    ##  [9] dplyr_1.2.1     purrr_1.2.2     readr_2.2.0     tidyr_1.3.2    
+    ## [13] tibble_3.3.1    ggplot2_4.0.3   tidyverse_2.0.0 rmarkdown_2.31 
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] rappdirs_0.3.4     generics_0.1.4     xml2_1.5.2         stringi_1.8.7     
-    ##  [5] hms_1.1.4          digest_0.6.39      magrittr_2.0.5     evaluate_1.0.5    
-    ##  [9] grid_4.6.0         timechange_0.4.0   RColorBrewer_1.1-3 fastmap_1.2.0     
-    ## [13] codetools_0.2-20   cli_3.6.6          crayon_1.5.3       rlang_1.2.0       
-    ## [17] bit64_4.8.2        withr_3.0.2        yaml_2.3.12        otel_0.2.0        
-    ## [21] parallel_4.6.0     tools_4.6.0        tzdb_0.5.0         curl_7.1.0        
-    ## [25] vctrs_0.7.3        R6_2.6.1           lifecycle_1.0.5    bit_4.6.0         
-    ## [29] vroom_1.7.1        pkgconfig_2.0.3    pillar_1.11.1      gtable_0.3.6      
-    ## [33] glue_1.8.1         Rcpp_1.1.1-1.1     xfun_0.58          tidyselect_1.2.1  
-    ## [37] knitr_1.51         farver_2.1.2       htmltools_0.5.9    labeling_0.4.3    
-    ## [41] compiler_4.6.0     S7_0.2.2           gridtext_0.1.6
+    ##  [1] generics_0.1.4     xml2_1.5.2         stringi_1.8.7      hms_1.1.4         
+    ##  [5] digest_0.6.39      magrittr_2.0.5     evaluate_1.0.5     grid_4.6.0        
+    ##  [9] timechange_0.4.0   RColorBrewer_1.1-3 fastmap_1.2.0      jsonlite_2.0.0    
+    ## [13] cli_3.6.6          crayon_1.5.3       rlang_1.2.0        litedown_0.9      
+    ## [17] bit64_4.8.2        commonmark_2.0.0   withr_3.0.2        yaml_2.3.12       
+    ## [21] otel_0.2.0         parallel_4.6.0     tools_4.6.0        tzdb_0.5.0        
+    ## [25] curl_7.1.0         vctrs_0.7.3        R6_2.6.1           lifecycle_1.0.5   
+    ## [29] bit_4.6.0          vroom_1.7.1        pkgconfig_2.0.3    pillar_1.11.1     
+    ## [33] gtable_0.3.6       glue_1.8.1         Rcpp_1.1.1-1.1     xfun_0.58         
+    ## [37] tidyselect_1.2.1   knitr_1.51         farver_2.1.2       htmltools_0.5.9   
+    ## [41] labeling_0.4.3     compiler_4.6.0     S7_0.2.2           markdown_2.0      
+    ## [45] gridtext_0.1.6

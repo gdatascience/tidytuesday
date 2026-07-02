@@ -581,7 +581,7 @@ ggplot(life_data, aes(x = value, y = fct_reorder(feature, value, .fun = max),
   scale_x_continuous(labels = percent_format(scale = 1), limits = c(0, 80)) +
   labs(
     title = "NDEs Permanently Change People",
-    subtitle = "8-year follow-up: NDE group vs cardiac arrest controls",
+    subtitle = "8-year follow-up: <span style='color:#5B4A9E;'>**NDE group**</span> vs. <span style='color:#9CA3AF;'>**cardiac arrest controls**</span>",
     x = "% Reporting Increase",
     y = NULL,
     fill = NULL,
@@ -590,7 +590,8 @@ ggplot(life_data, aes(x = value, y = fct_reorder(feature, value, .fun = max),
   theme(
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
-    legend.position = "top"
+    legend.position = "none",
+    plot.subtitle = element_markdown()
   )
 ```
 
