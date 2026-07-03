@@ -720,19 +720,23 @@ tt_caption <- paste0(
   "gdatascience"
 )
 
-life_changes_data <- tribble(
-  ~feature, ~nde_pct, ~control_pct,
-  "More loving/empathetic", 73, 41,
-  "Understanding others", 63, 38,
-  "Interest in meaning of life", 52, 33,
-  "Fear of death decreased", 47, 16,
-  "Feeling of inner meaning", 47, 25,
-  "Family involvement", 47, 33,
-  "Belief in afterlife", 42, 16,
-  "Acceptance of others", 42, 27,
-  "Showing emotions", 42, 16,
-  "Less interest in material", 32, 14
-) |>
+# Hero viz: Dumbbell chart comparing NDE (Greyson ≥ 7) vs sub-threshold features
+# Uses the scraped NDERF data — no hardcoded values
+life_changes_data <- nde_experiences |>
+  filter(!is.na(greyson_score)) |>
+  mutate(nde_group = if_else(greyson_score >= 7, "nde", "control")) |>
+  group_by(nde_group) |>
+  summarize(
+    `Out-of-body experience` = round(100 * mean(ai_obe, na.rm = TRUE), 1),
+    `Feeling of unity` = round(100 * mean(ai_unity, na.rm = TRUE), 1),
+    `Distressing imagery` = round(100 * mean(ai_hellish, na.rm = TRUE), 1),
+    `ESP/distant perception` = round(100 * mean(ai_esp, na.rm = TRUE), 1),
+    `Clinical death` = round(100 * mean(ai_clinical, na.rm = TRUE), 1),
+    .groups = "drop"
+  ) |>
+  pivot_longer(cols = -nde_group, names_to = "feature", values_to = "value") |>
+  pivot_wider(names_from = nde_group, values_from = value) |>
+  rename(nde_pct = nde, control_pct = control) |>
   mutate(
     gap = nde_pct - control_pct,
     feature = fct_reorder(feature, gap)
@@ -753,7 +757,7 @@ p_c <- ggplot(life_changes_data) +
   scale_x_continuous(limits = c(0, 95), labels = percent_format(scale = 1)) +
   labs(
     title = "Changed Forever",
-    subtitle = "Life changes 8 years after cardiac arrest:<br><span style='color:#5B4A9E;'>**NDE experiencers**</span> vs. <span style='color:#9CA3AF;'>**controls (no NDE)**</span><br>Both groups nearly died — only those who had the NDE were transformed",
+    subtitle = "AI-detected features in NDERF records:<br><span style='color:#5B4A9E;'>**validated NDEs (Greyson ≥ 7)**</span> vs. <span style='color:#9CA3AF;'>**sub-threshold experiences**</span><br>Same database, same people near death — only those with true NDEs show distinct patterns",
     x = "% Reporting This Change",
     y = NULL,
     caption = tt_caption
