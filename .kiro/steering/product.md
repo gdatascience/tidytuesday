@@ -102,3 +102,48 @@ When analyzing data, act as a professional data analyst:
 - Explain findings in plain language; avoid jargon unless defined
 - State assumptions and limitations clearly
 - Only use data that is provided — do NOT invent data
+
+## Dataset Curation (TidyTuesday Submissions)
+
+When curating a dataset for submission to the TidyTuesday project, always use the `{tidytuesdayR}` package workflow — never the manual template approach.
+
+### Workflow
+
+1. `tt_clean(path = "tt_submission", open = FALSE)` — creates `cleaning.R`
+2. Source `cleaning.R` to build data frames in memory
+3. `tt_save_dataset(dataset_name, path = "tt_submission", open = FALSE)` — for each data frame; creates `.csv` + `.md` dictionary skeleton
+4. Fill in descriptions in each `.md` file
+5. `tt_intro(path = "tt_submission", open = FALSE)` — creates `intro.md`; fill in description, quote, and questions
+6. Create/save at least one PNG image in `tt_submission/`
+7. `tt_meta(path = "tt_submission", ..., open = FALSE)` — creates `meta.yaml` with title, article, source, image alt text, and credits
+8. `tt_submit(path = "tt_submission")` — forks repo, pushes branch, and provides a PR URL
+
+### Article Selection
+
+The article linked in `meta.yaml` must be **about the data being curated** — not about a different dataset that happens to be thematically related. Prefer:
+- The original paper that produced or published the data (ideally open-access, e.g. arXiv)
+- A press release or news article specifically about the dataset's findings
+
+Do NOT use articles about different surveys or datasets, even if they cover the same topic.
+
+### Image
+
+The submission image should be understandable to a non-specialist. If using a domain-specific chart type (e.g., BPT diagram, Hertzsprung-Russell diagram), include:
+- A plain-language title framed as a question
+- Descriptive axis labels explaining what "higher" or "lower" means
+- Legend entries with parenthetical explanations of each category
+- Explanation of any dividing lines or reference curves in a legend or subtitle
+
+### File Locations
+
+All submission files go in `tt_submission/` at the repo root (created by the package). This folder is a staging area, not a permanent part of the repo. The `tt_submit()` function handles pushing to the TidyTuesday fork.
+
+### After Submission
+
+Once `tt_submit()` completes successfully, move the contents of `tt_submission/` into `.kiro/specs/` for archival:
+
+```bash
+mv tt_submission .kiro/specs/TOPIC_NAME_tt_submission
+```
+
+Use a descriptive name matching the dataset topic (e.g., `.kiro/specs/palomar_survey_tt_submission/`). This keeps the repo root clean while preserving the submission files for reference. Do NOT leave `tt_submission/` at the repo root after submitting.

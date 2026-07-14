@@ -21,7 +21,7 @@
 
 ### Data Manipulation
 - `tidyverse` - Core data science packages (dplyr, tidyr, ggplot2, etc.)
-- `tidytuesdayR` - Package for loading TidyTuesday datasets
+- `tidytuesdayR` - Package for loading TidyTuesday datasets AND for curating/submitting datasets. For submissions, use `tt_clean()`, `tt_save_dataset()`, `tt_intro()`, `tt_meta()`, and `tt_submit()` — never the manual template workflow.
 - `lubridate` - Date/time manipulation
 - `janitor` - Data cleaning utilities
 - `tidytext` - Text mining and analysis
