@@ -1,6 +1,6 @@
 # 2026
 
-**20 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**21 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -91,5 +91,16 @@
 <td align="center"><a href="2026_06_09/">Games</a></td>
 <td align="center"><a href="2026_06_16/">Names</a></td>
 <td align="center"><a href="2026_06_23/">Encyclicals</a></td>
+</tr>
+</table>
+
+## July
+
+<table>
+<tr>
+<td><a href="2026_07_07/"><img src="2026_07_07/outputs/2026_07_07_tidy_tuesday_ufc.png" height="150"></a></td>
+</tr>
+<tr>
+<td align="center"><a href="2026_07_07/">UFC</a></td>
 </tr>
 </table>
