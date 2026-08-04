@@ -118,6 +118,45 @@ When curating a dataset for submission to the TidyTuesday project, always use th
 7. `tt_meta(path = "tt_submission", ..., open = FALSE)` — creates `meta.yaml` with title, article, source, image alt text, and credits
 8. `tt_submit(path = "tt_submission")` — forks repo, pushes branch, and provides a PR URL
 
+### Credits (meta.yaml)
+
+Always use this exact credit section in `tt_meta()`:
+
+```r
+tt_meta(
+  ...,
+  attribution = "Tony Galvan, Golden Dome Data Science",
+  github = "gdatascience",
+  linkedin = "anthony-raul-galvan",
+  ...
+)
+```
+
+Or if writing `meta.yaml` manually, use:
+
+```yaml
+credit:
+  post: "Tony Galvan, Golden Dome Data Science"
+  github: "@gdatascience"
+  linkedin: "@anthony-raul-galvan"
+```
+
+**Never** use `gdatascience-acorns` (the Kiro-generated fork account) as the credit GitHub handle — always use `gdatascience`.
+
+### Updating an Existing Submission
+
+`tt_submit()` is idempotent — it detects existing forks and branches and pushes updates. If you need to fix a file after the initial submission (e.g., correcting meta.yaml credits, updating the data dictionary, swapping the image):
+
+1. Edit the file(s) in `tt_submission/` (or `.kiro/specs/TOPIC_tt_submission/` if already archived)
+2. Copy edited files back to `tt_submission/` if needed
+3. Run `tt_submit(path = "tt_submission")` again — it will push the changes to the same PR branch
+
+This is simpler than editing files directly on GitHub and keeps the local archive in sync.
+
+### Cleaning Script (cleaning.R)
+
+The `cleaning.R` file must be **fully self-contained** — it should run from a fresh R session without sourcing external files. Do NOT use `source("other/...")` or relative paths outside `tt_submission/`. All scraping, cleaning, and enrichment code must be inlined in `cleaning.R`. This is because `tt_submit()` only pushes the contents of `tt_submission/` to the fork.
+
 ### Article Selection
 
 The article linked in `meta.yaml` must be **about the data being curated** — not about a different dataset that happens to be thematically related. Prefer:
