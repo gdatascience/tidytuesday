@@ -1,6 +1,6 @@
 # 2026
 
-**21 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**22 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -99,8 +99,10 @@
 <table>
 <tr>
 <td><a href="2026_07_07/"><img src="2026_07_07/outputs/2026_07_07_tidy_tuesday_ufc.png" height="150"></a></td>
+<td><a href="2026_07_21/"><img src="2026_07_21/outputs/2026_07_21_tidy_tuesday_nde.png" height="150"></a></td>
 </tr>
 <tr>
 <td align="center"><a href="2026_07_07/">UFC</a></td>
+<td align="center"><a href="2026_07_21/">NDE</a></td>
 </tr>
 </table>
