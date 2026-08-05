@@ -509,20 +509,14 @@ ggplot(life_data) +
   geom_text(aes(x = control_pct, y = change, label = paste0(control_pct, "%")),
             hjust = 1.4, size = 3.5, color = "#9CA3AF",
             family = "source_sans") +
-  annotate("point", x = 72, y = 7.6, color = "#5B4A9E", size = 4) +
-  annotate("text", x = 74, y = 7.6, label = "Had NDE", hjust = 0,
-           family = "source_sans", size = 4, color = "#5B4A9E") +
-  annotate("point", x = 72, y = 7.2, color = "#9CA3AF", size = 4) +
-  annotate("text", x = 74, y = 7.2, label = "No NDE (same trauma)", hjust = 0,
-           family = "source_sans", size = 4, color = "#9CA3AF") +
   scale_x_continuous(limits = c(0, 90), labels = percent_format(scale = 1)) +
-  coord_cartesian(ylim = c(0.5, 8), clip = "off") +
   labs(
     title = "The NDE Changes People — Nearly Dying Alone Does Not",
-    subtitle = "8-year follow-up: cardiac arrest survivors with vs. without NDE\n(Van Lommel et al., The Lancet, 2001)",
+    subtitle = "8-year follow-up: cardiac arrest survivors <span style='color:#5B4A9E;'>**with NDE**</span> vs. <span style='color:#9CA3AF;'>**without NDE**</span><br>(Van Lommel et al., *The Lancet*, 2001)",
     x = "% Reporting This Life Change", y = NULL
   ) +
   theme(
+    plot.subtitle = element_markdown(size = 12, lineheight = 1.4),
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank()
   )
