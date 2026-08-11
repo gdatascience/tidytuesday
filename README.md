@@ -18,7 +18,7 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 
 ### [2026/](2026/)
 
-22 analyses
+23 analyses
 
 <p>
 <a href="2026/2026_01_06/"><img src="2026/2026_01_06/outputs/2026_01_06_tidy_tuesday_nd.png" width="80"></a>
@@ -41,6 +41,7 @@ Many of these analyses are shared and discussed at **Golden Dome Data Tuesdays**
 <a href="2026/2026_06_23/"><img src="2026/2026_06_23/outputs/2026_06_23_tidy_tuesday_encyclicals.png" width="80"></a>
 <a href="2026/2026_07_07/"><img src="2026/2026_07_07/outputs/2026_07_07_tidy_tuesday_ufc.png" height="80"></a>
 <a href="2026/2026_07_21/"><img src="2026/2026_07_21/outputs/2026_07_21_tidy_tuesday_nde.png" height="80"></a>
+<a href="2026/2026_08_11/"><img src="2026/2026_08_11/outputs/2026_08_11_tidy_tuesday_palomar.png" width="80"></a>
 </p>
 
 ### [2025/](2025/)
