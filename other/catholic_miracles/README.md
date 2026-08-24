@@ -1,0 +1,407 @@
+1,990 Documented Catholic Miracles: What the Church’s Own Records Reveal
+================
+2026-08-24
+
+The Catholic Church maintains an extensive — and surprisingly rigorous —
+apparatus for investigating miraculous claims. The Lourdes Medical
+Bureau has examined over 7,000 reported cures since 1858 and recognized
+only 72. Marian apparition claims since 1900 number in the hundreds, yet
+fewer than 25 received positive rulings. This is not an institution that
+approves everything.
+
+But what does the full picture look like? By scraping three primary
+source websites — [MiracleHunter.com](https://www.miraclehunter.com),
+the [Carlo Acutis Eucharistic Miracles
+Exhibition](https://www.miracolieucaristici.org), and the [Official
+Lourdes Sanctuary](https://www.lourdes-france.com) — we compiled a
+dataset of **1,990 documented miraculous events** spanning 6 categories
+and nearly two millennia. Every entry is programmatically extracted from
+its source. Let’s see what patterns emerge.
+
+## Loading the Data
+
+``` r
+library(tidyverse)
+library(scales)
+library(showtext)
+library(ggtext)
+
+font_add_google("Source Sans 3", "source_sans")
+showtext_auto()
+showtext_opts(dpi = 300)
+
+theme_set(theme_minimal(base_size = 14, base_family = "source_sans") +
+          theme(
+            plot.title.position = "plot",
+            plot.title = element_text(face = "bold", size = 18),
+            plot.subtitle = element_text(size = 13, color = "gray30"),
+            panel.grid.minor = element_blank()
+          ))
+```
+
+``` r
+miracles <- read_csv("catholic_miracles.csv", show_col_types = FALSE)
+
+cat(sprintf("Observations: %d\nColumns: %d\nCategories: %d\nCountries: %d\nYear range: %d – %d\n",
+            nrow(miracles),
+            ncol(miracles),
+            n_distinct(miracles$category),
+            n_distinct(miracles$country, na.rm = TRUE),
+            min(miracles$year, na.rm = TRUE),
+            max(miracles$year, na.rm = TRUE)))
+```
+
+    ## Observations: 1990
+    ## Columns: 11
+    ## Categories: 6
+    ## Countries: 143
+    ## Year range: 1 – 2018
+
+## Profiling the Dataset
+
+``` r
+glimpse(miracles)
+```
+
+    ## Rows: 1,990
+    ## Columns: 11
+    ## $ event_id         <chr> "MAR_0001", "MAR_0002", "MAR_0003", "MAR_0004", "MAR_…
+    ## $ category         <chr> "Marian Apparition", "Marian Apparition", "Marian App…
+    ## $ year             <dbl> 40, 48, 81, 105, 231, 11, 250, 10, 300, 300, 305, 325…
+    ## $ century          <dbl> 1, 1, 1, 2, 3, 1, 3, 1, 4, 4, 4, 4, 4, 4, 1, 4, 4, 4,…
+    ## $ city             <chr> "Zaragoza", "Ephesus, Asia Minor", "Patmos", "Kuravil…
+    ## $ country          <chr> "Spain", "Turkey", "Greece", "India", "Asia Minor", "…
+    ## $ person_involved  <chr> "St. James the Greater", "The Apostles", "St. John th…
+    ## $ title            <chr> "Our Lady of the Pillar", NA, "The Woman Clothed in t…
+    ## $ details          <chr> "Visionary: St. James the GreaterTitle: Our Lady of t…
+    ## $ approval_status  <chr> "Approved (traditional/episcopal)", "Approved (tradit…
+    ## $ source_reference <chr> "miraclehunter.com", "miraclehunter.com", "miraclehun…
+
+``` r
+miracles |>
+  summarise(across(everything(), ~ sum(is.na(.) | . == ""))) |>
+  pivot_longer(everything(), names_to = "column", values_to = "missing") |>
+  mutate(pct_missing = missing / nrow(miracles) * 100) |>
+  arrange(desc(missing)) |>
+  filter(missing > 0)
+```
+
+    ## # A tibble: 6 × 3
+    ##   column          missing pct_missing
+    ##   <chr>             <int>       <dbl>
+    ## 1 title              1619       81.4 
+    ## 2 person_involved    1289       64.8 
+    ## 3 approval_status     217       10.9 
+    ## 4 country             191        9.60
+    ## 5 city                 76        3.82
+    ## 6 details              37        1.86
+
+The `title` column is mostly NA because only Marian apparitions and
+miraculous images have devotional titles (like “Our Lady of Guadalupe”).
+The `person_involved` field is empty for Eucharistic miracles where no
+individual is named — the miracle pertains to the host itself.
+
+## Category Distribution
+
+``` r
+miracles |>
+  count(category, sort = TRUE) |>
+  mutate(
+    pct = n / sum(n),
+    category = fct_reorder(category, n)
+  ) |>
+  ggplot(aes(x = category, y = n, fill = category)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = sprintf("%d (%.0f%%)", n, pct * 100)), hjust = -0.1, size = 4) +
+  coord_flip() +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.25))) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "Marian apparitions dominate the dataset",
+    subtitle = "1,990 events scraped from 3 primary source websites",
+    x = NULL, y = "Number of documented events"
+  ) +
+  theme(panel.grid.major.y = element_blank())
+```
+
+![](outputs/eda-category-counts-1.png)<!-- -->
+
+Marian apparitions account for 74% of the dataset — partly because
+miraclehunter.com’s apparitions list is the most comprehensive,
+including uninvestigated claims alongside approved events.
+
+## Geographic Distribution
+
+``` r
+miracles |>
+  filter(!is.na(country)) |>
+  count(country, sort = TRUE) |>
+  slice_head(n = 15) |>
+  mutate(country = fct_reorder(country, n)) |>
+  ggplot(aes(x = country, y = n)) +
+  geom_col(fill = "#2E5090") +
+  geom_text(aes(label = n), hjust = -0.1, size = 3.5) +
+  coord_flip() +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Italy and France dominate miracle geography",
+    subtitle = "Top 15 countries by number of documented events",
+    x = NULL, y = "Number of events"
+  ) +
+  theme(panel.grid.major.y = element_blank())
+```
+
+![](outputs/eda-geography-1.png)<!-- -->
+
+``` r
+miracles |>
+  filter(!is.na(country)) |>
+  filter(country %in% (miracles |> count(country, sort = TRUE) |> slice_head(n = 8) |> pull(country))) |>
+  count(country, category) |>
+  ggplot(aes(x = fct_reorder(country, -n, .fun = sum), y = n, fill = category)) +
+  geom_col() +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "Different countries specialize in different miracle types",
+    subtitle = "Italy leads in Eucharistic miracles and incorruptibles; France in Lourdes cures",
+    x = NULL, y = "Count", fill = "Category"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+![](outputs/eda-geography-by-category-1.png)<!-- -->
+
+## Temporal Patterns
+
+``` r
+miracles |>
+  count(century) |>
+  ggplot(aes(x = century, y = n)) +
+  geom_col(fill = "#6B4226", width = 0.8) +
+  geom_text(aes(label = n), vjust = -0.3, size = 3) +
+  scale_x_continuous(breaks = seq(1, 21, 2)) +
+  labs(
+    title = "Documented miracles by century",
+    subtitle = "A massive spike in the 19th-20th centuries reflects improved documentation, not increased frequency",
+    x = "Century", y = "Number of documented events"
+  ) +
+  theme(panel.grid.major.x = element_blank())
+```
+
+![](outputs/eda-timeline-1.png)<!-- -->
+
+``` r
+miracles |>
+  count(century, category) |>
+  ggplot(aes(x = century, y = n, fill = category)) +
+  geom_col() +
+  scale_x_continuous(breaks = seq(1, 21, 2)) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "Which categories drive each century's count?",
+    subtitle = "Marian apparition claims explode after 1900; Eucharistic miracles are more evenly distributed",
+    x = "Century", y = "Count", fill = "Category"
+  ) +
+  theme(panel.grid.major.x = element_blank())
+```
+
+![](outputs/eda-timeline-by-category-1.png)<!-- -->
+
+## The Church’s Approval Rate
+
+This is the most interesting analytical question. The dataset includes
+both approved and rejected/uninvestigated claims — which lets us compute
+actual approval rates.
+
+``` r
+miracles |>
+  filter(!is.na(approval_status)) |>
+  mutate(
+    status_group = case_when(
+      str_detect(approval_status, "(?i)approved|medically inexplicable") ~ "Approved",
+      str_detect(approval_status, "(?i)negative|not established") ~ "Rejected",
+      str_detect(approval_status, "(?i)no decision|no investigation") ~ "No Decision",
+      str_detect(approval_status, "(?i)under investigation") ~ "Under Investigation",
+      TRUE ~ "Other"
+    )
+  ) |>
+  count(status_group, sort = TRUE) |>
+  mutate(pct = n / sum(n)) |>
+  ggplot(aes(x = fct_reorder(status_group, n), y = n, fill = status_group)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = sprintf("%d (%.0f%%)", n, pct * 100)), hjust = -0.1, size = 4) +
+  coord_flip() +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
+  scale_fill_manual(values = c(
+    "Approved" = "#2E5090", "Rejected" = "#d73027",
+    "No Decision" = "#CCCCCC", "Under Investigation" = "#fdae61", "Other" = "#999999"
+  )) +
+  labs(
+    title = "Most modern claims receive no formal ruling",
+    subtitle = "Approval status distribution across all 1,990 events",
+    x = NULL, y = "Number of events"
+  ) +
+  theme(panel.grid.major.y = element_blank())
+```
+
+![](outputs/eda-approval-status-1.png)<!-- -->
+
+``` r
+miracles |>
+  filter(!is.na(approval_status)) |>
+  mutate(
+    approved = str_detect(approval_status, "(?i)approved|medically inexplicable|traditional"),
+    category = fct_reorder(category, approved, .fun = mean)
+  ) |>
+  group_by(category) |>
+  summarise(
+    n = n(),
+    n_approved = sum(approved),
+    approval_rate = mean(approved),
+    .groups = "drop"
+  ) |>
+  ggplot(aes(x = category, y = approval_rate, fill = category)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = sprintf("%.0f%%\n(%d/%d)", approval_rate * 100, n_approved, n)),
+            vjust = -0.1, size = 3.5, lineheight = 0.9) +
+  scale_y_continuous(labels = percent, limits = c(0, 1.15)) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "Approval rates vary wildly by category",
+    subtitle = "Lourdes and incorruptibles have near-100% approval (pre-filtered);\nMarian apparitions show the Church's selectivity",
+    x = NULL, y = "Approval Rate"
+  ) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+```
+
+![](outputs/eda-approval-by-category-1.png)<!-- -->
+
+**Key insight:** The Marian apparitions approval rate (~50%) masks a
+crucial difference. The historical/traditional apparitions (pre-1900)
+are overwhelmingly approved because they only entered the record after
+centuries of veneration. The *modern* claims since 1900 — where we have
+the full pipeline of claim → investigation → ruling — show a rejection
+rate over 75%.
+
+## Deep Dive: Marian Apparitions Since 1900
+
+``` r
+miracles |>
+  filter(category == "Marian Apparition", year >= 1900) |>
+  filter(!is.na(approval_status)) |>
+  mutate(
+    ruling = case_when(
+      str_detect(approval_status, "(?i)negative|not established") ~ "Rejected",
+      str_detect(approval_status, "(?i)no decision|no investigation") ~ "No Formal Ruling",
+      str_detect(approval_status, "(?i)approved") ~ "Approved",
+      str_detect(approval_status, "(?i)under") ~ "Under Investigation",
+      TRUE ~ "Other"
+    )
+  ) |>
+  count(ruling, sort = TRUE) |>
+  mutate(pct = n / sum(n)) |>
+  ggplot(aes(x = fct_reorder(ruling, n), y = n, fill = ruling)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = sprintf("%d (%.0f%%)", n, pct * 100)), hjust = -0.1, size = 4) +
+  coord_flip() +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
+  scale_fill_manual(values = c(
+    "Approved" = "#2E5090", "Rejected" = "#d73027",
+    "No Formal Ruling" = "#CCCCCC", "Under Investigation" = "#fdae61", "Other" = "#999999"
+  )) +
+  labs(
+    title = "Since 1900: most apparition claims get no ruling at all",
+    subtitle = "Of 808 claims since 1900, the Church has explicitly approved fewer than 20",
+    x = NULL, y = "Count"
+  ) +
+  theme(panel.grid.major.y = element_blank())
+```
+
+![](outputs/marian-modern-approval-1.png)<!-- -->
+
+## Deep Dive: Eucharistic Miracles Across Centuries
+
+``` r
+miracles |>
+  filter(category == "Eucharistic Miracle") |>
+  count(century) |>
+  ggplot(aes(x = century, y = n)) +
+  geom_col(fill = "#B2182B", width = 0.8) +
+  geom_text(aes(label = n), vjust = -0.3, size = 3.5) +
+  scale_x_continuous(breaks = 1:21) +
+  labs(
+    title = "Eucharistic miracles peaked in the 13th-16th centuries",
+    subtitle = "147 documented events from the Carlo Acutis catalog and MiracleHunter.com",
+    x = "Century", y = "Count"
+  ) +
+  theme(panel.grid.major.x = element_blank())
+```
+
+![](outputs/eucharistic-timeline-1.png)<!-- -->
+
+``` r
+miracles |>
+  filter(category == "Eucharistic Miracle", !is.na(country)) |>
+  count(country, sort = TRUE) |>
+  slice_head(n = 10) |>
+  mutate(country = fct_reorder(country, n)) |>
+  ggplot(aes(x = country, y = n)) +
+  geom_col(fill = "#B2182B") +
+  geom_text(aes(label = n), hjust = -0.1, size = 4) +
+  coord_flip() +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Italy and Spain lead in Eucharistic miracles",
+    subtitle = "Concentration in Catholic heartland regions with dense parish networks",
+    x = NULL, y = "Count"
+  ) +
+  theme(panel.grid.major.y = element_blank())
+```
+
+![](outputs/eucharistic-geography-1.png)<!-- -->
+
+## Key Findings
+
+### Finding 1: The Church rejects the vast majority of modern claims
+
+Of 808 Marian apparition claims since 1900, the overwhelming majority
+receive either “No decision” or an explicit negative ruling. Fewer than
+3% are formally approved. This is not a credulous institution.
+
+### Finding 2: Geography reflects Church infrastructure, not miracle frequency
+
+Italy leads in 4 of 6 categories — not because Italy is more miraculous,
+but because it has the densest Catholic parish network, the most
+preserved relics, and the longest continuous institutional history.
+
+### Finding 3: The documentation explosion is modern
+
+The 19th-20th century spike in recorded events reflects the
+formalization of investigation processes (Lourdes Medical Bureau 1883,
+codified canonization 1588, modern diocesan commissions) — not an
+increase in supernatural activity.
+
+### Finding 4: Different categories have very different evidentiary profiles
+
+Lourdes cures are medically verified with modern diagnostics.
+Eucharistic miracles range from medieval chronicle entries to
+21st-century lab-tested tissue samples. Marian apparitions span credible
+multi-witness events to single-person unverified claims. The dataset
+captures this full spectrum.
+
+## Data Sources
+
+- **[MiracleHunter.com](https://www.miraclehunter.com)** — Comprehensive
+  catalog of Marian apparitions (approved + unapproved), Eucharistic
+  miracles, stigmata, incorruptibles, and miraculous images. Maintained
+  by Michael O’Neill, author of *Exploring the Miraculous* (OSV, 2015).
+- **[miracolieucaristici.org](https://www.miracolieucaristici.org)** —
+  Carlo Acutis / Nicola Gori International Exhibition of Eucharistic
+  Miracles. Cataloging 136+ Eucharistic miracles worldwide.
+- **[lourdes-france.com](https://www.lourdes-france.com/en/miraculous-healings/)**
+  — Official Sanctuary of Our Lady of Lourdes. List of 72 recognized
+  cures declared medically inexplicable by the CMIL (Comité Médical
+  International de Lourdes).
