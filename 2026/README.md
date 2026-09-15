@@ -1,6 +1,6 @@
 # 2026
 
-**23 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**24 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -115,5 +115,16 @@
 </tr>
 <tr>
 <td align="center"><a href="2026_08_11/">Palomar</a></td>
+</tr>
+</table>
+
+## September
+
+<table>
+<tr>
+<td><a href="2026_09_15/"><img src="2026_09_15/outputs/2026_09_15_tidy_tuesday_dead_sea_scrolls.png" width="150"></a></td>
+</tr>
+<tr>
+<td align="center"><a href="2026_09_15/">Scrolls</a></td>
 </tr>
 </table>
