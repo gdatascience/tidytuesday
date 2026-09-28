@@ -3,7 +3,7 @@
 ## GitHub Repository
 - Repo: https://github.com/gdatascience/tidytuesday
 - Always link to the week README (the blog post): `https://github.com/gdatascience/tidytuesday/tree/master/YYYY/YYYY_MM_DD`
-- This shows the full rendered blog post with visualizations inline — much better for readers than a raw Rmd file
+- This shows the full rendered blog post with visualizations inline, which is much better for readers than a raw Rmd file
 
 ## Golden Dome Data Tuesdays (Static Info)
 - Event: "Golden Dome Data Tuesdays"
@@ -19,7 +19,7 @@
 
 ## LinkedIn
 - 1-2 paragraphs, professional but conversational
-- Open with a hook — a surprising finding or funny moment from the analysis
+- Open with a hook, such as a surprising finding or funny moment from the analysis
 - Highlight a key quantified insight from the data
 - Mention tools used (e.g., Kiro, specific R packages)
 - Include a link to the week directory on GitHub (shows the README blog post)
@@ -49,9 +49,10 @@
 - Use Slack emoji formatting (e.g., `:fish:`, `:calendar:`, `:link:`)
 
 ## General Rules
+- **Write to sound human, not like AI. See `writing_style.md` for the hard rules (no em-dashes, no stock flourishes). This applies to every post, blurb, and PR title.**
 - Every post must include a link to the week directory on GitHub (which renders the README blog post)
 - Quantify findings where possible (e.g., "doubled from 8% to 15%")
-- Keep the tone conversational — data science is fun, not stuffy
+- Keep the tone conversational, since data science is fun, not stuffy
 - Reference the visualization or key chart in the post
 - If a Shiny app was built, mention it and describe what users can explore with it
 - When drafting social media posts for a completed analysis, also write a short blurb for that week's README (2-3 sentences summarizing the analysis, key finding, and tools used). This blurb should be punchy and quantified, similar in tone to the social posts.
@@ -60,6 +61,6 @@
 ## Kiro Attribution
 Kiro does most of the work on these analyses. Every post should acknowledge that clearly:
 - Describe what Kiro built: EDA, blog post, visualizations, Shiny apps, etc.
-- Frame the human role as directing, steering, and making design/story decisions — Kiro handles the code, iteration, and debugging
+- Frame the human role as directing, steering, and making design/story decisions, while Kiro handles the code, iteration, and debugging
 - Use phrasing like "Kiro did the heavy lifting," "Kiro handled the code and iteration," or "I steered while Kiro built"
 - Always include #Kiro in the hashtags

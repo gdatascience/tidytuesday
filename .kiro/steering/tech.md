@@ -1,12 +1,12 @@
 # Technology Stack
 
 ## Git Workflow
-- **Push directly to master** unless explicitly asked to create a branch. This is a personal repo — no PRs or branches needed for routine work.
+- **Push directly to master** unless explicitly asked to create a branch. This is a personal repo, so no PRs or branches are needed for routine work.
 - Only create a branch when the user specifically requests one for a larger project.
 
 ## Shell Command Rules
-- Never prepend `cd` to commands — use the `cwd` parameter instead.
-- Never chain commands with `&&`, `||`, `;`, or `|` — run each command as a separate invocation.
+- Never prepend `cd` to commands. Use the `cwd` parameter instead.
+- Never chain commands with `&&`, `||`, `;`, or `|`. Run each command as a separate invocation.
 
 ## Language & Environment
 - R (primary language)
@@ -21,7 +21,7 @@
 
 ### Data Manipulation
 - `tidyverse` - Core data science packages (dplyr, tidyr, ggplot2, etc.)
-- `tidytuesdayR` - Package for loading TidyTuesday datasets AND for curating/submitting datasets. For submissions, use `tt_clean()`, `tt_save_dataset()`, `tt_intro()`, `tt_meta()`, and `tt_submit()` — never the manual template workflow.
+- `tidytuesdayR` - Package for loading TidyTuesday datasets AND for curating/submitting datasets. For submissions, use `tt_clean()`, `tt_save_dataset()`, `tt_intro()`, `tt_meta()`, and `tt_submit()`, never the manual template workflow.
 - `lubridate` - Date/time manipulation
 - `janitor` - Data cleaning utilities
 - `tidytext` - Text mining and analysis
@@ -31,7 +31,7 @@
 - `scales` - Scale functions for ggplot2
 - `ggtext` - Rich text (markdown/HTML) in ggplot labels; required for Font Awesome icon captions via `element_markdown()`
 - `patchwork` - Combine multiple ggplots (use only when multi-panel is justified; see structure.md)
-- `showtext` / `sysfonts` - Custom Google Fonts for thematic styling (**IMPORTANT:** always call `showtext_opts(dpi = 300)` after `showtext_auto()` to match `ggsave` DPI — without this, fonts render at ~1/3 size)
+- `showtext` / `sysfonts` - Custom Google Fonts for thematic styling (**IMPORTANT:** always call `showtext_opts(dpi = 300)` after `showtext_auto()` to match `ggsave` DPI. Without this, fonts render at ~1/3 size)
 - `ragg` - Alternative graphics device with native color emoji support via `systemfonts`; use `ragg::agg_png` to render color emoji to a PNG, then composite with `magick` (see structure.md "Color Emoji in Titles")
 - `magick` - Image processing, compositing logos/emoji onto plots
 - `cowplot` - `draw_image()` for placing logos/images on ggplots
@@ -42,14 +42,14 @@
 - `gtsummary` - Summary tables with gt
 
 ### Fonts & Icons
-- Font Awesome 7 OTF files installed at `~/Library/Fonts/` — used for icon captions
+- Font Awesome 7 OTF files installed at `~/Library/Fonts/`, used for icon captions
   - `Font Awesome 7 Brands-Regular-400.otf` (GitHub, LinkedIn, etc.)
   - `Font Awesome 7 Free-Solid-900.otf` (table icon, etc.)
   - `Font Awesome 7 Free-Regular-400.otf` (outlined icons)
 - Register via `sysfonts::font_add()` for use with `showtext` + `ggtext::element_markdown()`
 
 ### Machine Learning & Modeling
-- `tidymodels` - **Always use tidymodels for machine learning** (includes parsnip, recipes, workflows, rsample, tune, yardstick, broom). Never use standalone packages like `randomForest`, `glmnet`, or `caret` directly — wrap them through the tidymodels interface instead.
+- `tidymodels` - **Always use tidymodels for machine learning** (includes parsnip, recipes, workflows, rsample, tune, yardstick, broom). Never use standalone packages like `randomForest`, `glmnet`, or `caret` directly. Wrap them through the tidymodels interface instead.
 - Common workflow: `recipe()` → `workflow()` → `fit()` → `predict()` → `metrics()`
 - For random forests use `rand_forest()` with `engine = "ranger"`
 - For logistic regression use `logistic_reg()` with `engine = "glm"`
@@ -126,7 +126,7 @@ gtsave(table_object, "outputs/YYYY_MM_DD_tidy_tuesday_topic.png")
 
 ## Console/Terminal R Execution
 
-Each `Rscript -e '...'` call starts a fresh R process — packages, data, and objects do not persist between calls. To avoid redundant work:
+Each `Rscript -e '...'` call starts a fresh R process, so packages, data, and objects do not persist between calls. To avoid redundant work:
 
 ### Cache Data Locally
 On the first run, save downloaded data to a local `.rds` file. On subsequent runs, read from the cache instead of re-downloading.
@@ -152,10 +152,10 @@ tt <- readRDS(cache_path)
 - If a script only needs `dplyr` and `readr`, don't load all of `tidyverse`
 - Group related exploratory queries into a single `Rscript -e '...'` call rather than running many small ones
 - Clean up cache files (e.g., `tt_cache.rds`) when the analysis is complete
-- Never leave `.rds` cache files in the repo root — always use the specs folder
+- Never leave `.rds` cache files in the repo root. Always use the specs folder
 
 ### Temporary & Scratch Files
-**NEVER use `.kiro_tmp/` or any other temp directory in the repo root.** All temporary files — build logs, intermediate images, render output, scratch data — must go in the week's specs folder:
+**NEVER use `.kiro_tmp/` or any other temp directory in the repo root.** All temporary files (build logs, intermediate images, render output, scratch data) must go in the week's specs folder:
 
 ```
 .kiro/specs/YYYY_MM_DD_tidy_tuesday_topic/
@@ -167,10 +167,10 @@ This includes:
 - Any file that is not the final `.Rmd`, `.qmd`, or `.png` deliverable
 
 The **only files that should exist in the repo root** are:
-- `README.md` — Portfolio landing page
-- `tidytuesday.Rproj` — RStudio project file
-- `.gitignore` — Git ignore rules
-- `_publish.yml` — Quarto publish configuration (if present)
+- `README.md`: Portfolio landing page
+- `tidytuesday.Rproj`: RStudio project file
+- `.gitignore`: Git ignore rules
+- `_publish.yml`: Quarto publish configuration (if present)
 
 Analysis files and outputs go in their respective `YYYY/YYYY_MM_DD/` directories:
 - Analysis file: `YYYY/YYYY_MM_DD/YYYY_MM_DD_tidy_tuesday_topic.Rmd` (or `.qmd`)
@@ -206,7 +206,7 @@ rmarkdown::render(
 
 Then copy only the generated plot images into `YYYY/YYYY_MM_DD/outputs/` and use their content in the README. **Never leave rendered `.md` or `_files/` directories in the week folder.**
 
-This keeps the week directory clean — only the `.Rmd`, `outputs/`, and `README.md` belong there.
+This keeps the week directory clean: only the `.Rmd`, `outputs/`, and `README.md` belong there.
 
 ## Project Configuration
 - RStudio settings stored in `.Rproj.user/`
