@@ -118,6 +118,29 @@ When curating a dataset for submission to the TidyTuesday project, always use th
 7. `tt_meta(path = "tt_submission", ..., open = FALSE)` — creates `meta.yaml` with title, article, source, image alt text, and credits
 8. `tt_submit(path = "tt_submission")` — forks repo, pushes branch, and provides a PR URL
 
+### Critical: `tt_save_dataset()` overwrites data dictionaries
+
+`tt_save_dataset()` regenerates the `.md` dictionary skeleton with placeholder text ("Describe this field in sentence case.") every time it runs. This means:
+
+- **Never run `tt_save_dataset()` after filling in the dictionaries** — it will silently wipe your descriptions and replace them with placeholders. Complete ALL `tt_save_dataset()` calls first (step 3), then fill in every `.md` (step 4). If you later change a dataset's columns and must re-save, re-fill the dictionary immediately afterward.
+- **Before every `tt_submit()`, verify no placeholders remain.** Grep each dictionary for the placeholder string and confirm the count is zero:
+  ```bash
+  grep -c "Describe this field" tt_submission/*.md   # must be 0 for every file
+  ```
+- Matching column *names* between the CSV and the `.md` is not sufficient verification — the descriptions themselves must be filled in. A name-only check will pass even when every description is still a placeholder.
+
+### Image must be PNG
+
+The PR submission checker requires at least one `*.png` image — a `.jpg` will fail the check. If you download a figure from a source (e.g., a paper), convert it to PNG before referencing it in `meta.yaml`:
+
+```r
+magick::image_read("figure.jpg") |> magick::image_write("figure.png", format = "png")
+```
+
+### `data_source` / `article` URL checker warnings are non-blocking
+
+The PR checker reports "Could not reach URL" for `data_source` or `article` links that sit behind bot protection (Cloudflare "Are you a human?" checks) or DOI redirects. Maintainers have confirmed these warnings are informational only and do not block acceptance, as long as the URL genuinely works in a browser. Do not churn through alternative URLs chasing a green check — verify the link opens in a browser and move on.
+
 ### Credits (meta.yaml)
 
 Always use this exact credit section in `tt_meta()`:
