@@ -1,6 +1,6 @@
 # 2026
 
-**24 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
+**25 analyses** from the [TidyTuesday](https://github.com/rfordatascience/tidytuesday) project.
 
 ---
 
@@ -126,5 +126,16 @@
 </tr>
 <tr>
 <td align="center"><a href="2026_09_15/">Scrolls</a></td>
+</tr>
+</table>
+
+## October
+
+<table>
+<tr>
+<td><a href="2026_10_06/"><img src="2026_10_06/outputs/2026_10_06_tidy_tuesday_avocado_oil.png" width="150"></a></td>
+</tr>
+<tr>
+<td align="center"><a href="2026_10_06/">Avocado Oil</a></td>
 </tr>
 </table>
