@@ -4,7 +4,7 @@
 
 ![Always in Season... to Commit Fraud](outputs/2026_10_06_tidy_tuesday_avocado_oil.png)
 
-UC Davis researchers tested 37 avocado oil products in 2026 and found 89% failed authenticity testing -- including zero of 12 salad dressing lots. Six years earlier, 82% of bottled avocado oils were rancid or outright fake. Meanwhile olive oil, regulated for decades, cleared 95% authentic. Kiro built the full analysis including a tidymodels logistic regression fraud classifier trained on fatty acid chemical fingerprints.
+My family buys avocado oil chips and mayo on purpose, so UC Davis testing hit home: 93% of avocado oil chips and 71% of the mayo were secretly cut with cheaper oil, while the olive oil versions passed almost every time. Kiro built the full analysis, including a tidymodels logistic regression fraud detector trained on fatty acid fingerprints.
 
 ---
 
@@ -12,21 +12,30 @@ You grabbed the avocado oil chips. The front of the bag says “Made with
 100% Pure Avocado Oil.” You paid extra for it. There’s a good chance you
 were lied to.
 
-UC Davis researchers tested 37 avocado oil chip, mayonnaise, and salad
-dressing products in 2026 — two lots of each — and found that **89% of
-the avocado-labeled samples failed authenticity testing**. Every single
-salad dressing labeled “made with avocado oil” failed. Every lot. Not
-one passed. Six years earlier, the same research group found that **82%
-of bottled avocado oils** were either rancid before their expiration
-date or outright replaced with cheaper oils.
+[UC Davis
+researchers](https://www.ucdavis.edu/food/news/avocado-oil-chip-youre-eating-may-not-be-made-pure-avocado-oil)
+bought chips, mayonnaise, and salad dressing labeled “made with avocado
+oil” from online retailers and California stores in 2025 and 2026, and
+tested two separately purchased lots of each product. **48 of the 54
+avocado oil samples were adulterated with cheaper oils.** Broken out by
+category, the failure rates are brutal: **93% of chips, 71% of
+mayonnaise, and 100% of salad dressings** were not what the label
+claimed.
 
-Meanwhile, olive oil — a category with decades of regulation and legal
-standards — cleared 95% authentic across the same chip, mayo, and
-dressing tests.
+Then they ran the exact same tests on 20 olive oil products. Only one
+failed.
 
-This is not a rounding error. It’s a market where consumers are
-systematically paying a premium for a product they are not receiving.
-And the chemistry tells the story with unusual precision.
+That gap is the whole story. Olive oil authenticity has been studied,
+regulated, and litigated for decades. Avocado oil is newer, pricier, and
+barely monitored, so there is almost nothing protecting the person at
+the grocery store. And this is not a one-off result. A 2020 study from
+the same group found **82% of bottled avocado oils** were rancid or
+mixed with other oils, and a follow-up found **70% of private-label
+(store brand) oils** had the same problem.
+
+This is not a rounding error. It’s a market where people are paying a
+premium for a product they are not getting. The chemistry tells the
+story with unusual precision, so let’s follow it.
 
 ``` r
 library(tidyverse)
@@ -49,9 +58,9 @@ avo_panel   <- "#DCF050"   # panel background (slightly darker lime)
 font_add_google("Fredoka", "fredoka")
 font_add_google("Source Sans 3", "source_sans")
 font_add(family = "fa-brands",
-         regular = "C:/Users/tonyg/Downloads/fontawesome-free-7.3.1-desktop/fontawesome-free-7.3.1-desktop/otfs/Font Awesome 7 Brands-Regular-400.otf")
+         regular = "~/Library/Fonts/Font Awesome 7 Brands-Regular-400.otf")
 font_add(family = "fa-solid",
-         regular = "C:/Users/tonyg/Downloads/fontawesome-free-7.3.1-desktop/fontawesome-free-7.3.1-desktop/otfs/Font Awesome 7 Free-Solid-900.otf")
+         regular = "~/Library/Fonts/Font Awesome 7 Free-Solid-900.otf")
 showtext_auto()
 showtext_opts(dpi = 200)
 
@@ -95,10 +104,20 @@ Two studies, six years apart, both from UC Davis.
 **`avocado_oil_bottles`** (22 rows) is a 2020 survey of bottled avocado
 oils bought online and in stores, with full chemical fingerprints: fatty
 acid percentages, sterol composition, and vitamin E content.
-**`avocado_oil_processed_foods`** (74 rows) is a 2026 study of processed
-foods — chips, mayonnaise, and salad dressings — each product tested in
-two separately purchased lots. The 74 rows represent 37 products times
-two lots each.
+**`avocado_oil_processed_foods`** (74 rows) is the newer study, with
+products purchased in 2025 and 2026: chips, mayonnaise, and salad
+dressings, each tested in two separately purchased lots. The 74 rows
+represent 37 products times two lots each, covering both avocado oil and
+olive oil items so the two categories can be compared head to head.
+
+One objection comes up immediately: these are processed foods, not raw
+oil. Couldn’t frying, blending, or emulsifying scramble the chemical
+fingerprint and create false failures? The researchers tested that
+directly and found the fatty acid and sterol markers changed only
+minimally through processing. They also gave every sample a 10% margin
+of deviation from the reference standard to allow for natural variation
+in avocado variety and growing region. Even with that cushion, 89% of
+the avocado products still failed.
 
 ``` r
 glimpse(bottles)
@@ -106,41 +125,41 @@ glimpse(bottles)
 
     ## Rows: 22
     ## Columns: 35
-    ## $ sample_code                 <chr> "EV1", "EV2", "EV3", "EV4", "EV5", "EV6", ~
-    ## $ grade_labeled               <chr> "extra virgin", "extra virgin", "extra vir~
-    ## $ purchasing_method           <chr> "Online", "In store", "In store", "In stor~
-    ## $ expiration_date             <chr> "Oct-21", "Jun-21", "Feb-21", "Sep-20", "J~
-    ## $ product_origin              <chr> "California", "California", "Mexico", "Cal~
-    ## $ cost_per_fl_oz              <dbl> 2.23, 1.29, 0.65, 1.53, 1.57, 0.49, 2.35, ~
-    ## $ packaging_type              <chr> "Dark glass", "Dark glass", "Dark glass", ~
-    ## $ oxidized                    <lgl> TRUE, TRUE, NA, TRUE, TRUE, NA, TRUE, TRUE~
-    ## $ purity_result               <chr> "pure", "pure", "adulterated", "pure", "pu~
-    ## $ adulterant                  <chr> NA, NA, "soybean oil", NA, NA, "soybean oi~
-    ## $ alpha_tocopherol_mg_kg      <dbl> 155.2, 116.0, 87.3, 120.7, 143.3, 95.9, 14~
-    ## $ gamma_beta_tocopherol_mg_kg <dbl> NA, NA, 412.5, NA, NA, 581.3, NA, 108.8, N~
-    ## $ delta_tocopherol_mg_kg      <dbl> NA, NA, 145.6, NA, NA, 229.0, NA, NA, NA, ~
-    ## $ total_tocopherols_mg_kg     <dbl> 155.2, 116.0, 645.4, 120.7, 143.3, 906.2, ~
-    ## $ c14_0_pct                   <dbl> NA, 0.1, 0.1, 0.1, 0.1, 0.1, NA, NA, NA, N~
-    ## $ c16_0_palmitic_pct          <dbl> 16.5, 15.6, 10.9, 15.5, 15.6, 10.4, 16.0, ~
-    ## $ c16_1_palmitoleic_pct       <dbl> 6.9, 6.5, 0.1, 6.4, 6.4, 0.1, 6.6, 1.7, 5.~
-    ## $ c18_0_stearic_pct           <dbl> 0.5, 0.5, 4.0, 0.5, 0.5, 3.8, 0.5, 2.3, 1.~
-    ## $ c18_1_oleic_pct             <dbl> 55.6, 61.0, 21.4, 59.3, 58.6, 19.7, 62.4, ~
-    ## $ c18_2_linoleic_pct          <dbl> 19.2, 15.2, 54.4, 17.0, 17.5, 55.4, 13.4, ~
-    ## $ c18_3_linolenic_pct         <dbl> 1.2, 1.0, 8.2, 1.1, 1.1, 9.8, 0.9, 0.5, 0.~
-    ## $ c20_0_pct                   <dbl> NA, NA, 0.3, NA, NA, 0.4, NA, 0.3, 0.2, 0.~
-    ## $ c20_1_pct                   <dbl> 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.3, 0.~
-    ## $ c22_0_pct                   <dbl> NA, NA, 0.3, NA, NA, 0.3, NA, 0.4, 0.2, 0.~
-    ## $ c24_0_pct                   <dbl> NA, NA, 0.1, NA, NA, 0.1, NA, 0.2, 0.1, 0.~
-    ## $ brassicasterol_pct          <dbl> 0.4, NA, NA, NA, NA, NA, NA, NA, NA, NA, N~
-    ## $ campesterol_pct             <dbl> 5.5, 5.4, 20.3, 5.6, 5.8, 23.3, 6.3, 8.6, ~
-    ## $ stigmasterol_pct            <dbl> 0.8, NA, 15.8, 0.6, 0.6, 15.0, NA, 4.6, 1.~
-    ## $ delta7_campesterol_pct      <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
-    ## $ clerosterol_pct             <dbl> 1.9, 1.9, NA, 1.8, 1.9, NA, 1.9, 0.9, 1.2,~
-    ## $ beta_sitosterol_pct         <dbl> 85.6, 86.8, 56.3, 86.0, 85.4, 55.2, 86.3, ~
-    ## $ delta5_avenasterol_pct      <dbl> 5.7, 5.8, 2.7, 6.0, 6.3, 3.8, 5.6, 4.5, 4.~
-    ## $ delta7_stigmasterol_pct     <dbl> NA, NA, 2.8, NA, NA, 1.5, NA, 4.3, 1.5, 2.~
-    ## $ delta7_avenasterol_pct      <dbl> NA, NA, 2.1, NA, NA, 1.3, NA, 1.4, NA, NA,~
-    ## $ total_sterols_mg_kg         <dbl> 5955, 4670, 2601, 5649, 5245, 3306, 4263, ~
+    ## $ sample_code                 <chr> "EV1", "EV2", "EV3", "EV4", "EV5", "EV6", …
+    ## $ grade_labeled               <chr> "extra virgin", "extra virgin", "extra vir…
+    ## $ purchasing_method           <chr> "Online", "In store", "In store", "In stor…
+    ## $ expiration_date             <chr> "Oct-21", "Jun-21", "Feb-21", "Sep-20", "J…
+    ## $ product_origin              <chr> "California", "California", "Mexico", "Cal…
+    ## $ cost_per_fl_oz              <dbl> 2.23, 1.29, 0.65, 1.53, 1.57, 0.49, 2.35, …
+    ## $ packaging_type              <chr> "Dark glass", "Dark glass", "Dark glass", …
+    ## $ oxidized                    <lgl> TRUE, TRUE, NA, TRUE, TRUE, NA, TRUE, TRUE…
+    ## $ purity_result               <chr> "pure", "pure", "adulterated", "pure", "pu…
+    ## $ adulterant                  <chr> NA, NA, "soybean oil", NA, NA, "soybean oi…
+    ## $ alpha_tocopherol_mg_kg      <dbl> 155.2, 116.0, 87.3, 120.7, 143.3, 95.9, 14…
+    ## $ gamma_beta_tocopherol_mg_kg <dbl> NA, NA, 412.5, NA, NA, 581.3, NA, 108.8, N…
+    ## $ delta_tocopherol_mg_kg      <dbl> NA, NA, 145.6, NA, NA, 229.0, NA, NA, NA, …
+    ## $ total_tocopherols_mg_kg     <dbl> 155.2, 116.0, 645.4, 120.7, 143.3, 906.2, …
+    ## $ c14_0_pct                   <dbl> NA, 0.1, 0.1, 0.1, 0.1, 0.1, NA, NA, NA, N…
+    ## $ c16_0_palmitic_pct          <dbl> 16.5, 15.6, 10.9, 15.5, 15.6, 10.4, 16.0, …
+    ## $ c16_1_palmitoleic_pct       <dbl> 6.9, 6.5, 0.1, 6.4, 6.4, 0.1, 6.6, 1.7, 5.…
+    ## $ c18_0_stearic_pct           <dbl> 0.5, 0.5, 4.0, 0.5, 0.5, 3.8, 0.5, 2.3, 1.…
+    ## $ c18_1_oleic_pct             <dbl> 55.6, 61.0, 21.4, 59.3, 58.6, 19.7, 62.4, …
+    ## $ c18_2_linoleic_pct          <dbl> 19.2, 15.2, 54.4, 17.0, 17.5, 55.4, 13.4, …
+    ## $ c18_3_linolenic_pct         <dbl> 1.2, 1.0, 8.2, 1.1, 1.1, 9.8, 0.9, 0.5, 0.…
+    ## $ c20_0_pct                   <dbl> NA, NA, 0.3, NA, NA, 0.4, NA, 0.3, 0.2, 0.…
+    ## $ c20_1_pct                   <dbl> 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.3, 0.…
+    ## $ c22_0_pct                   <dbl> NA, NA, 0.3, NA, NA, 0.3, NA, 0.4, 0.2, 0.…
+    ## $ c24_0_pct                   <dbl> NA, NA, 0.1, NA, NA, 0.1, NA, 0.2, 0.1, 0.…
+    ## $ brassicasterol_pct          <dbl> 0.4, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+    ## $ campesterol_pct             <dbl> 5.5, 5.4, 20.3, 5.6, 5.8, 23.3, 6.3, 8.6, …
+    ## $ stigmasterol_pct            <dbl> 0.8, NA, 15.8, 0.6, 0.6, 15.0, NA, 4.6, 1.…
+    ## $ delta7_campesterol_pct      <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+    ## $ clerosterol_pct             <dbl> 1.9, 1.9, NA, 1.8, 1.9, NA, 1.9, 0.9, 1.2,…
+    ## $ beta_sitosterol_pct         <dbl> 85.6, 86.8, 56.3, 86.0, 85.4, 55.2, 86.3, …
+    ## $ delta5_avenasterol_pct      <dbl> 5.7, 5.8, 2.7, 6.0, 6.3, 3.8, 5.6, 4.5, 4.…
+    ## $ delta7_stigmasterol_pct     <dbl> NA, NA, 2.8, NA, NA, 1.5, NA, 4.3, 1.5, 2.…
+    ## $ delta7_avenasterol_pct      <dbl> NA, NA, 2.1, NA, NA, 1.3, NA, 1.4, NA, NA,…
+    ## $ total_sterols_mg_kg         <dbl> 5955, 4670, 2601, 5649, 5245, 3306, 4263, …
 
 ``` r
 glimpse(foods)
@@ -148,51 +167,51 @@ glimpse(foods)
 
     ## Rows: 74
     ## Columns: 45
-    ## $ sample_number                 <dbl> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1~
-    ## $ product_id                    <dbl> 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7~
-    ## $ lot                           <dbl> 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2~
-    ## $ category                      <chr> "chips", "chips", "chips", "chips", "chi~
-    ## $ oil_type                      <chr> "avocado", "avocado", "olive", "olive", ~
-    ## $ declared_oil                  <chr> "Avocado Oil", "Avocado Oil", "Olive Oil~
-    ## $ front_label                   <chr> "Avocado Oil", "Avocado Oil", "Olive Oil~
-    ## $ other_ingredients             <chr> "potatoes, sea salt", "potatoes, sea sal~
-    ## $ package_size_oz               <dbl> 5.25, 22.00, 6.50, 6.50, 6.00, 6.00, 6.2~
-    ## $ retail_price_usd              <dbl> 3.99, 6.59, 3.99, 4.79, 4.99, 4.99, 4.99~
-    ## $ purchase_location             <chr> "Online", "CA retail", "CA retail", "CA ~
-    ## $ authentic                     <lgl> FALSE, FALSE, FALSE, TRUE, FALSE, TRUE, ~
-    ## $ c6_0_pct                      <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-    ## $ c8_0_pct                      <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-    ## $ c10_0_pct                     <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-    ## $ c12_0_pct                     <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-    ## $ c14_0_pct                     <dbl> NA, NA, NA, NA, NA, 0.1, NA, NA, NA, NA,~
-    ## $ c16_0_palmitic_pct            <dbl> 8.1, 8.7, 7.8, 12.1, 14.2, 14.1, 12.3, 1~
-    ## $ c16_1_palmitoleic_pct         <dbl> 1.0, 1.0, 1.0, 0.9, 2.3, 4.9, 1.2, 1.2, ~
-    ## $ c17_0_pct                     <dbl> NA, NA, NA, 0.1, 0.1, NA, 0.1, 0.1, NA, ~
-    ## $ c17_1_pct                     <dbl> 0.1, NA, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0~
-    ## $ c18_0_stearic_pct             <dbl> 2.6, 2.5, 2.6, 3.0, 2.7, 1.3, 3.8, 3.8, ~
-    ## $ c18_1_oleic_pct               <dbl> 74.2, 72.2, 71.8, 70.5, 69.5, 65.0, 71.0~
-    ## $ c18_1n7_vaccenic_pct          <dbl> 1.6, 1.5, 1.5, 2.3, 3.0, 3.8, 2.3, 2.3, ~
-    ## $ c18_2_linoleic_pct            <dbl> 12.4, 14.2, 15.1, 11.4, 9.7, 13.5, 9.8, ~
-    ## $ c18_3_linolenic_pct           <dbl> 0.3, 0.4, 0.3, 0.7, 0.6, 0.6, 0.9, 0.9, ~
-    ## $ c20_0_pct                     <dbl> 0.3, 0.3, 0.3, 0.5, 0.4, 0.2, 0.4, 0.4, ~
-    ## $ c20_1_pct                     <dbl> 0.3, 0.2, 0.3, 0.3, 0.2, 0.2, 0.2, 0.2, ~
-    ## $ c20_2_pct                     <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-    ## $ c22_0_pct                     <dbl> 0.6, 0.5, 0.7, 0.2, 0.1, 0.2, 0.1, 0.1, ~
-    ## $ c24_1_pct                     <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
-    ## $ brassicasterol_pct            <dbl> 0.3, NA, 0.2, 0.3, NA, NA, 0.4, NA, NA, ~
-    ## $ methylene_cholesterol_pct     <dbl> 0.4, 0.5, 0.5, 1.1, 0.3, 0.3, 0.3, 0.5, ~
-    ## $ campesterol_pct               <dbl> 9.8, 11.5, 9.6, 4.0, 5.9, 7.0, 5.5, 5.6,~
-    ## $ campestanol_pct               <dbl> 0.7, 0.8, 0.7, 0.3, 0.3, 0.5, NA, NA, 0.~
-    ## $ stigmasterol_pct              <dbl> 6.6, 7.0, 7.0, 1.8, 1.6, 1.7, 3.5, 3.5, ~
-    ## $ delta7_campesterol_pct        <dbl> 1.2, 1.3, 1.4, 0.2, NA, 0.6, NA, NA, 0.4~
-    ## $ clerosterol_pct               <dbl> 0.5, 0.5, 0.5, 1.2, 0.9, 1.3, 0.4, 0.4, ~
-    ## $ beta_sitosterol_pct           <dbl> 68.0, 64.8, 67.0, 80.3, 81.7, 78.6, 82.9~
-    ## $ sitostanol_pct                <dbl> 0.2, 0.6, 0.5, NA, 1.6, 1.3, NA, NA, 2.7~
-    ## $ delta5_avenasterol_pct        <dbl> 2.6, 3.2, 4.0, 10.3, 3.2, 4.9, 6.4, 7.2,~
-    ## $ delta5_24_stigmastadienol_pct <dbl> 1.3, 1.1, 0.2, NA, 0.6, 2.5, NA, NA, 0.6~
-    ## $ delta7_stigmastenol_pct       <dbl> 5.5, 5.8, 5.9, NA, 3.5, NA, NA, NA, NA, ~
-    ## $ delta7_avenasterol_pct        <dbl> 3.0, 2.8, 2.4, 0.6, 0.5, 1.2, 0.6, 0.7, ~
-    ## $ apparent_beta_sitosterol_pct  <dbl> NA, NA, 72.3, 91.8, NA, NA, 89.7, 89.8, ~
+    ## $ sample_number                 <dbl> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1…
+    ## $ product_id                    <dbl> 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7…
+    ## $ lot                           <dbl> 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2…
+    ## $ category                      <chr> "chips", "chips", "chips", "chips", "chi…
+    ## $ oil_type                      <chr> "avocado", "avocado", "olive", "olive", …
+    ## $ declared_oil                  <chr> "Avocado Oil", "Avocado Oil", "Olive Oil…
+    ## $ front_label                   <chr> "Avocado Oil", "Avocado Oil", "Olive Oil…
+    ## $ other_ingredients             <chr> "potatoes, sea salt", "potatoes, sea sal…
+    ## $ package_size_oz               <dbl> 5.25, 22.00, 6.50, 6.50, 6.00, 6.00, 6.2…
+    ## $ retail_price_usd              <dbl> 3.99, 6.59, 3.99, 4.79, 4.99, 4.99, 4.99…
+    ## $ purchase_location             <chr> "Online", "CA retail", "CA retail", "CA …
+    ## $ authentic                     <lgl> FALSE, FALSE, FALSE, TRUE, FALSE, TRUE, …
+    ## $ c6_0_pct                      <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+    ## $ c8_0_pct                      <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+    ## $ c10_0_pct                     <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+    ## $ c12_0_pct                     <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+    ## $ c14_0_pct                     <dbl> NA, NA, NA, NA, NA, 0.1, NA, NA, NA, NA,…
+    ## $ c16_0_palmitic_pct            <dbl> 8.1, 8.7, 7.8, 12.1, 14.2, 14.1, 12.3, 1…
+    ## $ c16_1_palmitoleic_pct         <dbl> 1.0, 1.0, 1.0, 0.9, 2.3, 4.9, 1.2, 1.2, …
+    ## $ c17_0_pct                     <dbl> NA, NA, NA, 0.1, 0.1, NA, 0.1, 0.1, NA, …
+    ## $ c17_1_pct                     <dbl> 0.1, NA, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0…
+    ## $ c18_0_stearic_pct             <dbl> 2.6, 2.5, 2.6, 3.0, 2.7, 1.3, 3.8, 3.8, …
+    ## $ c18_1_oleic_pct               <dbl> 74.2, 72.2, 71.8, 70.5, 69.5, 65.0, 71.0…
+    ## $ c18_1n7_vaccenic_pct          <dbl> 1.6, 1.5, 1.5, 2.3, 3.0, 3.8, 2.3, 2.3, …
+    ## $ c18_2_linoleic_pct            <dbl> 12.4, 14.2, 15.1, 11.4, 9.7, 13.5, 9.8, …
+    ## $ c18_3_linolenic_pct           <dbl> 0.3, 0.4, 0.3, 0.7, 0.6, 0.6, 0.9, 0.9, …
+    ## $ c20_0_pct                     <dbl> 0.3, 0.3, 0.3, 0.5, 0.4, 0.2, 0.4, 0.4, …
+    ## $ c20_1_pct                     <dbl> 0.3, 0.2, 0.3, 0.3, 0.2, 0.2, 0.2, 0.2, …
+    ## $ c20_2_pct                     <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+    ## $ c22_0_pct                     <dbl> 0.6, 0.5, 0.7, 0.2, 0.1, 0.2, 0.1, 0.1, …
+    ## $ c24_1_pct                     <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+    ## $ brassicasterol_pct            <dbl> 0.3, NA, 0.2, 0.3, NA, NA, 0.4, NA, NA, …
+    ## $ methylene_cholesterol_pct     <dbl> 0.4, 0.5, 0.5, 1.1, 0.3, 0.3, 0.3, 0.5, …
+    ## $ campesterol_pct               <dbl> 9.8, 11.5, 9.6, 4.0, 5.9, 7.0, 5.5, 5.6,…
+    ## $ campestanol_pct               <dbl> 0.7, 0.8, 0.7, 0.3, 0.3, 0.5, NA, NA, 0.…
+    ## $ stigmasterol_pct              <dbl> 6.6, 7.0, 7.0, 1.8, 1.6, 1.7, 3.5, 3.5, …
+    ## $ delta7_campesterol_pct        <dbl> 1.2, 1.3, 1.4, 0.2, NA, 0.6, NA, NA, 0.4…
+    ## $ clerosterol_pct               <dbl> 0.5, 0.5, 0.5, 1.2, 0.9, 1.3, 0.4, 0.4, …
+    ## $ beta_sitosterol_pct           <dbl> 68.0, 64.8, 67.0, 80.3, 81.7, 78.6, 82.9…
+    ## $ sitostanol_pct                <dbl> 0.2, 0.6, 0.5, NA, 1.6, 1.3, NA, NA, 2.7…
+    ## $ delta5_avenasterol_pct        <dbl> 2.6, 3.2, 4.0, 10.3, 3.2, 4.9, 6.4, 7.2,…
+    ## $ delta5_24_stigmastadienol_pct <dbl> 1.3, 1.1, 0.2, NA, 0.6, 2.5, NA, NA, 0.6…
+    ## $ delta7_stigmastenol_pct       <dbl> 5.5, 5.8, 5.9, NA, 3.5, NA, NA, NA, NA, …
+    ## $ delta7_avenasterol_pct        <dbl> 3.0, 2.8, 2.4, 0.6, 0.5, 1.2, 0.6, 0.7, …
+    ## $ apparent_beta_sitosterol_pct  <dbl> NA, NA, 72.3, 91.8, NA, NA, 89.7, 89.8, …
 
 ## EDA: The Bottled Oil Market (2020)
 
@@ -232,7 +251,7 @@ bottles |>
 ![](outputs/eda-purity-grade-1.png)<!-- -->
 
 “Extra virgin” is a label with no legal definition for avocado oil in
-the US — and it shows. Two of the seven extra virgin bottles in the 2020
+the US, and it shows. Two of the seven extra virgin bottles in the 2020
 study contained soybean oil.
 
 ### Price vs. purity: you get what you pay for, sort of
@@ -255,7 +274,7 @@ bottles |>
   ) +
   scale_y_continuous(labels = dollar_format()) +
   labs(
-    title = "Adulterated oils are cheaper — but not reliably",
+    title = "Adulterated oils are cheaper, but not reliably",
     subtitle = "Price per fl oz by purity result. Some pure oils cost less than $0.50.",
     x = NULL, y = "Price per fl oz"
   )
@@ -264,7 +283,7 @@ bottles |>
 ![](outputs/eda-price-purity-1.png)<!-- -->
 
 Adulterated oils cluster at the low end (mean \$0.49/oz vs. \$0.98/oz
-for pure), but the range for pure oils is enormous — from \$0.25 to
+for pure), but the range for pure oils is enormous, from \$0.25 to
 \$2.35. Paying more is no guarantee. The two most expensive bottles
 tested (\$2.23 and \$2.35) both came back pure, but so did the \$0.25
 bottle.
@@ -307,15 +326,15 @@ bottles |>
 ![](outputs/eda-oxidation-1.png)<!-- -->
 
 This is the detail that should unsettle you. Being pure is not enough.
-Of the 16 pure bottled oils, **14 were already oxidized** — showing
-elevated free fatty acid or peroxide levels that signal rancidity —
+Of the 16 pure bottled oils, **14 were already oxidized** (showing
+elevated free fatty acid or peroxide levels that signal rancidity)
 before the printed best-by date. Only two samples (R3, made by Chosen
 Foods, and R5) passed both tests: pure avocado oil *and* not yet rancid.
 
 ### Key chemical markers
 
 Chemists detect avocado oil fraud using [fatty acid
-profiling](https://en.wikipedia.org/wiki/Fatty_acid_profile) — measuring
+profiling](https://en.wikipedia.org/wiki/Fatty_acid_profile), measuring
 the proportions of individual fatty acid chains in the oil. Authentic
 avocado oil has a characteristic fingerprint: high [palmitoleic
 acid](https://en.wikipedia.org/wiki/Palmitoleic_acid) (C16:1, typically
@@ -366,7 +385,7 @@ bottles |>
 
 The palmitoleic acid panel is striking: every pure sample sits between
 5% and 8%. Every adulterated sample sits near 0%. There is no overlap.
-The suspected samples fall in between — consistent with partial
+The suspected samples fall in between, consistent with partial
 substitution using high-oleic sunflower or safflower oil, which has less
 palmitoleic acid than avocado but more than soybean.
 
@@ -422,7 +441,8 @@ foods |>
 The contrast is the story. Olive oil products are nearly always what
 they say. Avocado oil products almost never are. Zero of 12 avocado oil
 salad dressing lots passed. Two of 28 avocado oil chip lots passed. Four
-of 14 avocado mayo lots passed — the “best” category, still 71% failure.
+of 14 avocado mayo lots passed, the “best” category, and still a 71%
+failure rate.
 
 ### Does paying more help?
 
@@ -451,8 +471,8 @@ foods |>
 ![](outputs/eda-price-authenticity-1.png)<!-- -->
 
 The six authentic avocado lots cost a mean of \$1.33/oz; the 48 failed
-lots cost \$0.81/oz. But as with bottled oils, there is real overlap —
-some cheap products are authentic and some expensive ones are not. Price
+lots cost \$0.81/oz. But as with bottled oils, there is real overlap.
+Some cheap products are authentic and some expensive ones are not. Price
 is a signal, not a guarantee.
 
 ### Batch-to-batch consistency
@@ -503,22 +523,30 @@ foods |>
 
 ![](outputs/eda-batch-1.png)<!-- -->
 
-If a product’s oil is being substituted, it tends to fail both lots —
-this is not a manufacturing accident but a systematic ingredient switch.
+If a product’s oil is being substituted, it tends to fail both lots.
+This is not a manufacturing accident but a systematic ingredient switch.
 Only 3 of 27 avocado oil products had mixed results (one lot passing,
 one failing), suggesting the fraud is baked in at the supplier level,
 not a one-off batch error.
 
+The UC Davis team reached the same conclusion. Lead author Selina Wang
+pointed out that many food companies buy their oil through third-party
+brokers or juggle several suppliers, so a brand selling adulterated
+chips may not even know. The fake oil hides behind a couple of layers of
+supply chain, which makes it hard to trace where the substitution
+started. Her read: there is not enough accountability anywhere along the
+chain, and companies could do a lot more to verify what they are buying.
+
 ## Building a Fraud Detector: Logistic Regression on Chemical Fingerprints
 
-We have the chemical data — can a model learn to classify authentic from
+We have the chemical data. Can a model learn to classify authentic from
 fraudulent using only fatty acid and sterol measurements? This is
 exactly what regulators would want: an automated screen that flags
 suspect products for further testing.
 
 [Logistic regression](https://en.wikipedia.org/wiki/Logistic_regression)
 is a classification algorithm that estimates the probability that an
-observation belongs to one of two categories — here, “authentic” or
+observation belongs to one of two categories, here “authentic” or
 “fraudulent.” Unlike a black-box model, it gives us interpretable
 coefficients: each fatty acid’s coefficient tells us how strongly that
 marker pushes toward or away from authentic. We’ll train it on the
@@ -612,7 +640,7 @@ cat(sprintf("LOO Accuracy: %.1f%%\n", acc * 100))
 roc_auc(loo_preds, truth = truth, .pred_authentic) |> print()
 ```
 
-    ## # A tibble: 1 x 3
+    ## # A tibble: 1 × 3
     ##   .metric .estimator .estimate
     ##   <chr>   <chr>          <dbl>
     ## 1 roc_auc binary             1
@@ -655,7 +683,7 @@ full_fit |>
 
 ![](outputs/ml-vip-1.png)<!-- -->
 
-Palmitoleic acid (C16:1) dominates the model — and that makes chemical
+Palmitoleic acid (C16:1) dominates the model, and that makes chemical
 sense. Avocado oil is one of the very few common cooking oils with
 substantial palmitoleic acid. Soybean and sunflower oil have essentially
 none. When you see C16:1 above 4%, you’re almost certainly looking at
@@ -667,7 +695,7 @@ lower in commodity vegetable oils (~1-2%). Together, these two markers
 are the chemical signature of the avocado.
 
 ``` r
-# Scatter plot in the palmitoleic / vaccenic space — the clearest visual
+# Scatter plot in the palmitoleic / vaccenic space, the clearest visual
 foods |>
   filter(oil_type == "avocado") |>
   mutate(
@@ -721,169 +749,104 @@ sit in the upper-right, with both palmitoleic and vaccenic acid well
 above the fraud cluster. The fraudulent samples compress into the
 lower-left corner. The shaded region is the [Codex
 Alimentarius](https://en.wikipedia.org/wiki/Codex_Alimentarius)
-reference range — the international food safety standard for avocado
-oil. Most fraudulent samples are far outside it.
+reference range, the international food safety standard for avocado oil.
+Most fraudulent samples are far outside it.
 
-## The Hero Chart: Chemical Fingerprint
+## The Hero Chart: What’s Actually in the Bottle
+
+My family buys chips and mayo, and we reach for the avocado oil versions
+on purpose. So this is the chart I actually care about: for each
+category, what share of the tested lots held the oil the label promised?
+I split it by avocado versus olive because we buy both, and the gap
+between the two is the whole point.
 
 ``` r
-# Avocado oil chemical fingerprint hero chart
-# Combined: scatter (palmitoleic vs vaccenic) + category authenticity bars
+# High-contrast palette on a dark avocado-skin background
+bg_dark   <- "#14240C"
+hero_green <- "#9CCB3B"   # ripe avocado flesh (authentic)
+hero_red   <- "#F0552B"   # warning red (fraud)
+cream     <- "#F7F3E3"
+grid_col  <- "#2E4019"
+dim_text  <- "#9FB37E"
 
-# Panel 1: Chemical fingerprint scatter
-p1 <- foods |>
-  filter(oil_type == "avocado") |>
-  mutate(
-    auth_label = if_else(authentic, "The Real Deal", "Caught Red-Handed"),
-    category   = str_to_title(str_replace(category, "_", " "))
-  ) |>
-  filter(!is.na(c16_1_palmitoleic_pct), !is.na(c18_1n7_vaccenic_pct)) |>
-  ggplot(aes(
-    x     = c16_1_palmitoleic_pct,
-    y     = c18_1n7_vaccenic_pct,
-    color = auth_label,
-    shape = category
-  )) +
-  annotate("rect",
-    xmin = 4.0, xmax = 17.1, ymin = -Inf, ymax = Inf,
-    fill = avo_green, alpha = 0.13
-  ) +
-  annotate("text",
-    x = 4.4, y = 0.8,
-    label = "Codex avocado oil\nreference range",
-    hjust = 0, vjust = 0, family = "source_sans", size = 3.5,
-    color = avo_green, fontface = "bold.italic"
-  ) +
-  geom_point(size = 5.5, alpha = 0.88, stroke = 0.5) +
-  annotate("label",
-    x = 6.0, y = 5.0,
-    label = "Real avocado oil", hjust = 0.5, size = 3.8,
-    family = "source_sans", fontface = "bold",
-    fill = avo_green, color = "white", label.size = 0,
-    label.padding = unit(0.22, "lines")
-  ) +
-  annotate("label",
-    x = 1.45, y = 0.88,
-    label = "Fraud zone", hjust = 0.5, size = 3.9,
-    family = "source_sans", fontface = "bold",
-    fill = avo_red, color = "white", label.size = 0,
-    label.padding = unit(0.22, "lines")
-  ) +
-  scale_color_manual(
-    values = c("The Real Deal" = avo_green, "Caught Red-Handed" = avo_red),
-    name   = NULL
-  ) +
-  scale_shape_manual(
-    values = c("Chips" = 16, "Mayonnaise" = 17, "Salad Dressing" = 15),
-    name   = NULL
-  ) +
-  scale_x_continuous(limits = c(0, 17.5)) +
-  labs(
-    subtitle = "Two fatty acid markers reveal the fraud. No overlap between real and fake.",
-    x = "Palmitoleic acid (C16:1), % of total fatty acids",
-    y = "Vaccenic acid\n(C18:1 n-7), %"
-  ) +
-  theme(
-    legend.position  = "bottom",
-    legend.box       = "horizontal",
-    legend.margin    = margin(2, 0, 0, 0),
-    legend.spacing.x = unit(6, "pt")
-  ) +
-  guides(
-    color = guide_legend(override.aes = list(size = 5), order = 1),
-    shape = guide_legend(override.aes = list(size = 4), order = 2)
-  )
-
-# Panel 2: Authenticity rates by category + oil type
-p2_data <- foods |>
+hero_d <- foods |>
   group_by(oil_type, category) |>
-  summarise(
-    n             = n(),
-    n_auth        = sum(authentic, na.rm = TRUE),
-    pct_authentic = mean(authentic, na.rm = TRUE),
-    .groups       = "drop"
-  ) |>
+  summarise(n = n(), pass = sum(authentic), pct = mean(authentic), .groups = "drop") |>
   mutate(
     oil_label = str_to_title(oil_type),
-    cat_label = str_to_title(str_replace(category, "_", " ")),
-    bar_label = paste0(n_auth, " / ", n, " passed")
+    cat_label = recode(category,
+      chips = "Chips", mayonnaise = "Mayonnaise", salad_dressing = "Salad dressing"),
+    cat_label = factor(cat_label, levels = c("Salad dressing", "Chips", "Mayonnaise")),
+    end_label = paste0(oil_label, ":  ", pass, " of ", n)
   )
 
-p2 <- ggplot(p2_data, aes(
-    x    = pct_authentic,
-    y    = fct_rev(cat_label),
-    fill = oil_label
-  )) +
-  geom_col(position = position_dodge(width = 0.72), width = 0.65) +
-  geom_text(
-    aes(label = bar_label, x = pct_authentic + 0.014),
-    position = position_dodge(width = 0.72),
-    hjust    = 0, family = "source_sans",
-    fontface = "bold", size = 4.2, color = avo_dark
-  ) +
-  scale_fill_manual(
-    values = c("Avocado" = avo_red, "Olive" = avo_green),
-    name   = NULL
-  ) +
-  scale_x_continuous(
-    labels = percent_format(),
-    limits = c(0, 1.2),
-    breaks = c(0, 0.25, 0.5, 0.75, 1.0)
-  ) +
-  labs(
-    subtitle = "Authentic lots out of total tested - avocado vs. olive oil products",
-    x = "Authenticity rate",
-    y = NULL
-  ) +
-  theme(
-    legend.position = "bottom",
-    axis.text.y     = element_text(size = 14, face = "bold")
-  )
+# All category labels share the same cream color; the subtitle carries the
+# "chips and mayo are what my family buys" emphasis in words instead.
 
-# Build caption with Font Awesome icons
-bg_color   <- avo_lime
 tt_caption <- paste0(
   "DataViz: Tony Galvan  #TidyTuesday",
-  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='color:", bg_dark, ";'>..</span>",
   "<span style='font-family:fa-solid;'>&#xf0ce;</span>",
-  "<span style='color:", bg_color, ";'>.</span>",
+  "<span style='color:", bg_dark, ";'>.</span>",
   "UC Davis: Green & Wang (2020), Lopez-Alvarez et al. (2026)",
-  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='color:", bg_dark, ";'>..</span>",
   "<span style='font-family:fa-brands;'>&#xf08c;</span>",
-  "<span style='color:", bg_color, ";'>.</span>",
+  "<span style='color:", bg_dark, ";'>.</span>",
   "anthony-raul-galvan",
-  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='color:", bg_dark, ";'>..</span>",
   "<span style='font-family:fa-brands;'>&#xf09b;</span>",
-  "<span style='color:", bg_color, ";'>.</span>",
+  "<span style='color:", bg_dark, ";'>.</span>",
   "gdatascience"
 )
 
-# Combine
-hero <- (p1 / p2) +
-  plot_layout(heights = c(1.15, 0.85)) +
-  plot_annotation(
-    title    = "   Always in Season... to Commit Fraud",
-    subtitle = paste0(
-      "82% of bottled avocado oils failed in 2020.  89% of avocado oil processed foods failed in 2026.\n",
-      "Olive oil cleared 95% authentic.  Zero of 12 avocado oil salad dressing lots passed."
-    ),
-    caption  = tt_caption,
-    theme    = theme(
-      plot.title    = element_text(
-        family = "fredoka", size = 30, face = "bold",
-        color  = avo_green, hjust = 0
-      ),
-      plot.subtitle = element_text(
-        family = "source_sans", size = 13,
-        color  = avo_dark, hjust = 0.5, lineheight = 1.4
-      ),
-      plot.caption  = element_markdown(
-        family = "source_sans", size = 9,
-        color  = "#3a5a20", hjust = 0.5
-      ),
-      plot.background = element_rect(fill = avo_lime, color = NA),
-      plot.margin   = margin(18, 36, 14, 28)
-    )
+subtitle_txt <- paste0(
+  "Share of tested lots whose oil actually matched the label,<br>",
+  "for products made with ",
+  "<span style='color:", hero_red, ";'>**avocado oil**</span> versus ",
+  "<span style='color:", hero_green, ";'>**olive oil**</span>."
+)
+
+title_txt <- "Your avocado oil snacks<br>are probably faking it."
+
+hero <- ggplot(hero_d, aes(x = pct, y = fct_rev(cat_label),
+                           fill = oil_label, group = fct_rev(oil_label))) +
+  geom_col(position = position_dodge(width = 0.76), width = 0.68) +
+  geom_text(
+    aes(label = end_label, x = pct + 0.02, color = oil_label),
+    position = position_dodge(width = 0.76),
+    hjust = 0, family = "source_sans", fontface = "bold", size = 4.2
+  ) +
+  scale_fill_manual(values = c("Avocado" = hero_red, "Olive" = hero_green), guide = "none") +
+  scale_color_manual(values = c("Avocado" = hero_red, "Olive" = hero_green), guide = "none") +
+  scale_x_continuous(labels = percent_format(accuracy = 1),
+                     limits = c(0, 1.3), breaks = c(0, .25, .5, .75, 1),
+                     expand = expansion(mult = c(0, 0))) +
+  coord_cartesian(clip = "off") +
+  labs(
+    title = title_txt,
+    subtitle = subtitle_txt,
+    x = NULL, y = NULL, caption = tt_caption
+  ) +
+  theme_minimal(base_family = "source_sans", base_size = 14) +
+  theme(
+    plot.background  = element_rect(fill = bg_dark, color = NA),
+    panel.background = element_rect(fill = bg_dark, color = NA),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(color = grid_col, linewidth = 0.4),
+    axis.text.x = element_text(color = dim_text, size = 13),
+    axis.text.y = element_text(color = cream, size = 19, face = "bold",
+                               family = "fredoka", hjust = 0.5),
+    plot.title = element_markdown(family = "fredoka", face = "bold", size = 42,
+                                  color = cream, hjust = 0, lineheight = 1.1,
+                                  margin = margin(b = 10)),
+    plot.subtitle = element_markdown(size = 20, color = "#D7E4B8", hjust = 0,
+                                     lineheight = 1.4, margin = margin(b = 22)),
+    plot.caption = element_markdown(size = 9, color = dim_text, hjust = 0.5,
+                                    margin = margin(t = 20)),
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    plot.margin = margin(26, 40, 16, 20)
   )
 
 hero
@@ -891,13 +854,20 @@ hero
 
 ![](outputs/hero-viz-1.png)<!-- -->
 
+The pattern is hard to unsee. For the two things we actually buy, the
+olive oil versions almost always hold up (9 of 10 chips, 4 of 4 mayo),
+while the avocado versions almost never do (2 of 28 chips, 4 of 14
+mayo). Salad dressing is the extreme: every olive lot passed, every
+avocado lot failed. We prefer avocado oil, and avocado oil is exactly
+the one that keeps lying to us.
+
 ## What’s Next?
 
 A few open threads worth chasing:
 
 - **The regulation question.** The case for federal avocado oil
   standards writes itself in this data. What would effective regulation
-  look like — mandatory fatty acid profiling at import? Random lot
+  look like? Mandatory fatty acid profiling at import, or random lot
   testing? The olive oil comparison is the cleanest possible argument.
 
 - **Supply chain vs. retailer fraud.** The lot-level data shows that
@@ -906,7 +876,7 @@ A few open threads worth chasing:
   mislabeling at the store. Has anything changed since the 2026 study?
 
 - **What about the olive oil outlier?** One olive chip lot failed.
-  That’s worth looking at — which product was it, and what went wrong?
+  That’s worth looking at: which product was it, and what went wrong?
 
 - **The oxidation puzzle.** If 87% of pure bottled avocado oils are
   rancid before expiration, something is broken in the storage and
