@@ -437,7 +437,7 @@ ggsave(
 ## Caption Convention
 
 ### Icon-Rich Caption (preferred for final shareable image)
-Use `ggtext::element_markdown()` with Font Awesome icons registered via `showtext`. This produces a polished caption with table and GitHub icons:
+Use `ggtext::element_markdown()` with Font Awesome icons registered via `showtext`. This produces a polished caption that leads with the Kiro shoutout (robot icon) and ends with the data source (table icon) and LinkedIn handle (LinkedIn icon):
 
 ```r
 library(ggtext)
@@ -453,7 +453,8 @@ tt_source <- "Data Source Name"
 bg_color <- "white"  # used for invisible spacer dots
 
 tt_caption <- paste0(
-  "DataViz: Tony Galvan #TidyTuesday",
+  "Curated and analyzed by Tony Galvan with ",
+  "<span style='font-family:fa-solid;'>&#xf544;</span> Kiro",
   "<span style='color:", bg_color, ";'>..</span>",
   "<span style='font-family:fa-solid;'>&#xf0ce;</span>",
   "<span style='color:", bg_color, ";'>.</span>",
@@ -461,11 +462,7 @@ tt_caption <- paste0(
   "<span style='color:", bg_color, ";'>..</span>",
   "<span style='font-family:fa-brands;'>&#xf08c;</span>",
   "<span style='color:", bg_color, ";'>.</span>",
-  "anthony-raul-galvan",
-  "<span style='color:", bg_color, ";'>..</span>",
-  "<span style='font-family:fa-brands;'>&#xf09b;</span>",
-  "<span style='color:", bg_color, ";'>.</span>",
-  "gdatascience"
+  "anthony-raul-galvan"
 )
 
 # Use element_markdown in the theme for the caption
@@ -477,11 +474,38 @@ theme(
 ```
 
 Key Font Awesome HTML entities:
+- `&#xf544;`: robot icon (fa-solid), used for the Kiro shoutout
 - `&#xf0ce;`: table icon (fa-solid)
 - `&#xf08c;`: LinkedIn icon, rounded square (fa-brands)
-- `&#xf09b;`: GitHub icon (fa-brands)
+- `&#xf09b;`: GitHub icon (fa-brands), no longer used in the caption (see below)
 
-**IMPORTANT:** The caption must always include all three elements: data source with table icon, LinkedIn handle (anthony-raul-galvan) with LinkedIn icon, and GitHub username (gdatascience) with GitHub icon. Never omit the LinkedIn icon and handle.
+**IMPORTANT:** The caption must always include three elements: the Kiro shoutout with the robot icon, the data source (or TidyTuesday week) with the table icon, and the LinkedIn handle (anthony-raul-galvan) with the LinkedIn icon. Do NOT include the GitHub icon and username in the caption anymore; the Kiro shoutout takes that space. Never omit the LinkedIn icon and handle. See the Kiro shoutout subsection below for the exact pattern.
+
+### Kiro Shoutout in the Caption (required)
+
+Kiro does most of the work on these analyses, so the hero caption must credit it. Lead the caption with "Curated and analyzed by Tony Galvan with [robot icon] Kiro", using the Font Awesome solid robot glyph (`&#xf544;`) right before the word "Kiro". This is the convention established in the 2026-10-20 (Week 42) hero and should be reused on every final shareable image.
+
+```r
+bg_color <- "white"  # used for invisible spacer dots
+
+tt_caption <- paste0(
+  "Curated and analyzed by Tony Galvan with ",
+  "<span style='font-family:fa-solid;'>&#xf544;</span> Kiro",
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-solid;'>&#xf0ce;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  tt_source,                                  # e.g. "TidyTuesday 2026 Wk42" or the data source
+  "<span style='color:", bg_color, ";'>..</span>",
+  "<span style='font-family:fa-brands;'>&#xf08c;</span>",
+  "<span style='color:", bg_color, ";'>.</span>",
+  "anthony-raul-galvan"
+)
+```
+
+Notes:
+- The robot icon plus "Kiro" is the shoutout. Keep the wording "Curated and analyzed by Tony Galvan with Kiro" so the human-steered, Kiro-built relationship stays clear.
+- Watch the whitespace-next-to-styled-span gotcha: the literal space before `<span>` and after `</span> Kiro` must sit outside the icon span, or showtext drops it and the words collide with the icon.
+- **Drop the GitHub icon and username from the caption.** The Kiro shoutout takes the space GitHub used to occupy, so the standard caption now ends with the LinkedIn handle (anthony-raul-galvan) and its icon (`&#xf08c;`). GitHub attribution still lives in the week README and `meta.yaml`, so nothing is lost. The required caption elements are now: the Kiro shoutout, the data source / week with the table icon, and the LinkedIn handle with its icon.
 
 ### Plain-Text Caption (fallback)
 When Font Awesome is not available or for simpler contexts:
